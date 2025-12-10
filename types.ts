@@ -13,6 +13,8 @@ export interface User {
   birthDate?: string; // Data de nascimento (YYYY-MM-DD)
   graduationCost?: number; // Custo individual da troca de corda
   phone?: string; // WhatsApp: 55 + DDD + Numero
+  first_name?: string; // Supabase profile field
+  last_name?: string; // Supabase profile field
 }
 
 export interface ClassSession {

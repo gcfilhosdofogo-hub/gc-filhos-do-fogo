@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Landing } from './views/Landing';
 import { Auth } from './views/Auth';
@@ -6,8 +6,11 @@ import { DashboardAluno } from './views/DashboardAluno';
 import { DashboardProfessor } from './views/DashboardProfessor';
 import { DashboardAdmin } from './views/DashboardAdmin';
 import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder } from './types';
+import { SessionContextProvider, useSession } from './components/SessionContextProvider';
+import { supabase } from './integrations/supabase/client';
 
-function App() {
+function AppContent() {
+  const { session, isLoading } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
   const [events, setEvents] = useState<GroupEvent[]>([
@@ -36,25 +39,94 @@ function App() {
 
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
 
+  useEffect(() => {
+    if (!isLoading) {
+      if (session) {
+        // Fetch user profile from Supabase
+        const fetchUserProfile = async () => {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching profile:', error);
+            // Fallback to basic user info if profile fetch fails
+            setUser({
+              id: session.user.id,
+              name: session.user.email || 'User',
+              email: session.user.email || '',
+              role: 'aluno', // Default role, will be updated if profile exists
+            });
+          } else if (profile) {
+            // Determine role based on some logic or default
+            let userRole: UserRole = 'aluno'; // Default
+            // Example: if nickname contains "Mestre" or "Professor", assign role
+            if (profile.nickname?.includes('Mestre') || profile.nickname?.includes('Professor')) {
+                userRole = 'professor';
+            }
+            // For specific admin users, you might have a separate check or a 'role' column in profiles
+            if (session.user.email === 'mestrefogo64@gmail.com' || session.user.email === 'jeanstiflerramos@gmail.com' || session.user.email === 'adrinowol@gmail.com') {
+                userRole = 'admin';
+            } else if (session.user.email === 'nb8124369@gmail.com' || session.user.email === 'jeffersongomezntt@gmail.com' || session.user.email === 'robertomerlinorj@gmail.com' || session.user.email === 'wcaaantos@gmail.com' || session.user.email === 'henriquegutierrez115@gmail.com' || session.user.email === 'manoelcarlos232418@gmail.com' || session.user.email === 'vitor.carbunk1@gmail.com') {
+                userRole = 'professor';
+            }
+
+
+            setUser({
+              id: session.user.id,
+              name: profile.first_name || session.user.email || 'User',
+              nickname: profile.nickname || undefined,
+              email: session.user.email || '',
+              role: userRole,
+              avatarUrl: profile.avatar_url || undefined,
+              belt: profile.belt || undefined,
+              beltColor: profile.belt_color || undefined,
+              professorName: profile.professor_name || undefined,
+              birthDate: profile.birth_date || undefined,
+              graduationCost: profile.graduation_cost || undefined,
+              phone: profile.phone || undefined,
+            });
+          }
+        };
+        fetchUserProfile();
+        setCurrentView('dashboard');
+      } else {
+        setUser(null);
+        setCurrentView('home');
+      }
+    }
+  }, [session, isLoading]);
+
   const handleLogin = (loggedUser: User) => {
-    // Mocking a graduation cost for demonstration purposes if logged in
-    const userWithCost = {
-        ...loggedUser,
-        graduationCost: loggedUser.role === 'aluno' ? 150 : 250 // Example costs
-    };
-    setUser(userWithCost);
+    // This function is now largely handled by Supabase's onAuthStateChange
+    // We keep it for consistency if other parts of the app still call it
+    setUser(loggedUser);
     setCurrentView('dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setCurrentView('home');
   };
 
   // Function to update user profile (e.g. Avatar)
-  const handleUpdateProfile = (updatedData: Partial<User>) => {
-    if (user) {
-        setUser({ ...user, ...updatedData });
+  const handleUpdateProfile = async (updatedData: Partial<User>) => {
+    if (user && session) {
+        const { error } = await supabase
+            .from('profiles')
+            .update(updatedData)
+            .eq('id', session.user.id);
+
+        if (error) {
+            console.error('Error updating profile:', error);
+            alert('Failed to update profile.');
+        } else {
+            setUser({ ...user, ...updatedData });
+            alert('Profile updated successfully!');
+        }
     }
   };
 
@@ -108,6 +180,14 @@ function App() {
   };
 
   const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center min-h-[calc(100vh-64px)]">
+          <p className="text-white text-xl">Carregando...</p>
+        </div>
+      );
+    }
+
     if (currentView === 'home' && !user) {
       return <Landing onLoginClick={() => setCurrentView('login')} />;
     }
@@ -177,6 +257,14 @@ function App() {
         {renderContent()}
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <SessionContextProvider>
+      <AppContent />
+    </SessionContextProvider>
   );
 }
 
