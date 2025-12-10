@@ -1725,3 +1725,4 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     </div>
   );
+};
