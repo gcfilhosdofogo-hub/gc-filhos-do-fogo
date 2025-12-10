@@ -7,7 +7,7 @@ import { DashboardProfessor } from './views/DashboardProfessor';
 import { DashboardAdmin } from './views/DashboardAdmin';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider'; // Corrected path
 import { supabase } from './src/integrations/supabase/client'; // Corrected path
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole } from './types';
 
 
 function AppContent() {
@@ -47,7 +47,7 @@ function AppContent() {
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone')
+            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role') // Added 'role'
             .eq('id', session.user.id)
             .single();
 
@@ -58,22 +58,11 @@ function AppContent() {
               id: session.user.id,
               name: session.user.email || 'User',
               email: session.user.email || '',
-              role: 'aluno', // Default role, will be updated if profile exists
+              role: 'aluno', // Default role
             });
           } else if (profile) {
-            // Determine role based on some logic or default
-            let userRole: UserRole = 'aluno'; // Default
-            // Example: if nickname contains "Mestre" or "Professor", assign role
-            if (profile.nickname?.includes('Mestre') || profile.nickname?.includes('Professor')) {
-                userRole = 'professor';
-            }
-            // For specific admin users, you might have a separate check or a 'role' column in profiles
-            if (session.user.email === 'mestrefogo64@gmail.com' || session.user.email === 'jeanstiflerramos@gmail.com' || session.user.email === 'adrinowol@gmail.com') {
-                userRole = 'admin';
-            } else if (session.user.email === 'nb8124369@gmail.com' || session.user.email === 'jeffersongomezntt@gmail.com' || session.user.email === 'robertomerlinorj@gmail.com' || session.user.email === 'wcaaantos@gmail.com' || session.user.email === 'henriquegutierrez115@gmail.com' || session.user.email === 'manoelcarlos232418@gmail.com' || session.user.email === 'vitor.carbunk1@gmail.com') {
-                userRole = 'professor';
-            }
-
+            // Use the role directly from the profile
+            const userRole: UserRole = profile.role as UserRole;
 
             setUser({
               id: session.user.id,
