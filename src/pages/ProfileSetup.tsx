@@ -5,7 +5,7 @@ import { supabase } from '../integrations/supabase/client';
 import { useSession } from '../components/SessionContextProvider';
 import { User, UserRole, ALL_BELTS } from '../../types';
 import { Button } from '../../components/Button';
-import { ArrowLeft, User as UserIcon, GraduationCap, Calendar, Phone, Save, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, GraduationCap, Calendar, Phone, Save, AlertCircle, Camera, UploadCloud } from 'lucide-react';
 import { Logo } from '../../components/Logo';
 
 interface ProfileSetupProps {
@@ -23,10 +23,13 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
     birth_date: '',
     phone: '',
     belt: ALL_BELTS[0],
-    role: 'aluno' as UserRole,
+    role: 'aluno' as UserRole, // Default role, not user selectable
     professor_name: '',
+    avatar_url: '', // New field for avatar URL
   });
   const [isNewUser, setIsNewUser] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -53,13 +56,13 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
           belt: data.belt || ALL_BELTS[0],
           role: data.role as UserRole || 'aluno',
           professor_name: data.professor_name || '',
+          avatar_url: data.avatar_url || '',
         });
+        setAvatarPreview(data.avatar_url || null);
         setIsNewUser(false);
       } else {
         // No profile found, it's a new user
         setIsNewUser(true);
-        // Pre-fill email if available from session, though not part of form data
-        // For first_name/last_name, try to parse from email if no other data
         const emailNamePart = session.user.email?.split('@')[0];
         setFormData(prev => ({
           ...prev,
@@ -77,6 +80,40 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    } else {
+      setAvatarFile(null);
+      setAvatarPreview(formData.avatar_url || null);
+    }
+  };
+
+  const uploadAvatar = async (userId: string, file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`; // Store in a subfolder per user
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true, // Overwrite if exists
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+    
+    return publicUrlData.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -87,6 +124,18 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       return;
     }
 
+    let avatarUrl = formData.avatar_url;
+    if (avatarFile) {
+      try {
+        avatarUrl = await uploadAvatar(session.user.id, avatarFile);
+      } catch (uploadError: any) {
+        console.error('Error uploading avatar:', uploadError);
+        alert('Erro ao fazer upload da foto de perfil: ' + uploadError.message);
+        setLoading(false);
+        return;
+      }
+    }
+
     const profileData = {
       id: session.user.id,
       first_name: formData.first_name,
@@ -95,8 +144,9 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       birth_date: formData.birth_date || null,
       phone: formData.phone || null,
       belt: formData.belt,
-      role: formData.role,
+      role: formData.role, // Role is not user selectable, it's set by admin or default
       professor_name: formData.professor_name || null,
+      avatar_url: avatarUrl,
       updated_at: new Date().toISOString(),
     };
 
@@ -109,7 +159,6 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       alert('Erro ao salvar perfil: ' + error.message);
     } else {
       alert('Perfil salvo com sucesso!');
-      // Construct a User object to pass to onProfileComplete
       const updatedUser: User = {
         id: session.user.id,
         name: `${formData.first_name} ${formData.last_name}`.trim(),
@@ -122,6 +171,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
         birthDate: formData.birth_date || undefined,
         first_name: formData.first_name,
         last_name: formData.last_name,
+        avatarUrl: avatarUrl,
       };
       onProfileComplete(updatedUser);
     }
@@ -169,6 +219,27 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
               <p>Bem-vindo(a)! Por favor, complete seu perfil.</p>
             </div>
           )}
+
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="relative w-32 h-32 rounded-full bg-stone-700 flex items-center justify-center border-4 border-orange-600 overflow-hidden mb-4">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar Preview" className="w-full h-full object-cover" />
+              ) : (
+                <UserIcon size={48} className="text-stone-400" />
+              )}
+              <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                <Camera size={24} className="text-white" />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleAvatarChange} 
+                  className="hidden" 
+                />
+              </label>
+            </div>
+            <p className="text-sm text-stone-400">Clique na imagem para alterar</p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -249,19 +320,10 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
             </select>
           </div>
 
-          <div>
-            <label htmlFor="role" className="block text-sm text-stone-400 mb-1">Função</label>
-            <select 
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-            >
-              <option value="aluno">Aluno</option>
-              <option value="professor">Professor</option>
-              {/* Admin role should only be set by other admins, not self-assigned */}
-            </select>
+          {/* Role is now pre-determined, not user selectable */}
+          <div className="bg-stone-900 p-3 rounded border border-stone-700 text-sm text-stone-400 flex items-center gap-2">
+            <UserIcon size={16} />
+            Sua função: <span className="text-white font-bold capitalize">{formData.role}</span>
           </div>
 
           {formData.role === 'aluno' && (
