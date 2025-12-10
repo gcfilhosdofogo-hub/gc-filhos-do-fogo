@@ -5,7 +5,7 @@ import { ArrowLeft, Mail, Lock, User as UserIcon, Eye, EyeOff, GraduationCap, Ca
 import { Logo } from '../components/Logo';
 import { Auth as SupabaseAuth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../src/integrations/supabase/client'; // Corrected path
 
 interface Props {
   onLogin: (user: User) => void; // This prop will now be less critical as Supabase handles login state
