@@ -5,8 +5,9 @@ import { Auth } from './views/Auth';
 import { DashboardAluno } from './views/DashboardAluno';
 import { DashboardProfessor } from './views/DashboardProfessor';
 import { DashboardAdmin } from './views/DashboardAdmin';
-import { SessionContextProvider, useSession } from './src/components/SessionContextProvider'; // Corrected path
-import { supabase } from './src/integrations/supabase/client'; // Corrected path
+import { ProfileSetup } from './src/pages/ProfileSetup'; // Import the new ProfileSetup component
+import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
+import { supabase } from './src/integrations/supabase/client';
 import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole } from './types';
 
 
@@ -47,11 +48,11 @@ function AppContent() {
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role') // Added 'role'
+            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role')
             .eq('id', session.user.id)
             .single();
 
-          if (error) {
+          if (error && error.code !== 'PGRST116') { // PGRST116 means "no rows found"
             console.error('Error fetching profile:', error);
             // Fallback to basic user info if profile fetch fails
             setUser({
@@ -60,28 +61,35 @@ function AppContent() {
               email: session.user.email || '',
               role: 'aluno', // Default role
             });
+            setCurrentView('profile_setup'); // Redirect to profile setup if error or no profile
           } else if (profile) {
-            // Use the role directly from the profile
-            const userRole: UserRole = profile.role as UserRole;
-
-            setUser({
-              id: session.user.id,
-              name: profile.first_name || session.user.email || 'User',
-              nickname: profile.nickname || undefined,
-              email: session.user.email || '',
-              role: userRole,
-              avatarUrl: profile.avatar_url || undefined,
-              belt: profile.belt || undefined,
-              beltColor: profile.belt_color || undefined,
-              professorName: profile.professor_name || undefined,
-              birthDate: profile.birth_date || undefined,
-              graduationCost: profile.graduation_cost || undefined,
-              phone: profile.phone || undefined,
-            });
+            // Check if essential profile fields are filled
+            if (!profile.first_name || !profile.nickname || !profile.birth_date) {
+              setCurrentView('profile_setup'); // Redirect to profile setup if profile is incomplete
+            } else {
+              const userRole: UserRole = profile.role as UserRole;
+              setUser({
+                id: session.user.id,
+                name: profile.first_name || session.user.email || 'User',
+                nickname: profile.nickname || undefined,
+                email: session.user.email || '',
+                role: userRole,
+                avatarUrl: profile.avatar_url || undefined,
+                belt: profile.belt || undefined,
+                beltColor: profile.belt_color || undefined,
+                professorName: profile.professor_name || undefined,
+                birthDate: profile.birth_date || undefined,
+                graduationCost: profile.graduation_cost || undefined,
+                phone: profile.phone || undefined,
+              });
+              setCurrentView('dashboard');
+            }
+          } else {
+            // No profile found, new user needs to set up profile
+            setCurrentView('profile_setup');
           }
         };
         fetchUserProfile();
-        setCurrentView('dashboard');
       } else {
         setUser(null);
         setCurrentView('home');
@@ -90,8 +98,6 @@ function AppContent() {
   }, [session, isLoading]);
 
   const handleLogin = (loggedUser: User) => {
-    // This function is now largely handled by Supabase's onAuthStateChange
-    // We keep it for consistency if other parts of the app still call it
     setUser(loggedUser);
     setCurrentView('dashboard');
   };
@@ -169,6 +175,11 @@ function AppContent() {
     }
   };
 
+  const handleProfileComplete = (updatedUser: User) => {
+    setUser(updatedUser);
+    setCurrentView('dashboard');
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -184,6 +195,10 @@ function AppContent() {
 
     if (currentView === 'login') {
       return <Auth onLogin={handleLogin} onBack={() => setCurrentView('home')} />;
+    }
+
+    if (currentView === 'profile_setup' && session) {
+      return <ProfileSetup onProfileComplete={handleProfileComplete} onBack={() => setCurrentView('home')} />;
     }
 
     if (user) {

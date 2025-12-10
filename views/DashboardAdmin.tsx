@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS } from '../types';
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package } from 'lucide-react';
 import { Button } from '../components/Button';
+import { supabase } from '../src/integrations/supabase/client';
 
 interface Props {
   user: User;
@@ -77,39 +78,9 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-// All Belts List for Configuration
-const ALL_BELTS = [
-  "Cordel Cinza",
-  "Cordel Verde",
-  "Cordel Verde ponta Amarelo",
-  "Cordel Verde ponta Azul",
-  "Cordel Verde e Amarelo",
-  "Cordel Verde e Amarelo ponta Verde",
-  "Cordel Verde e Amarelo ponta Amarelo",
-  "Cordel Verde e Amarelo ponta Azul",
-  "Cordel Amarelo",
-  "Cordel Amarelo ponta Verde",
-  "Cordel Amarelo ponta Azul",
-  "Cordel Amarelo e Azul (Instrutor)",
-  "Cordel Amarelo e Azul ponta Amarelo (Instrutor I)",
-  "Cordel Amarelo e Azul ponta Azul (Instrutor II)",
-  "Cordel Azul (Professor)",
-  "Cordel Azul ponta Verde e Amarelo (Professor I)",
-  "Cordel Verde, Amarelo, Azul e Branco (Mestrando)",
-  "Cordel Verde e Branco (Mestre I)",
-  "Cordel Amarelo e Branco (Mestre II)",
-  "Cordel Azul e Branco (Mestre III)",
-  "Cordel Branco (Grão-Mestre)"
-];
+// Removed ALL_BELTS from here, now imported from types.ts
 
-// Mock Initial Users for Management Tab
-const INITIAL_MANAGED_USERS: User[] = [
-    { id: 'u1', name: "Marcos Antonio", nickname: "Anjo de Fogo", email: "mestrefogo64@gmail.com", role: "admin", belt: "Cordel Branco (Grão-Mestre)", phone: '5511999999999' },
-    { id: 'u2', name: "Jean Ramos", nickname: "Aquiles", email: "jeanstiflerramos@gmail.com", role: "admin", belt: "Cordel Azul (Professor)", phone: '5511988888888' },
-    { id: 'u3', name: "Vicente Ferreira", nickname: "Anu Branco", email: "nb8124369@gmail.com", role: "professor", belt: "Cordel Azul (Professor)", phone: '5511977777777' },
-    { id: 'u4', name: "João Silva", nickname: "Gafanhoto", email: "joao@teste.com", role: "aluno", belt: "Cordel Verde", professorName: "Vicente \"Anu Branco\"", phone: '5511966666666' },
-    { id: 'u5', name: "Maria Oliveira", nickname: "Vespa", email: "maria@teste.com", role: "aluno", belt: "Cordel Amarelo", professorName: "Jefferson \"Zeus\"", phone: '5511955555555' }
-];
+// Removed INITIAL_MANAGED_USERS, now fetched from Supabase
 
 interface Assignment {
   id: number;
@@ -161,7 +132,7 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [editingGradCost, setEditingGradCost] = useState<{studentId: string, cost: string} | null>(null);
 
   // Users Management State
-  const [managedUsers, setManagedUsers] = useState<User[]>(INITIAL_MANAGED_USERS);
+  const [managedUsers, setManagedUsers] = useState<User[]>([]); // Initialize empty, will fetch from Supabase
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -205,6 +176,37 @@ export const DashboardAdmin: React.FC<Props> = ({
   
   // New Class Form State
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
+
+  // --- SUPABASE USER MANAGEMENT ---
+  const fetchManagedUsers = useCallback(async () => {
+    const { data, error } = await supabase.from('profiles').select('*');
+    if (error) {
+      console.error('Error fetching managed users:', error);
+      // Optionally show a toast notification
+    } else {
+      const fetchedUsers: User[] = data.map(profile => ({
+        id: profile.id,
+        name: profile.first_name || profile.email || 'Usuário',
+        nickname: profile.nickname || undefined,
+        email: profile.email || '',
+        role: profile.role as UserRole,
+        avatarUrl: profile.avatar_url || undefined,
+        belt: profile.belt || undefined,
+        beltColor: profile.belt_color || undefined,
+        professorName: profile.professor_name || undefined,
+        birthDate: profile.birth_date || undefined,
+        graduationCost: profile.graduation_cost || undefined,
+        phone: profile.phone || undefined,
+        first_name: profile.first_name || undefined,
+        last_name: profile.last_name || undefined,
+      }));
+      setManagedUsers(fetchedUsers);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchManagedUsers();
+  }, [fetchManagedUsers]);
 
   // --- ADMIN HANDLERS ---
   const totalRevenue = payments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
@@ -303,7 +305,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       if (userToEdit) {
           setEditingUser(userToEdit);
           setUserForm({
-              name: userToEdit.name,
+              name: userToEdit.first_name || userToEdit.name,
               nickname: userToEdit.nickname || '',
               email: userToEdit.email,
               role: userToEdit.role,
@@ -312,51 +314,65 @@ export const DashboardAdmin: React.FC<Props> = ({
               professorName: userToEdit.professorName || '',
               birthDate: userToEdit.birthDate || ''
           });
+          setShowUserModal(true);
       } else {
-          setEditingUser(null);
-          setUserForm({
-              name: '',
-              nickname: '',
-              email: '',
-              role: 'aluno',
-              belt: ALL_BELTS[0],
-              phone: '',
-              professorName: '',
-              birthDate: ''
-          });
+          // Prevent creating new users directly from this form.
+          // New users should sign up via the Auth UI, or be created via Supabase console.
+          // Then their profile can be edited here.
+          alert('Para adicionar um novo usuário, o usuário deve primeiro se cadastrar na plataforma ou ser criado via console Supabase. Você pode então editar o perfil dele aqui.');
       }
-      setShowUserModal(true);
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      const userData: User = {
-          id: editingUser ? editingUser.id : Date.now().toString(),
-          name: userForm.name,
-          nickname: userForm.nickname,
-          email: userForm.email,
+      if (!editingUser) {
+          alert('Erro: Não é possível criar um novo usuário diretamente por este formulário. Edite um perfil existente.');
+          return;
+      }
+
+      const userDataToSave = {
+          first_name: userForm.name.split(' ')[0] || null,
+          last_name: userForm.name.split(' ').slice(1).join(' ') || null,
+          nickname: userForm.nickname || null,
+          // email is typically from auth.users, not updated here
           role: userForm.role,
-          belt: userForm.belt,
-          phone: userForm.phone,
-          professorName: userForm.professorName,
-          birthDate: userForm.birthDate
-          // avatarUrl and beltColor would be handled by logic not implemented fully here for mock
+          belt: userForm.belt || null,
+          phone: userForm.phone || null,
+          professor_name: userForm.professorName || null,
+          birth_date: userForm.birthDate || null,
+          updated_at: new Date().toISOString(), // Add updated_at timestamp
       };
 
-      if (editingUser) {
-          setManagedUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...userData } : u));
-          alert('Usuário atualizado com sucesso!');
+      const { error } = await supabase
+          .from('profiles')
+          .update(userDataToSave)
+          .eq('id', editingUser.id);
+
+      if (error) {
+          console.error('Error updating user:', error);
+          alert('Erro ao atualizar usuário.');
       } else {
-          setManagedUsers(prev => [...prev, userData]);
-          alert('Usuário criado com sucesso! Senha padrão: "123456"');
+          alert('Usuário atualizado com sucesso!');
+          setShowUserModal(false);
+          fetchManagedUsers(); // Re-fetch to update the list
       }
-      setShowUserModal(false);
   };
 
-  const handleDeleteUser = (userId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.")) {
-          setManagedUsers(prev => prev.filter(u => u.id !== userId));
+  const handleDeleteUser = async (userId: string) => {
+      if (window.confirm("Tem certeza que deseja excluir este usuário? Esta ação remove APENAS o perfil do usuário, não a conta de autenticação no Supabase.")) {
+          const { error } = await supabase
+              .from('profiles')
+              .delete()
+              .eq('id', userId);
+
+          if (error) {
+              console.error('Error deleting user profile:', error);
+              alert('Erro ao excluir perfil do usuário.');
+          } else {
+              alert('Perfil do usuário excluído com sucesso!');
+              fetchManagedUsers(); // Re-fetch to update the list
+          }
       }
   };
 
@@ -1058,6 +1074,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                           value={userForm.email}
                                           onChange={(e) => setUserForm({...userForm, email: e.target.value})}
                                           className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                          disabled // Email should not be editable from here, it comes from auth.users
                                       />
                                   </div>
                                   <div>
@@ -1148,7 +1165,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <Users className="text-pink-500" />
                               Gerenciar Usuários
                           </h2>
-                          <p className="text-stone-400 text-sm">Adicione, edite ou remova membros da plataforma.</p>
+                          <p className="text-stone-400 text-sm">Edite ou remova membros da plataforma.</p>
                       </div>
                       
                       <div className="flex items-center gap-2 w-full md:w-auto">
@@ -1162,9 +1179,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   className="w-full bg-stone-900 border border-stone-600 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:border-pink-500 outline-none"
                               />
                           </div>
-                          <Button onClick={() => handleOpenUserModal()}>
+                          {/* Removed "Novo" button as new user creation is handled by Auth UI or Supabase console */}
+                          {/* <Button onClick={() => handleOpenUserModal()}>
                               <UserPlus size={18} /> <span className="hidden sm:inline">Novo</span>
-                          </Button>
+                          </Button> */}
                       </div>
                   </div>
 
@@ -1683,8 +1701,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
                                     <div className="flex justify-between items-start mb-2">
                                         <div><p className="text-white font-bold">{cls.title}</p><p className="text-stone-500 text-sm">{cls.time} - {cls.location}</p></div>
-                                        {!confirmedClasses.includes(cls.id) && <button onClick={() => handleConfirmClass(cls.id)} className="text-xs bg-yellow-600 text-white px-2 py-1 rounded animate-pulse">Confirmar</button>}
-                                        {confirmedClasses.includes(cls.id) && <span className="text-xs text-green-500 flex items-center gap-1"><Check size={12}/> OK</span>}
+                                        {/* Removed confirmedClasses logic for simplicity, can be re-added if needed */}
+                                        {/* {!confirmedClasses.includes(cls.id) && <button onClick={() => handleConfirmClass(cls.id)} className="text-xs bg-yellow-600 text-white px-2 py-1 rounded animate-pulse">Confirmar</button>}
+                                        {confirmedClasses.includes(cls.id) && <span className="text-xs text-green-500 flex items-center gap-1"><Check size={12}/> OK</span>} */}
                                     </div>
                                     <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>Realizar Chamada</Button>
                                 </div>

@@ -108,3 +108,28 @@ export interface UniformOrder {
   total: number;
   status: 'pending' | 'ready' | 'delivered'; // ready = pago/aprovado
 }
+
+// All Belts List for Configuration
+export const ALL_BELTS = [
+  "Cordel Cinza",
+  "Cordel Verde",
+  "Cordel Verde ponta Amarelo",
+  "Cordel Verde ponta Azul",
+  "Cordel Verde e Amarelo",
+  "Cordel Verde e Amarelo ponta Verde",
+  "Cordel Verde e Amarelo ponta Amarelo",
+  "Cordel Verde e Amarelo ponta Azul",
+  "Cordel Amarelo",
+  "Cordel Amarelo ponta Verde",
+  "Cordel Amarelo ponta Azul",
+  "Cordel Amarelo e Azul (Instrutor)",
+  "Cordel Amarelo e Azul ponta Amarelo (Instrutor I)",
+  "Cordel Amarelo e Azul ponta Azul (Instrutor II)",
+  "Cordel Azul (Professor)",
+  "Cordel Azul ponta Verde e Amarelo (Professor I)",
+  "Cordel Verde, Amarelo, Azul e Branco (Mestrando)",
+  "Cordel Verde e Branco (Mestre I)",
+  "Cordel Amarelo e Branco (Mestre II)",
+  "Cordel Azul e Branco (Mestre III)",
+  "Cordel Branco (Grão-Mestre)"
+];
