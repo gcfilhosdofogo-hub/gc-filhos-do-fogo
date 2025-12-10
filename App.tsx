@@ -5,9 +5,10 @@ import { Auth } from './views/Auth';
 import { DashboardAluno } from './views/DashboardAluno';
 import { DashboardProfessor } from './views/DashboardProfessor';
 import { DashboardAdmin } from './views/DashboardAdmin';
+import { SessionContextProvider, useSession } from './src/components/SessionContextProvider'; // Corrected path
+import { supabase } from './src/integrations/supabase/client'; // Corrected path
 import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder } from './types';
-import { SessionContextProvider, useSession } from './components/SessionContextProvider';
-import { supabase } from './integrations/supabase/client';
+
 
 function AppContent() {
   const { session, isLoading } = useSession();
