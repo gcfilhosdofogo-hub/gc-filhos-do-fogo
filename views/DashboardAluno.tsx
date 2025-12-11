@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera } from 'lucide-react';
+import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport } from '../types';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye } from 'lucide-react';
 import { Button } from '../components/Button';
+import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
 interface Props {
   user: User;
@@ -11,6 +12,13 @@ interface Props {
   onAddOrder: (order: UniformOrder) => void;
   onNotifyAdmin: (action: string, user: User) => void;
   onUpdateProfile: (data: Partial<User>) => void;
+  homeTrainings: HomeTraining[];
+  onAddHomeTraining: (training: Omit<HomeTraining, 'id' | 'created_at'>) => Promise<void>;
+  schoolReports: SchoolReport[]; // Now receiving from App.tsx
+  onAddSchoolReport: (report: Omit<SchoolReport, 'id' | 'created_at'>) => Promise<void>; // Now receiving from App.tsx
+  classSessions: ClassSession[];
+  assignments: any[]; // Assuming assignments are passed, but not directly used in this fix
+  onUpdateAssignment: (assignment: any) => Promise<void>; // Assuming assignments are passed, but not directly used in this fix
 }
 
 // Mock de todas as aulas disponíveis no sistema com diferentes professores
@@ -23,13 +31,6 @@ const ALL_CLASSES: ClassSession[] = [
 
 type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform';
 
-interface SchoolReport {
-  id: string;
-  date: string;
-  fileName: string;
-  period: string;
-}
-
 const UNIFORM_PRICES = {
     shirt: 30,
     pants_roda: 80,
@@ -37,7 +38,22 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, uniformOrders, onAddOrder, onNotifyAdmin, onUpdateProfile }) => {
+export const DashboardAluno: React.FC<Props> = ({ 
+  user, 
+  events, 
+  musicList, 
+  uniformOrders, 
+  onAddOrder, 
+  onNotifyAdmin, 
+  onUpdateProfile,
+  homeTrainings,
+  onAddHomeTraining,
+  schoolReports, // Use prop
+  onAddSchoolReport, // Use prop
+  classSessions,
+  assignments,
+  onUpdateAssignment
+}) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
   const [costPixCopied, setCostPixCopied] = useState(false);
@@ -47,11 +63,9 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
   const [showPendingVideoPopup, setShowPendingVideoPopup] = useState(false);
 
   // Home Training State
-  const [myVideos, setMyVideos] = useState<HomeTraining[]>([]);
   const [uploading, setUploading] = useState(false);
 
   // School Report State
-  const [myReports, setMyReports] = useState<SchoolReport[]>([]);
   const [uploadingReport, setUploadingReport] = useState(false);
 
   // Uniform Order Form State
@@ -62,7 +76,9 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
   });
 
   // Filter my orders from global state
-  const myOrders = uniformOrders.filter(o => o.userId === user.id);
+  const myOrders = uniformOrders.filter(o => o.user_id === user.id);
+  const myHomeTrainings = homeTrainings.filter(ht => ht.user_id === user.id);
+  const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
@@ -70,14 +86,14 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
   // Check for pending video on mount
   useEffect(() => {
     // Se não for dia de aula e o aluno não tiver enviado vídeo hoje (simulação de lista vazia no inicio)
-    if (!isClassDay && myVideos.length === 0) {
+    if (!isClassDay && myHomeTrainings.length === 0) {
         // Pequeno delay para simular carregamento e ficar visualmente agradável
         const timer = setTimeout(() => {
             setShowPendingVideoPopup(true);
         }, 800);
         return () => clearTimeout(timer);
     }
-  }, []); // Run once on mount
+  }, [isClassDay, myHomeTrainings.length]); // Run once on mount
 
   // Calculate Age
   const isOver18 = React.useMemo(() => {
@@ -112,61 +128,131 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
     setTimeout(() => setCostPixCopied(false), 2000);
   };
 
-  const handleUploadVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        setUploading(true);
-        // Simulate upload delay
-        setTimeout(() => {
-            const now = new Date();
-            const expires = new Date(now.getTime() + (72 * 60 * 60 * 1000)); // 72 hours from now
-            
-            const newVideo: HomeTraining = {
-                id: Date.now().toString(),
-                date: now.toLocaleDateString('pt-BR'),
-                videoName: e.target.files![0].name,
-                expiresAt: expires.toISOString()
-            };
-            
-            setMyVideos([newVideo, ...myVideos]);
-            setUploading(false);
-            setShowPendingVideoPopup(false); // Close popup if open
-            onNotifyAdmin('Enviou vídeo de Treino em Casa', user);
-            alert("Vídeo enviado com sucesso! Ele ficará disponível por 72 horas.");
-        }, 1500);
-    }
-  };
+  const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
 
-  const handleUploadReport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        setUploadingReport(true);
-        // Simulate upload delay
-        setTimeout(() => {
-            const now = new Date();
-            
-            const newReport: SchoolReport = {
-                id: Date.now().toString(),
-                date: now.toLocaleDateString('pt-BR'),
-                fileName: e.target.files![0].name,
-                period: 'Bimestre Atual'
-            };
-            
-            setMyReports([newReport, ...myReports]);
-            setUploadingReport(false);
-            onNotifyAdmin('Enviou Boletim Escolar', user);
-            alert("Boletim enviado com sucesso para a coordenação!");
-        }, 1500);
-    }
-  };
+    const file = e.target.files[0];
+    setUploading(true);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            if (ev.target?.result) {
-                onUpdateProfile({ avatarUrl: ev.target.result as string });
-            }
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`; // Unique path per user
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('home_training_videos')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('home_training_videos')
+            .getPublicUrl(filePath);
+
+        const now = new Date();
+        const expires = new Date(now.getTime() + (72 * 60 * 60 * 1000)); // 72 hours from now
+        
+        const newVideo: Omit<HomeTraining, 'id' | 'created_at'> = {
+            user_id: user.id,
+            date: now.toLocaleDateString('pt-BR'),
+            video_name: file.name,
+            video_url: publicUrlData.publicUrl,
+            expires_at: expires.toISOString()
         };
-        reader.readAsDataURL(e.target.files[0]);
+        
+        await onAddHomeTraining(newVideo); // Call prop to add to Supabase
+        setUploading(false);
+        setShowPendingVideoPopup(false); // Close popup if open
+        onNotifyAdmin('Enviou vídeo de Treino em Casa', user);
+        alert("Vídeo enviado com sucesso! Ele ficará disponível por 72 horas.");
+    } catch (error: any) {
+        console.error('Error uploading video:', error);
+        alert("Erro ao enviar vídeo: " + error.message);
+        setUploading(false);
+    }
+  };
+
+  const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    setUploadingReport(true);
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`; // Unique path per user
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('school_reports_files')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // For private buckets, we store the path and generate a signed URL when needed for viewing
+        const fileUrl = uploadData.path; 
+
+        const now = new Date();
+        
+        const newReport: Omit<SchoolReport, 'id' | 'created_at'> = {
+            user_id: user.id,
+            date: now.toLocaleDateString('pt-BR'),
+            file_name: file.name,
+            file_url: fileUrl,
+            period: 'Bimestre Atual', // Can be made dynamic if needed
+            status: 'pending'
+        };
+        
+        await onAddSchoolReport(newReport); // Call prop to add to Supabase
+        setUploadingReport(false);
+        onNotifyAdmin('Enviou Boletim Escolar', user);
+        alert("Boletim enviado com sucesso para a coordenação!");
+    } catch (error: any) {
+        console.error('Error uploading report:', error);
+        alert("Erro ao enviar boletim: " + error.message);
+        setUploadingReport(false);
+    }
+  };
+
+  const handleViewReport = async (fileUrl: string, fileName: string) => {
+    try {
+        const { data, error } = await supabase.storage
+            .from('school_reports_files')
+            .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+
+        if (error) throw error;
+
+        window.open(data.signedUrl, '_blank');
+    } catch (error: any) {
+        console.error('Error generating signed URL:', error);
+        alert('Erro ao visualizar o arquivo: ' + error.message);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/avatar.${fileExt}`; // Consistent avatar path
+        
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true,
+            });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+        
+        onUpdateProfile({ avatarUrl: publicUrlData.publicUrl });
+        alert("Avatar atualizado com sucesso!");
+    } catch (error: any) {
+        console.error('Error uploading avatar:', error);
+        alert("Erro ao atualizar avatar: " + error.message);
     }
   };
 
@@ -204,15 +290,14 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
         details = `Blusa: ${orderForm.shirtSize}, Calça: ${orderForm.pantsSize}`;
     }
 
-    const newOrder: UniformOrder = {
-        id: Date.now().toString(),
-        userId: user.id,
-        userName: user.nickname || user.name,
-        userRole: user.role,
+    const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
+        user_id: user.id,
+        user_name: user.nickname || user.name,
+        user_role: user.role,
         date: new Date().toLocaleDateString('pt-BR'),
         item: itemName,
-        shirtSize: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
-        pantsSize: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
+        shirt_size: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
+        pants_size: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
         total: price,
         status: 'pending'
     };
@@ -681,11 +766,11 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                   <h3 className="text-lg font-bold text-white mb-4">Seus Envios Ativos</h3>
                   <div className="space-y-3">
-                      {myVideos.map((video) => (
+                      {myHomeTrainings.map((video) => (
                           <div key={video.id} className="bg-stone-900 p-4 rounded-lg border-l-2 border-green-500 flex justify-between items-center">
                               <div>
                                   <p className="text-white font-medium flex items-center gap-2">
-                                      <Check size={16} className="text-green-500"/> Treino: {video.videoName}
+                                      <Check size={16} className="text-green-500"/> Treino: {video.video_name}
                                   </p>
                                   <p className="text-xs text-stone-500 mt-1">Enviado em: {video.date}</p>
                               </div>
@@ -696,7 +781,7 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
                               </div>
                           </div>
                       ))}
-                      {myVideos.length === 0 && (
+                      {myHomeTrainings.length === 0 && (
                           <p className="text-stone-500 italic text-center py-4">Nenhum vídeo enviado nas últimas 72 horas.</p>
                       )}
                   </div>
@@ -751,22 +836,29 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                   <h3 className="text-lg font-bold text-white mb-4">Boletins Enviados</h3>
                   <div className="space-y-3">
-                      {myReports.map((report) => (
+                      {mySchoolReports.map((report) => (
                           <div key={report.id} className="bg-stone-900 p-4 rounded-lg border-l-2 border-blue-500 flex justify-between items-center">
                               <div>
                                   <p className="text-white font-medium flex items-center gap-2">
-                                      <Check size={16} className="text-green-500"/> Arquivo: {report.fileName}
+                                      <Check size={16} className="text-green-500"/> Arquivo: {report.file_name}
                                   </p>
                                   <p className="text-xs text-stone-500 mt-1">Enviado em: {report.date}</p>
                               </div>
-                              <div className="text-right">
+                              <div className="text-right flex items-center gap-2">
                                   <span className="text-xs bg-stone-800 text-blue-400 px-2 py-1 rounded border border-stone-700">
                                       Em Análise
                                   </span>
+                                  <button 
+                                    onClick={() => handleViewReport(report.file_url, report.file_name)}
+                                    className="p-1.5 bg-stone-700 hover:bg-stone-600 rounded-full text-stone-400 hover:text-white transition-colors"
+                                    title="Ver Arquivo"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
                               </div>
                           </div>
                       ))}
-                      {myReports.length === 0 && (
+                      {mySchoolReports.length === 0 && (
                           <p className="text-stone-500 italic text-center py-4">Nenhum boletim enviado recentemente.</p>
                       )}
                   </div>
@@ -887,8 +979,8 @@ export const DashboardAluno: React.FC<Props> = ({ user, events, musicList, unifo
                                     {order.status === 'delivered' && <span className="text-xs bg-stone-700 text-stone-400 px-2 py-1 rounded border border-stone-600">Entregue</span>}
                                 </div>
                                 <div className="text-sm text-stone-400 space-y-1">
-                                    {order.shirtSize && <p>Tamanho Blusa: <span className="text-white">{order.shirtSize}</span></p>}
-                                    {order.pantsSize && <p>Tamanho Calça: <span className="text-white">{order.pantsSize}</span></p>}
+                                    {order.shirt_size && <p>Tamanho Blusa: <span className="text-white">{order.shirt_size}</span></p>}
+                                    {order.pants_size && <p>Tamanho Calça: <span className="text-white">{order.pants_size}</span></p>}
                                     <p className="pt-2 border-t border-stone-800 mt-2 flex justify-between text-xs">
                                         <span>Data: {order.date}</span>
                                         <span className="text-green-500 font-bold">R$ {order.total},00</span>
