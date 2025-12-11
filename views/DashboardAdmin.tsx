@@ -174,7 +174,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       // Optionally show a toast notification
     } else {
       const fetchedUsers: User[] = data.map(profile => {
-        console.log('Fetched profile:', profile); // Log each profile
+        // console.log('Fetched profile:', profile); // Removed log
         return {
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
@@ -193,8 +193,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         };
       });
       setManagedUsers(fetchedUsers);
-      console.log('Managed Users after fetch:', fetchedUsers); // Log the entire array
-      console.log('Total Alunos (filtered in fetch):', fetchedUsers.filter(u => u.role === 'aluno').length);
+      // console.log('Managed Users after fetch:', fetchedUsers); // Removed log
+      // console.log('Total Alunos (filtered in fetch):', fetchedUsers.filter(u => u.role === 'aluno').length); // Removed log
     }
   }, [session]); // Add session to dependency array
 
@@ -639,8 +639,8 @@ export const DashboardAdmin: React.FC<Props> = ({
      u.email.toLowerCase().includes(studentDetailsSearch.toLowerCase()))
   );
 
-  console.log('Managed Users for display:', managedUsers); // Log the entire array before rendering
-  console.log('Total Alunos (filtered for display):', managedUsers.filter(u => u.role === 'aluno').length);
+  // console.log('Managed Users for display:', managedUsers); // Removed log
+  // console.log('Total Alunos (filtered for display):', managedUsers.filter(u => u.role === 'aluno').length); // Removed log
 
   return (
     <div className="space-y-6">
