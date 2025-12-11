@@ -397,7 +397,7 @@ function AppContent() {
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings}
-              schoolReports={schoolReports} {/* Pass schoolReports */}
+              schoolReports={schoolReports} 
             />
           )}
         </div>
