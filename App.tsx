@@ -1,50 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { Landing } from './views/Landing';
 import { Auth } from './views/Auth';
 import { DashboardAluno } from './views/DashboardAluno';
 import { DashboardProfessor } from './views/DashboardProfessor';
-import { DashboardAdmin } from './views/DashboardAdmin';
-import { ProfileSetup } from './src/pages/ProfileSetup'; // Import the new ProfileSetup component
+import { DashboardAdmin } from './src/views/DashboardAdmin';
+import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession } from './types';
 
 
 function AppContent() {
   const { session, isLoading } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
-  const [events, setEvents] = useState<GroupEvent[]>([
-    { id: '1', title: 'Roda de Fim de Ano', date: '20 Dez', description: 'Grande roda de confraternização e troca de cordéis.', price: 50 },
-    { id: '2', title: 'Workshop de Angola', date: '15 Jan', description: 'Treino especial com Mestre convidado.', price: 120 }
-  ]);
   
-  // Mock music data uploaded by professors
-  const [musicList, setMusicList] = useState<MusicItem[]>([
-    {
-      id: '1',
-      title: 'Paranauê',
-      category: 'Corridos',
-      lyrics: "Paranauê, paranauê, paraná\nParanauê, paranauê, paraná\n\nVou dizer a minha mulher, paraná\nCapoeira venceu, paraná\nParanauê, paranauê, paraná"
-    },
-    {
-      id: '2',
-      title: 'Iúna é mandingueira',
-      category: 'Quadras',
-      lyrics: "Iúna é mandingueira\nQuando canta no sertão\nÉ sinal de boa chuva\nPra colheita do feijão"
-    }
-  ]);
-
-  // Global Uniform Orders State
+  // Supabase Data States
+  const [events, setEvents] = useState<GroupEvent[]>([]);
+  const [musicList, setMusicList] = useState<MusicItem[]>([]);
   const [uniformOrders, setUniformOrders] = useState<UniformOrder[]>([]);
-
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [homeTrainings, setHomeTrainings] = useState<HomeTraining[]>([]);
+  const [schoolReports, setSchoolReports] = useState<SchoolReport[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [monthlyPayments, setMonthlyPayments] = useState<PaymentRecord[]>([]);
+  const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
+
+  // --- Data Fetching from Supabase ---
+  const fetchData = useCallback(async () => {
+    if (!session) return;
+
+    const userId = session.user.id;
+    const userRole = user?.role; // Use current user role if available
+
+    // Fetch Group Events
+    const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
+    if (eventsError) console.error('Error fetching events:', eventsError);
+    else setEvents(eventsData || []);
+
+    // Fetch Music Items
+    const { data: musicData, error: musicError } = await supabase.from('music_items').select('*');
+    if (musicError) console.error('Error fetching music:', musicError);
+    else setMusicList(musicData || []);
+
+    // Fetch Uniform Orders (all for admin, own for others)
+    let uniformQuery = supabase.from('uniform_orders').select('*');
+    if (userRole !== 'admin') {
+      uniformQuery = uniformQuery.eq('user_id', userId);
+    }
+    const { data: uniformData, error: uniformError } = await uniformQuery;
+    if (uniformError) console.error('Error fetching uniform orders:', uniformError);
+    else setUniformOrders(uniformData || []);
+
+    // Fetch Admin Notifications (only for admin)
+    if (userRole === 'admin') {
+      const { data: notifData, error: notifError } = await supabase.from('admin_notifications').select('*').order('created_at', { ascending: false });
+      if (notifError) console.error('Error fetching notifications:', notifError);
+      else setAdminNotifications(notifData || []);
+    }
+
+    // Fetch Home Trainings (own for student, all for admin/professor)
+    let homeTrainingQuery = supabase.from('home_trainings').select('*');
+    if (userRole === 'aluno') {
+      homeTrainingQuery = homeTrainingQuery.eq('user_id', userId);
+    }
+    const { data: homeTrainingData, error: homeTrainingError } = await homeTrainingQuery;
+    if (homeTrainingError) console.error('Error fetching home trainings:', homeTrainingError);
+    else setHomeTrainings(homeTrainingData || []);
+
+    // Fetch School Reports (own for student, all for admin/professor)
+    let schoolReportQuery = supabase.from('school_reports').select('*');
+    if (userRole === 'aluno') {
+      schoolReportQuery = schoolReportQuery.eq('user_id', userId);
+    }
+    const { data: schoolReportData, error: schoolReportError } = await schoolReportQuery;
+    if (schoolReportError) console.error('Error fetching school reports:', schoolReportError);
+    else setSchoolReports(schoolReportData || []);
+
+    // Fetch Assignments (all for admin/professor, relevant for student)
+    let assignmentQuery = supabase.from('assignments').select('*');
+    if (userRole === 'aluno') {
+      assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},student_id.is.null`);
+    }
+    const { data: assignmentData, error: assignmentError } = await assignmentQuery;
+    if (assignmentError) console.error('Error fetching assignments:', assignmentError);
+    else setAssignments(assignmentData || []);
+
+    // Fetch Monthly Payments (own for student, all for admin)
+    let paymentQuery = supabase.from('monthly_payments').select('*');
+    if (userRole === 'aluno') {
+      paymentQuery = paymentQuery.eq('student_id', userId);
+    }
+    const { data: paymentData, error: paymentError } = await paymentQuery;
+    if (paymentError) console.error('Error fetching payments:', paymentError);
+    else setMonthlyPayments(paymentData || []);
+
+    // Fetch Class Sessions
+    const { data: classSessionData, error: classSessionError } = await supabase.from('class_sessions').select('*');
+    if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
+    else setClassSessions(classSessionData || []);
+
+  }, [session, user?.role]); // Re-fetch if session or user role changes
 
   useEffect(() => {
     if (!isLoading) {
       if (session) {
-        // Fetch user profile from Supabase
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
@@ -52,23 +113,21 @@ function AppContent() {
             .eq('id', session.user.id)
             .single();
 
-          if (error && error.code !== 'PGRST116') { // PGRST116 means "no rows found"
+          if (error && error.code !== 'PGRST116') {
             console.error('Error fetching profile:', error);
-            // Fallback to basic user info if profile fetch fails
             setUser({
               id: session.user.id,
               name: session.user.email || 'User',
               email: session.user.email || '',
-              role: 'aluno', // Default role
+              role: 'aluno',
             });
-            setCurrentView('profile_setup'); // Redirect to profile setup if error or no profile
+            setCurrentView('profile_setup');
           } else if (profile) {
-            // Check if essential profile fields are filled
             if (!profile.first_name || !profile.nickname || !profile.birth_date) {
-              setCurrentView('profile_setup'); // Redirect to profile setup if profile is incomplete
+              setCurrentView('profile_setup');
             } else {
               const userRole: UserRole = profile.role as UserRole;
-              setUser({
+              const fetchedUser: User = {
                 id: session.user.id,
                 name: profile.first_name || session.user.email || 'User',
                 nickname: profile.nickname || undefined,
@@ -81,11 +140,11 @@ function AppContent() {
                 birthDate: profile.birth_date || undefined,
                 graduationCost: profile.graduation_cost || undefined,
                 phone: profile.phone || undefined,
-              });
+              };
+              setUser(fetchedUser);
               setCurrentView('dashboard');
             }
           } else {
-            // No profile found, new user needs to set up profile
             setCurrentView('profile_setup');
           }
         };
@@ -96,6 +155,14 @@ function AppContent() {
       }
     }
   }, [session, isLoading]);
+
+  // Fetch data whenever user or session changes
+  useEffect(() => {
+    if (session && user) {
+      fetchData();
+    }
+  }, [session, user, fetchData]);
+
 
   const handleLogin = (loggedUser: User) => {
     setUser(loggedUser);
@@ -108,7 +175,6 @@ function AppContent() {
     setCurrentView('home');
   };
 
-  // Function to update user profile (e.g. Avatar)
   const handleUpdateProfile = async (updatedData: Partial<User>) => {
     if (user && session) {
         const { error } = await supabase
@@ -122,49 +188,113 @@ function AppContent() {
         } else {
             setUser({ ...user, ...updatedData });
             alert('Profile updated successfully!');
+            fetchData(); // Re-fetch all data after profile update
         }
     }
   };
 
-  const handleAddEvent = (newEvent: GroupEvent) => {
-    setEvents([...events, newEvent]);
+  // --- Event Handlers (Supabase Interactions) ---
+  const handleAddEvent = async (newEvent: Omit<GroupEvent, 'id' | 'created_at'>) => {
+    if (!session) return;
+    const { data, error } = await supabase.from('group_events').insert({ ...newEvent, created_by: session.user.id }).select().single();
+    if (error) console.error('Error adding event:', error);
+    else setEvents(prev => [...prev, data]);
   };
 
-  const handleEditEvent = (updatedEvent: GroupEvent) => {
-    setEvents(prev => prev.map(event => event.id === updatedEvent.id ? updatedEvent : event));
+  const handleEditEvent = async (updatedEvent: GroupEvent) => {
+    const { data, error } = await supabase.from('group_events').update(updatedEvent).eq('id', updatedEvent.id).select().single();
+    if (error) console.error('Error editing event:', error);
+    else setEvents(prev => prev.map(event => event.id === updatedEvent.id ? data : event));
   };
 
-  const handleCancelEvent = (eventId: string) => {
-    setEvents(prev => prev.filter(event => event.id !== eventId));
+  const handleCancelEvent = async (eventId: string) => {
+    const { error } = await supabase.from('group_events').delete().eq('id', eventId);
+    if (error) console.error('Error deleting event:', error);
+    else setEvents(prev => prev.filter(event => event.id !== eventId));
   };
 
-  // Handler to create a notification for the admin
-  const handleNotifyAdmin = (action: string, actor: User) => {
-    const newNotification: AdminNotification = {
-      id: Date.now().toString(),
-      userId: actor.id,
-      userName: actor.nickname || actor.name,
+  const handleNotifyAdmin = async (action: string, actor: User) => {
+    const newNotification: Omit<AdminNotification, 'id' | 'created_at'> = {
+      user_id: actor.id,
+      user_name: actor.nickname || actor.name,
       action: action,
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     };
-    setAdminNotifications(prev => [newNotification, ...prev]);
+    const { data, error } = await supabase.from('admin_notifications').insert(newNotification).select().single();
+    if (error) console.error('Error adding notification:', error);
+    else setAdminNotifications(prev => [data, ...prev]);
   };
 
-  const handleAddMusic = (newMusic: MusicItem) => {
-      setMusicList(prev => [newMusic, ...prev]);
+  const handleAddMusic = async (newMusic: Omit<MusicItem, 'id' | 'created_at'>) => {
+    if (!session) return;
+    const { data, error } = await supabase.from('music_items').insert({ ...newMusic, created_by: session.user.id }).select().single();
+    if (error) console.error('Error adding music:', error);
+    else setMusicList(prev => [...prev, data]);
   };
 
-  // Uniform Order Handlers
-  const handleAddOrder = (order: UniformOrder) => {
-    setUniformOrders(prev => [order, ...prev]);
-    // Also create a notification
-    if (user) {
-        handleNotifyAdmin(`Solicitou uniforme: ${order.item}`, user);
+  const handleAddOrder = async (order: Omit<UniformOrder, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('uniform_orders').insert(order).select().single();
+    if (error) console.error('Error adding order:', error);
+    else {
+      setUniformOrders(prev => [data, ...prev]);
+      if (user) handleNotifyAdmin(`Solicitou uniforme: ${order.item}`, user);
     }
   };
 
-  const handleUpdateOrderStatus = (orderId: string, status: 'pending' | 'ready' | 'delivered') => {
-    setUniformOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+  const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'ready' | 'delivered') => {
+    const { data, error } = await supabase.from('uniform_orders').update({ status }).eq('id', orderId).select().single();
+    if (error) console.error('Error updating order status:', error);
+    else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
+  };
+
+  const handleAddHomeTraining = async (newTraining: Omit<HomeTraining, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('home_trainings').insert(newTraining).select().single();
+    if (error) console.error('Error adding home training:', error);
+    else setHomeTrainings(prev => [data, ...prev]);
+  };
+
+  const handleAddSchoolReport = async (newReport: Omit<SchoolReport, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('school_reports').insert(newReport).select().single();
+    if (error) console.error('Error adding school report:', error);
+    else setSchoolReports(prev => [data, ...prev]);
+  };
+
+  const handleAddAssignment = async (newAssignment: Omit<Assignment, 'id' | 'created_at'>) => {
+    if (!session) return;
+    const { data, error } = await supabase.from('assignments').insert({ ...newAssignment, created_by: session.user.id }).select().single();
+    if (error) console.error('Error adding assignment:', error);
+    else setAssignments(prev => [data, ...prev]);
+  };
+
+  const handleUpdateAssignment = async (updatedAssignment: Assignment) => {
+    const { data, error } = await supabase.from('assignments').update(updatedAssignment).eq('id', updatedAssignment.id).select().single();
+    if (error) console.error('Error updating assignment:', error);
+    else setAssignments(prev => prev.map(a => a.id === updatedAssignment.id ? data : a));
+  };
+
+  const handleAddPaymentRecord = async (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('monthly_payments').insert(newPayment).select().single();
+    if (error) console.error('Error adding payment record:', error);
+    else setMonthlyPayments(prev => [data, ...prev]);
+  };
+
+  const handleUpdatePaymentRecord = async (updatedPayment: PaymentRecord) => {
+    const { data, error } = await supabase.from('monthly_payments').update(updatedPayment).eq('id', updatedPayment.id).select().single();
+    if (error) console.error('Error updating payment record:', error);
+    else setMonthlyPayments(prev => prev.map(p => p.id === updatedPayment.id ? data : p));
+  };
+
+  const handleAddClassSession = async (newSession: Omit<ClassSession, 'id' | 'created_at'>) => {
+    if (!session) return;
+    const { data, error } = await supabase.from('class_sessions').insert({ ...newSession, professor_id: session.user.id }).select().single();
+    if (error) console.error('Error adding class session:', error);
+    else setClassSessions(prev => [...prev, data]);
+  };
+
+  const handleUpdateClassSession = async (updatedSession: ClassSession) => {
+    const { data, error } = await supabase.from('class_sessions').update(updatedSession).eq('id', updatedSession.id).select().single();
+    if (error) console.error('Error updating class session:', error);
+    else setClassSessions(prev => prev.map(cs => cs.id === updatedSession.id ? data : cs));
   };
 
   const navigate = (view: string) => {
@@ -178,6 +308,7 @@ function AppContent() {
   const handleProfileComplete = (updatedUser: User) => {
     setUser(updatedUser);
     setCurrentView('dashboard');
+    fetchData(); // Re-fetch all data after profile is completed
   };
 
   const renderContent = () => {
@@ -202,7 +333,6 @@ function AppContent() {
     }
 
     if (user) {
-      // Role based routing
       return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {user.role === 'aluno' && (
@@ -210,10 +340,17 @@ function AppContent() {
               user={user} 
               events={events} 
               musicList={musicList}
-              uniformOrders={uniformOrders}
+              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only student's orders
               onAddOrder={handleAddOrder}
               onNotifyAdmin={handleNotifyAdmin}
               onUpdateProfile={handleUpdateProfile}
+              homeTrainings={homeTrainings.filter(ht => ht.user_id === user.id)} // Pass only student's home trainings
+              onAddHomeTraining={handleAddHomeTraining}
+              schoolReports={schoolReports.filter(sr => sr.user_id === user.id)} // Pass only student's school reports
+              onAddSchoolReport={handleAddSchoolReport}
+              classSessions={classSessions}
+              assignments={assignments.filter(a => a.student_id === user.id || a.student_id === null)} // Pass relevant assignments
+              onUpdateAssignment={handleUpdateAssignment}
             />
           )}
           {user.role === 'professor' && (
@@ -221,11 +358,18 @@ function AppContent() {
               user={user} 
               events={events} 
               musicList={musicList}
-              uniformOrders={uniformOrders}
+              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only professor's orders
               onAddOrder={handleAddOrder}
               onAddMusic={handleAddMusic}
               onNotifyAdmin={handleNotifyAdmin}
               onUpdateProfile={handleUpdateProfile}
+              classSessions={classSessions.filter(cs => cs.professor_id === user.id)} // Pass only professor's classes
+              onAddClassSession={handleAddClassSession}
+              onUpdateClassSession={handleUpdateClassSession}
+              assignments={assignments.filter(a => a.created_by === user.id)} // Pass only professor's assignments
+              onAddAssignment={handleAddAssignment}
+              onUpdateAssignment={handleUpdateAssignment}
+              homeTrainings={homeTrainings} // Professor can see all home trainings
             />
           )}
           {user.role === 'admin' && (
@@ -242,6 +386,17 @@ function AppContent() {
               onAddMusic={handleAddMusic}
               onNotifyAdmin={handleNotifyAdmin}
               onUpdateProfile={handleUpdateProfile}
+              monthlyPayments={monthlyPayments}
+              onAddPaymentRecord={handleAddPaymentRecord}
+              onUpdatePaymentRecord={handleUpdatePaymentRecord}
+              classSessions={classSessions}
+              onAddClassSession={handleAddClassSession}
+              onUpdateClassSession={handleUpdateClassSession}
+              assignments={assignments}
+              onAddAssignment={handleAddAssignment}
+              onUpdateAssignment={handleUpdateAssignment}
+              homeTrainings={homeTrainings}
+              schoolReports={schoolReports}
             />
           )}
         </div>

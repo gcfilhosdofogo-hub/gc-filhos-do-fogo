@@ -24,6 +24,7 @@ export interface ClassSession {
   instructor: string;
   location: string;
   level: string;
+  professor_id?: string; // Link to professor's user ID
 }
 
 export interface NewsItem {
@@ -40,6 +41,7 @@ export interface GroupEvent {
   date: string;
   description: string;
   price?: number; // Valor do evento definido pelo Admin
+  created_by?: string; // User ID of the creator (admin/professor)
 }
 
 export interface MusicItem {
@@ -47,26 +49,53 @@ export interface MusicItem {
   title: string;
   category: string; // Permitir texto livre
   lyrics: string;
+  created_by?: string; // User ID of the creator (professor/admin)
 }
 
 export interface HomeTraining {
   id: string;
+  user_id: string; // User ID of the student
   date: string;
-  videoName: string;
-  expiresAt: string; // ISO String
+  video_url: string; // URL of the uploaded video
+  expires_at: string; // ISO String
+  video_name: string; // Original file name
+}
+
+export interface SchoolReport {
+  id: string;
+  user_id: string; // User ID of the student
+  date: string;
+  file_url: string; // URL of the uploaded report file
+  file_name: string; // Original file name
+  period: string; // Ex: "Bimestre Atual", "2024-1"
+  status: 'pending' | 'reviewed' | 'approved';
+}
+
+export interface Assignment {
+  id: string;
+  created_by: string; // User ID of the professor/admin who created it
+  title: string;
+  description: string;
+  due_date: string; // YYYY-MM-DD
+  status: 'pending' | 'completed';
+  attachment_url?: string; // URL of student's submission
+  attachment_name?: string; // Name of student's submission
+  student_id?: string; // If assignment is specific to a student
 }
 
 // New Types for Admin Dashboard
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
 
 export interface PaymentRecord {
-  studentId: string;
-  studentName: string;
+  id: string;
+  student_id: string;
+  student_name: string; // Denormalized for easier display
   month: string; // "Janeiro", "Fevereiro"...
-  dueDate: string; // YYYY-MM-DD
+  due_date: string; // YYYY-MM-DD
   status: PaymentStatus;
-  paidAt?: string;
+  paid_at?: string;
   amount: number;
+  created_at?: string;
 }
 
 export interface StudentAcademicData {
@@ -90,23 +119,24 @@ export interface ProfessorClassData {
 
 export interface AdminNotification {
   id: string;
-  userId: string;
-  userName: string;
+  user_id: string;
+  user_name: string;
   action: string; // Ex: "Copiou PIX Mensalidade"
   timestamp: string;
 }
 
 export interface UniformOrder {
   id: string;
-  userId: string;
-  userName: string;
-  userRole: string; // 'aluno' | 'professor'
+  user_id: string;
+  user_name: string;
+  user_role: string; // 'aluno' | 'professor'
   date: string;
   item: string;
-  shirtSize?: string;
-  pantsSize?: string;
+  shirt_size?: string;
+  pants_size?: string;
   total: number;
   status: 'pending' | 'ready' | 'delivered'; // ready = pago/aprovado
+  created_at?: string;
 }
 
 // All Belts List for Configuration
