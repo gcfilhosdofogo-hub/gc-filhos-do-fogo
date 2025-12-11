@@ -7,7 +7,7 @@ import { useSession } from '../src/components/SessionContextProvider'; // Import
 
 interface Props {
   user: User;
-  onAddEvent: (event: GroupEvent) => void;
+  onAddEvent: (event: Omit<GroupEvent, 'id' | 'created_at'>) => void; // Changed to Omit<GroupEvent, 'id' | 'created_at'>
   onEditEvent: (event: GroupEvent) => void;
   onCancelEvent: (eventId: string) => void;
   events: GroupEvent[];
@@ -247,7 +247,8 @@ export const DashboardAdmin: React.FC<Props> = ({
       onEditEvent({ id: editingId, ...eventPayload });
       setEditingId(null);
     } else {
-      onAddEvent({ id: Date.now().toString(), ...eventPayload });
+      // When adding a new event, do NOT provide an ID. Supabase will generate it.
+      onAddEvent(eventPayload); 
     }
     setEventFormData({ title: '', date: '', description: '', price: '' });
     setShowEventForm(false);
