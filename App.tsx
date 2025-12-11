@@ -4,7 +4,7 @@ import { Landing } from './views/Landing';
 import { Auth } from './views/Auth';
 import { DashboardAluno } from './views/DashboardAluno';
 import { DashboardProfessor } from './views/DashboardProfessor';
-import { DashboardAdmin } from './src/views/DashboardAdmin';
+import { DashboardAdmin } from './views/DashboardAdmin'; // Corrected path
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
