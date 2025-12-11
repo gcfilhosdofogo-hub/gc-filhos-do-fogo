@@ -494,7 +494,7 @@ export const DashboardAluno: React.FC<Props> = ({
                     <p className="text-xs text-stone-500">Aulas no Mês</p>
                  </div>
                  <div className="bg-stone-900 p-3 rounded-lg">
-                    <p className="text-2xl font-bold text-white">{events.length}</p>
+                    <p className="2xl font-bold text-white">{events.length}</p>
                     <p className="text-xs text-stone-500">Eventos</p>
                  </div>
               </div>
@@ -740,7 +740,7 @@ export const DashboardAluno: React.FC<Props> = ({
                     >
                         <ArrowLeft size={16} /> Voltar
                     </button>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="2xl font-bold text-white flex items-center gap-2">
                         <Video className="text-orange-500" />
                         Treino em Casa
                     </h2>
@@ -972,7 +972,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
                         <div className="bg-stone-900 p-4 rounded-lg flex justify-between items-center border border-stone-600">
                             <span className="text-white font-bold">Valor Total:</span>
-                            <span className="text-2xl font-bold text-orange-500">R$ {getCurrentPrice()},00</span>
+                            <span className="2xl font-bold text-orange-500">R$ {getCurrentPrice()},00</span>
                         </div>
 
                         <div className="space-y-3">

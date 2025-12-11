@@ -288,7 +288,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         {profView === 'assignments' && (
              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
                  <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                 <h2 className="text-2xl font-bold text-white mb-6">Trabalhos</h2>
+                 <h2 className="2xl font-bold text-white mb-6">Trabalhos</h2>
                  <form onSubmit={handleAddAssignment} className="mb-6 space-y-4 bg-stone-900 p-4 rounded">
                      <input type="text" placeholder="Título" value={newAssignment.title} onChange={e => setNewAssignment({...newAssignment, title: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" required />
                      <textarea placeholder="Descrição" value={newAssignment.description} onChange={e => setNewAssignment({...newAssignment, description: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" />
@@ -310,7 +310,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         {profView === 'music_manager' && (
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
                  <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                 <h2 className="text-2xl font-bold text-white mb-6">Adicionar Música</h2>
+                 <h2 className="2xl font-bold text-white mb-6">Adicionar Música</h2>
                  <form onSubmit={handleSubmitMusic} className="space-y-4">
                       <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({...musicForm, title: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                       <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({...musicForm, category: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
@@ -325,7 +325,7 @@ export const DashboardProfessor: React.FC<Props> = ({
              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
                  <div className="flex justify-between items-center mb-6">
                     <button onClick={() => setProfView('dashboard')} className="text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                    <h2 className="text-xl font-bold text-white">Chamada: {selectedClassInfo.title}</h2>
+                    <h2 className="xl font-bold text-white">Chamada: {selectedClassInfo.title}</h2>
                     <Button onClick={handleSaveAttendance} disabled={showSuccess}>{showSuccess ? 'Salvo!' : 'Salvar'}</Button>
                  </div>
                  <div className="space-y-2">
@@ -349,7 +349,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         {profView === 'new_class' && (
              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
                  <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                 <h2 className="text-2xl font-bold text-white mb-6">Agendar Aula</h2>
+                 <h2 className="2xl font-bold text-white mb-6">Agendar Aula</h2>
                  <form onSubmit={handleSaveNewClass} className="space-y-4">
                      <input type="text" placeholder="Título" value={newClassData.title} onChange={e => setNewClassData({...newClassData, title: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                      <div className="grid grid-cols-2 gap-4">
@@ -384,7 +384,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
                 {/* Photo Upload Card */}
                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
+                    <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
                     <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50">
                         {classPhoto ? (
                             <div className="relative w-full h-32 rounded overflow-hidden"><img src={classPhoto} className="w-full h-full object-cover" /><button onClick={() => setClassPhoto(null)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"><X size={12}/></button></div>
@@ -397,7 +397,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                 {/* Classes List */}
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
+                        <h3 className="xl font-bold text-white mb-4">Minhas Aulas</h3>
                         <div className="space-y-4">
                             {myClasses.map(cls => (
                                 <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
@@ -414,7 +414,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                     </div>
 
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
+                        <h3 className="xl font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-3">
                             {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
                             {/* For now, using a mock list for display */}
