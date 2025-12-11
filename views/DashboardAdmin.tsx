@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video } from 'lucide-react';
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -62,18 +62,6 @@ const INITIAL_PROFESSORS_DATA: ProfessorClassData[] = [
 const INITIAL_MY_CLASSES = [
   { id: 100, title: 'Treino Avançado - Graduados', time: 'Hoje, 20:30', location: 'Sede' },
   { id: 101, title: 'Roda de Mestres', time: 'Sábado, 15:00', location: 'Centro Cultural' }
-];
-
-const MY_STUDENTS_LIST = [
-  { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', status: 'active', attendance: 92, financial: 'paid', academicPending: false, events: 5, phone: '5511999999999' },
-  { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', status: 'active', attendance: 88, financial: 'overdue', academicPending: false, events: 3, phone: '5511988888888' },
-  { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', status: 'warning', attendance: 65, financial: 'paid', academicPending: true, events: 1, phone: '5511977777777' },
-];
-
-// Initial Data for Assignments
-const INITIAL_ASSIGNMENTS_PROF_MODE: Assignment[] = [
-    { id: '101', created_by: 'admin_id', title: 'Pesquisa: Mestre Bimba', description: 'Trazer resumo impresso sobre a criação da Regional.', due_date: new Date().toISOString().split('T')[0], status: 'pending' }, 
-    { id: '102', created_by: 'admin_id', title: 'Confecção de Berimbau', description: 'Trazer a verga preparada.', due_date: '2024-12-25', status: 'pending' }
 ];
 
 const UNIFORM_PRICES = {
@@ -159,7 +147,7 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [evalData, setEvalData] = useState({ positive: '', negative: '' });
 
   // Assignments State (for Professor Mode)
-  const [profModeAssignments, setProfModeAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS_PROF_MODE);
+  const [profModeAssignments, setProfModeAssignments] = useState<Assignment[]>([]); // Will be filtered from global assignments
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '' });
 
   // Uniform State (for Professor Mode)
@@ -168,7 +156,8 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [costPixCopied, setCostPixCopied] = useState(false);
 
   // Music State (for Professor Mode)
-  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '' });
+  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '', file: null as File | null });
+  const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
   
   // New Class Form State (for Professor Mode)
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
@@ -186,7 +175,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     } else {
       const fetchedUsers: User[] = data.map(profile => ({
         id: profile.id,
-        name: profile.first_name || profile.email || 'Usuário',
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
         nickname: profile.nickname || undefined,
         email: session?.user.email || '', // Use session email if profile doesn't have it
         role: profile.role as UserRole,
@@ -206,7 +195,9 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   useEffect(() => {
     fetchManagedUsers();
-  }, [fetchManagedUsers]);
+    // Filter assignments for professor mode based on the admin's user ID
+    setProfModeAssignments(assignments.filter(a => a.created_by === user.id));
+  }, [fetchManagedUsers, assignments, user.id]);
 
   // --- ADMIN HANDLERS ---
   const totalRevenue = payments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
@@ -399,7 +390,8 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   const handleOpenAttendance = (classId: number) => {
     const initialAttendance: Record<string, boolean> = {};
-    MY_STUDENTS_LIST.forEach(s => initialAttendance[s.id] = true);
+    const studentsInClass = managedUsers.filter(u => u.role === 'aluno' && u.professorName === user.nickname); // Filter by admin's nickname as professor
+    studentsInClass.forEach(s => initialAttendance[s.id] = true);
     setAttendanceData(initialAttendance);
     setSelectedClassId(classId);
     setProfView('attendance');
@@ -453,17 +445,60 @@ export const DashboardAdmin: React.FC<Props> = ({
     setSelectedStudentForEval(null);
   };
 
-  const handleSubmitMusic = (e: React.FormEvent) => {
+  const handleMusicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setMusicForm(prev => ({ ...prev, file: e.target.files![0] }));
+    } else {
+      setMusicForm(prev => ({ ...prev, file: null }));
+    }
+  };
+
+  const handleSubmitMusic = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!musicForm.title || !musicForm.lyrics) return;
+    if (!musicForm.title || (!musicForm.lyrics && !musicForm.file)) {
+      alert('Por favor, preencha o título e a letra ou faça upload de um arquivo.');
+      return;
+    }
+
+    setUploadingMusicFile(true);
+    let fileUrl: string | undefined;
+
+    if (musicForm.file && session) {
+      try {
+        const file = musicForm.file;
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${session.user.id}/${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('music_files')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('music_files')
+          .getPublicUrl(filePath);
+        
+        fileUrl = publicUrlData.publicUrl;
+
+      } catch (error: any) {
+        console.error('Error uploading music file:', error);
+        alert('Erro ao fazer upload do arquivo de música: ' + error.message);
+        setUploadingMusicFile(false);
+        return;
+      }
+    }
+
     onAddMusic({
         id: Date.now().toString(),
         title: musicForm.title,
         category: musicForm.category,
-        lyrics: musicForm.lyrics
+        lyrics: musicForm.lyrics,
+        file_url: fileUrl
     });
     onNotifyAdmin(`Admin adicionou nova música: ${musicForm.title}`, user);
-    setMusicForm({ title: '', category: '', lyrics: '' });
+    setMusicForm({ title: '', category: '', lyrics: '', file: null });
+    setUploadingMusicFile(false);
     alert('Música adicionada!');
   };
 
@@ -569,7 +604,8 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   const filteredPayments = payments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
   const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
-  const studentBeingEvaluated = MY_STUDENTS_LIST.find(s => s.id === selectedStudentForEval);
+  const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === user.nickname); // Filter by admin's nickname as professor
+  const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
   const today = new Date().toISOString().split('T')[0];
 
   const filteredManagedUsers = managedUsers.filter(u => 
@@ -1635,13 +1671,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                 </div>
               </div>
               <div className="p-6 grid gap-3">
-                 {MY_STUDENTS_LIST.map((student) => {
+                 {studentsForAttendance.map((student) => { // Use real students here
                    const isPresent = attendanceData[student.id];
                    return (
                      <div key={student.id} className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border transition-all duration-200 ${isPresent ? 'bg-green-900/10 border-green-500/30' : 'bg-red-900/10 border-red-500/30'}`}>
                        <div className="flex items-center gap-4 cursor-pointer mb-3 md:mb-0" onClick={() => togglePresence(student.id)}>
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-colors ${isPresent ? 'bg-green-600' : 'bg-red-900'}`}>{student.name.charAt(0)}</div>
-                          <div><p className={`font-medium ${isPresent ? 'text-white' : 'text-stone-300'}`}>{student.name}</p><p className="text-xs text-stone-500">{student.belt}</p></div>
+                          <div><p className={`font-medium ${isPresent ? 'text-white' : 'text-stone-300'}`}>{student.nickname || student.name}</p><p className="text-xs text-stone-500">{student.belt}</p></div>
                        </div>
                        <div className="flex items-center gap-4 pl-14 md:pl-0">
                           <div onClick={() => togglePresence(student.id)} className={`px-4 py-1 rounded-full text-xs font-bold uppercase cursor-pointer ${isPresent ? 'bg-green-500 text-stone-900' : 'bg-stone-700 text-stone-400'}`}>{isPresent ? 'Presente' : 'Ausente'}</div>
@@ -1807,7 +1843,7 @@ export const DashboardAdmin: React.FC<Props> = ({
            {/* --- PROF MODE: EVALUATE --- */}
            {profView === 'evaluate' && studentBeingEvaluated && (
              <div className="max-w-2xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
-                 <h2 className="text-2xl font-bold text-white mb-4">Avaliar {studentBeingEvaluated.name}</h2>
+                 <h2 className="text-2xl font-bold text-white mb-4">Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}</h2>
                  <div className="space-y-4">
                     <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white" placeholder="Pontos Positivos" value={evalData.positive} onChange={e => setEvalData({...evalData, positive: e.target.value})} />
                     <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white" placeholder="Pontos a Melhorar" value={evalData.negative} onChange={e => setEvalData({...evalData, negative: e.target.value})} />
@@ -1848,11 +1884,51 @@ export const DashboardAdmin: React.FC<Props> = ({
                       <form onSubmit={handleSubmitMusic} className="space-y-4">
                           <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({...musicForm, title: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                           <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({...musicForm, category: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-                          <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({...musicForm, lyrics: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" required />
-                          <Button fullWidth type="submit">Adicionar Música</Button>
+                          <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({...musicForm, lyrics: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
+                          
+                          {/* Music File Upload */}
+                          <div className="border-2 border-dashed border-stone-600 rounded-lg p-4 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
+                              {uploadingMusicFile ? (
+                                  <div className="text-center">
+                                      <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
+                                      <p className="text-white">Enviando arquivo...</p>
+                                  </div>
+                              ) : (
+                                  <>
+                                      <Mic2 size={32} className="text-stone-500 mb-2" />
+                                      <label className="cursor-pointer">
+                                          <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
+                                              {musicForm.file ? musicForm.file.name : 'Selecionar Arquivo de Áudio'}
+                                          </span>
+                                          <input type="file" accept="audio/*" className="hidden" onChange={handleMusicFileChange} />
+                                      </label>
+                                      <p className="text-xs text-stone-500 mt-2">Opcional: MP3, WAV, etc. Máx 10MB.</p>
+                                  </>
+                              )}
+                          </div>
+
+                          <Button fullWidth type="submit" disabled={uploadingMusicFile}>
+                            {uploadingMusicFile ? 'Enviando...' : 'Adicionar Música'}
+                          </Button>
                       </form>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                          {musicList.map(m => <div key={m.id} className="bg-stone-900 p-2 rounded text-sm"><p className="text-white font-bold">{m.title}</p><p className="text-stone-500 truncate">{m.lyrics}</p></div>)}
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                          <h3 className="text-white font-bold mb-2">Histórico de Músicas</h3>
+                          {musicList.length > 0 ? (
+                              musicList.map(m => (
+                                  <div key={m.id} className="bg-stone-900 p-3 rounded text-sm border-l-2 border-yellow-500">
+                                      <p className="text-white font-bold">{m.title}</p>
+                                      <p className="text-stone-500 text-xs">{m.category}</p>
+                                      {m.lyrics && <p className="text-stone-300 text-xs mt-1 truncate">{m.lyrics}</p>}
+                                      {m.file_url && (
+                                          <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-2 hover:underline">
+                                              <PlayCircle size={14} /> Ouvir Áudio
+                                          </a>
+                                      )}
+                                  </div>
+                              ))
+                          ) : (
+                              <p className="text-stone-500 italic">Nenhuma música no acervo.</p>
+                          )}
                       </div>
                   </div>
               </div>
@@ -1864,9 +1940,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                   <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
                   <h2 className="text-2xl font-bold text-white mb-6">Meus Alunos (Admin Class)</h2>
                   <div className="grid md:grid-cols-2 gap-4">
-                      {MY_STUDENTS_LIST.map(student => (
+                      {studentsForAttendance.map(student => ( // Use real students here
                           <div key={student.id} className="bg-stone-900 p-4 rounded border border-stone-700 flex justify-between items-center">
-                              <div><p className="text-white font-bold">{student.name}</p><p className="text-stone-500 text-sm">{student.belt}</p></div>
+                              <div><p className="text-white font-bold">{student.nickname || student.name}</p><p className="text-stone-500 text-sm">{student.belt}</p></div>
                               <div className="flex gap-2">
                                   <Button variant="secondary" className="text-xs h-8" onClick={() => handleOpenEvaluation(student.id)}>Avaliar</Button>
                                   <button onClick={() => handleWhatsApp(student.phone)} className="bg-green-600 text-white p-2 rounded hover:bg-green-500"><MessageCircle size={16}/></button>
@@ -1912,10 +1988,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                         <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-3">
-                            {MY_STUDENTS_LIST.slice(0, 3).map(student => (
+                            {studentsForAttendance.slice(0, 3).map(student => ( // Use real students here
                                 <div key={student.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">{student.name.charAt(0)}</div>
-                                    <div className="flex-1"><p className="text-white text-sm font-bold">{student.name}</p></div>
+                                    <div className="flex-1"><p className="text-white text-sm font-bold">{student.nickname || student.name}</p></div>
                                     <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => handleOpenEvaluation(student.id)}>Avaliar</Button>
                                 </div>
                             ))}

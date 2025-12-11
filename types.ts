@@ -49,6 +49,7 @@ export interface MusicItem {
   title: string;
   category: string; // Permitir texto livre
   lyrics: string;
+  file_url?: string; // URL do arquivo de áudio
   created_by?: string; // User ID of the creator (professor/admin)
 }
 

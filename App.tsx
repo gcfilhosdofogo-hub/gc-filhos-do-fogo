@@ -230,7 +230,10 @@ function AppContent() {
     if (!session) return;
     const { data, error } = await supabase.from('music_items').insert({ ...newMusic, created_by: session.user.id }).select().single();
     if (error) console.error('Error adding music:', error);
-    else setMusicList(prev => [...prev, data]);
+    else {
+      setMusicList(prev => [...prev, data]);
+      fetchData(); // Re-fetch all data to ensure consistency across components
+    }
   };
 
   const handleAddOrder = async (order: Omit<UniformOrder, 'id' | 'created_at'>) => {

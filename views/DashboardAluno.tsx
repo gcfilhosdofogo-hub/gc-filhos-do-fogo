@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye } from 'lucide-react';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
@@ -695,9 +695,19 @@ export const DashboardAluno: React.FC<Props> = ({
                               <h3 className="text-xl font-bold text-white">{song.title}</h3>
                               <span className="text-xs bg-stone-900 text-stone-400 px-2 py-1 rounded">{song.category}</span>
                           </div>
-                          <div className="bg-stone-900/50 p-4 rounded-lg max-h-64 overflow-y-auto">
-                              <pre className="font-sans text-stone-300 text-sm whitespace-pre-wrap">{song.lyrics}</pre>
-                          </div>
+                          {song.lyrics && (
+                            <div className="bg-stone-900/50 p-4 rounded-lg max-h-64 overflow-y-auto mb-4">
+                                <pre className="font-sans text-stone-300 text-sm whitespace-pre-wrap">{song.lyrics}</pre>
+                            </div>
+                          )}
+                          {song.file_url && (
+                              <a href={song.file_url} target="_blank" rel="noopener noreferrer" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                  <PlayCircle size={18} /> Ouvir Música
+                              </a>
+                          )}
+                          {!song.lyrics && !song.file_url && (
+                              <p className="text-stone-500 italic text-sm">Nenhuma letra ou arquivo de áudio disponível.</p>
+                          )}
                       </div>
                   ))}
                   {musicList.length === 0 && (
