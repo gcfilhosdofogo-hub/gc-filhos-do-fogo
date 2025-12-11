@@ -173,7 +173,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   // --- SUPABASE USER MANAGEMENT ---
   const fetchManagedUsers = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('*, graduation_cost'); // Select graduation_cost
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role'); // Explicitly select all fields
     if (error) {
       console.error('Error fetching managed users:', error);
       // Optionally show a toast notification
@@ -190,7 +190,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           beltColor: profile.belt_color || undefined,
           professorName: profile.professor_name || undefined,
           birthDate: profile.birth_date || undefined,
-          graduationCost: profile.graduation_cost || undefined, // Include graduation_cost
+          graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : undefined, // Include graduation_cost
           phone: profile.phone || undefined,
           first_name: profile.first_name || undefined,
           last_name: profile.last_name || undefined,
@@ -1356,7 +1356,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                           {u.belt}
                                       </td>
                                       <td className="p-4"> {/* Graduation Cost Column */}
-                                          {(u.role === 'aluno' || u.role === 'professor') ? ( // Allow editing for aluno and professor
+                                          {u.graduationCost !== undefined ? ( // Allow editing for aluno and professor
                                               editingGradCostId === u.id ? (
                                                   <div className="flex items-center gap-1">
                                                       <input
@@ -1385,8 +1385,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                   </div>
                                               ) : (
                                                   <div className="flex items-center gap-2 group">
-                                                      <span className={`${u.graduationCost && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
-                                                          {u.graduationCost && u.graduationCost > 0 ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
+                                                      <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
+                                                          {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
                                                       </span>
                                                       <button
                                                           onClick={() => { setEditingGradCostId(u.id); setEditingGradCostValue(u.graduationCost?.toString() || '0'); }}
@@ -1493,7 +1493,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                               <div>
                                                   <p className="text-stone-400 text-xs uppercase font-bold mb-2">Status Acadêmico</p>
                                                   <p className="text-white text-sm mb-1"><span className="text-stone-500">Cordel:</span> {student.belt || 'Não Definido'}</p>
-                                                  {student.graduationCost && student.graduationCost > 0 && <p className="text-white text-sm mb-1"><span className="text-stone-500">Custo Graduação:</span> R$ {student.graduationCost.toFixed(2).replace('.', ',')}</p>}
+                                                  {student.graduationCost !== undefined && <p className="text-white text-sm mb-1"><span className="text-stone-500">Custo Graduação:</span> R$ {student.graduationCost.toFixed(2).replace('.', ',')}</p>}
                                               </div>
                                           </div>
 
@@ -1687,8 +1687,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   <td className="py-3 text-stone-400 text-xs italic">"{student.lastEvaluation}"</td>
                                   <td className="py-3">
                                       {/* This section is now handled in the 'Gerenciar Usuários' tab */}
-                                      <span className={`${student.graduationCost && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
-                                          {student.graduationCost && student.graduationCost > 0 ? `R$ ${student.graduationCost.toFixed(2)}` : '-'}
+                                      <span className={`${student.graduationCost !== undefined && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
+                                          {student.graduationCost !== undefined ? `R$ ${student.graduationCost.toFixed(2)}` : '-'}
                                       </span>
                                   </td>
                                 </tr>
@@ -2051,7 +2051,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             {myClasses.map(cls => (
                                 <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
                                     <div className="flex justify-between items-start mb-2">
-                                        <div><p className="text-white font-bold">{cls.title}</p><p className="text-stone-500 text-sm">{cls.time} - {cls.location}</p></div>
+                                        <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.time} - {cls.location}</p></div>
                                         {/* Removed confirmedClasses logic for simplicity, can be re-added if needed */}
                                         {/* {!confirmedClasses.includes(cls.id) && <button onClick={() => handleConfirmClass(cls.id)} className="text-xs bg-yellow-600 text-white px-2 py-1 rounded animate-pulse">Confirmar</button>}
                                         {confirmedClasses.includes(cls.id) && <span className="text-xs text-green-500 flex items-center gap-1"><Check size={12}/> OK</span>} */}

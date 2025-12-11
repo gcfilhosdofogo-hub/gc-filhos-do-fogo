@@ -125,7 +125,6 @@ function AppContent() {
             });
             setCurrentView('profile_setup');
           } else if (profile) {
-            console.log('Fetched profile from Supabase:', profile); // LOG ADDED
             if (!profile.first_name || !profile.nickname || !profile.birth_date) {
               setCurrentView('profile_setup');
             } else {
@@ -145,12 +144,10 @@ function AppContent() {
                 graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : undefined,
                 phone: profile.phone || undefined,
               };
-              console.log('Constructed user object for state:', fetchedUser); // LOG ADDED
               setUser(fetchedUser);
               setCurrentView('dashboard');
             }
           } else {
-            console.log('No profile found for user:', session.user.id); // LOG ADDED
             // No profile found, it's a new user or profile not completed
             setCurrentView('profile_setup');
           }

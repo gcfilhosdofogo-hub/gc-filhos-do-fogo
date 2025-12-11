@@ -26,6 +26,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
     role: 'aluno' as UserRole, // Default role, not user selectable
     professor_name: '',
     avatar_url: '', // New field for avatar URL
+    graduation_cost: undefined as number | undefined, // Explicitly include graduation_cost
   });
   const [isNewUser, setIsNewUser] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -42,7 +43,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       // Fetch current user profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('first_name, last_name, nickname, birth_date, phone, belt, role, professor_name, avatar_url, graduation_cost') // Explicitly select graduation_cost
         .eq('id', session.user.id)
         .single();
 
@@ -59,6 +60,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
           role: profileData.role as UserRole || 'aluno',
           professor_name: profileData.professor_name || '',
           avatar_url: profileData.avatar_url || '',
+          graduation_cost: profileData.graduation_cost !== null ? Number(profileData.graduation_cost) : undefined,
         });
         setAvatarPreview(profileData.avatar_url || null);
         setIsNewUser(false);
@@ -171,6 +173,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       role: formData.role, // Role is not user selectable, it's set by admin or default
       professor_name: formData.professor_name || null,
       avatar_url: avatarUrl,
+      graduation_cost: formData.graduation_cost !== undefined ? formData.graduation_cost : null, // Ensure graduation_cost is sent
       updated_at: new Date().toISOString(),
     };
 
@@ -196,6 +199,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
         first_name: formData.first_name,
         last_name: formData.last_name,
         avatarUrl: avatarUrl,
+        graduationCost: formData.graduation_cost, // Include graduation_cost
       };
       onProfileComplete(updatedUser);
     }
