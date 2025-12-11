@@ -71,6 +71,7 @@ function AppContent() {
 
     // Fetch School Reports (own for student, all for admin/professor)
     let schoolReportQuery = supabase.from('school_reports').select('*');
+    // Admin and Professor can see all reports, students only their own
     if (userRole === 'aluno') {
       schoolReportQuery = schoolReportQuery.eq('user_id', userId);
     }
@@ -396,7 +397,7 @@ function AppContent() {
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings}
-              schoolReports={schoolReports}
+              schoolReports={schoolReports} {/* Pass schoolReports */}
             />
           )}
         </div>

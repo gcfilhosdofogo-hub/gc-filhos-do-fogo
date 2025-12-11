@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package } from 'lucide-react';
+import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment } from '../types';
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 
@@ -19,15 +19,19 @@ interface Props {
   // Uniforms props
   uniformOrders: UniformOrder[];
   onUpdateOrderStatus: (orderId: string, status: 'pending' | 'ready' | 'delivered') => void;
+  // New props for student details
+  schoolReports: SchoolReport[];
+  assignments: Assignment[];
+  homeTrainings: HomeTraining[];
 }
 
 // --- MOCK DATA FOR ADMIN (GLOBAL) ---
 const INITIAL_PAYMENTS: PaymentRecord[] = [
-  { studentId: '1', studentName: 'João "Gafanhoto" Silva', month: 'Dezembro', dueDate: '2024-12-10', status: 'paid', paidAt: '2024-12-05', amount: 50 },
-  { studentId: '2', studentName: 'Maria "Vespa" Oliveira', month: 'Dezembro', dueDate: '2024-12-10', status: 'overdue', amount: 50 },
-  { studentId: '3', studentName: 'Pedro "Ouriço" Santos', month: 'Dezembro', dueDate: '2024-12-10', status: 'pending', amount: 50 },
-  { studentId: '4', studentName: 'Lucas "Sombra" Lima', month: 'Dezembro', dueDate: '2024-12-10', status: 'paid', paidAt: '2024-12-10', amount: 50 },
-  { studentId: '5', studentName: 'Ana "Sol" Costa', month: 'Dezembro', dueDate: '2024-12-10', status: 'pending', amount: 50 },
+  { id: '1', student_id: '1', student_name: 'João "Gafanhoto" Silva', month: 'Dezembro', due_date: '2024-12-10', status: 'paid', paid_at: '2024-12-05', amount: 50 },
+  { id: '2', student_id: '2', student_name: 'Maria "Vespa" Oliveira', month: 'Dezembro', due_date: '2024-12-10', status: 'overdue', amount: 50 },
+  { id: '3', student_id: '3', student_name: 'Pedro "Ouriço" Santos', month: 'Dezembro', due_date: '2024-12-10', status: 'pending', amount: 50 },
+  { id: '4', student_id: '4', student_name: 'Lucas "Sombra" Lima', month: 'Dezembro', due_date: '2024-12-10', status: 'paid', paid_at: '2024-12-10', amount: 50 },
+  { id: '5', student_id: '5', student_name: 'Ana "Sol" Costa', month: 'Dezembro', due_date: '2024-12-10', status: 'pending', amount: 50 },
 ];
 
 const INITIAL_PROFESSORS_DATA: ProfessorClassData[] = [
@@ -66,9 +70,9 @@ const MY_STUDENTS_LIST = [
 ];
 
 // Initial Data for Assignments
-const INITIAL_ASSIGNMENTS: Assignment[] = [
-    { id: 101, title: 'Pesquisa: Mestre Bimba', description: 'Trazer resumo impresso sobre a criação da Regional.', dueDate: new Date().toISOString().split('T')[0], status: 'pending' }, 
-    { id: 102, title: 'Confecção de Berimbau', description: 'Trazer a verga preparada.', dueDate: '2024-12-25', status: 'pending' }
+const INITIAL_ASSIGNMENTS_PROF_MODE: Assignment[] = [
+    { id: '101', created_by: 'admin_id', title: 'Pesquisa: Mestre Bimba', description: 'Trazer resumo impresso sobre a criação da Regional.', due_date: new Date().toISOString().split('T')[0], status: 'pending' }, 
+    { id: '102', created_by: 'admin_id', title: 'Confecção de Berimbau', description: 'Trazer a verga preparada.', due_date: '2024-12-25', status: 'pending' }
 ];
 
 const UNIFORM_PRICES = {
@@ -78,20 +82,7 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-// Removed ALL_BELTS from here, now imported from types.ts
-
-// Removed INITIAL_MANAGED_USERS, now fetched from Supabase
-
-interface Assignment {
-  id: number;
-  title: string;
-  description: string;
-  dueDate: string;
-  status: 'pending' | 'completed';
-  attachment?: string;
-}
-
-type Tab = 'overview' | 'finance' | 'pedagogy' | 'my_classes' | 'users';
+type Tab = 'overview' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
 
 export const DashboardAdmin: React.FC<Props> = ({ 
@@ -106,7 +97,10 @@ export const DashboardAdmin: React.FC<Props> = ({
     onNotifyAdmin = (_action: string, _user: User) => {},
     onUpdateProfile,
     uniformOrders,
-    onUpdateOrderStatus
+    onUpdateOrderStatus,
+    schoolReports, // New prop
+    assignments, // New prop
+    homeTrainings, // New prop
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showEventForm, setShowEventForm] = useState(false);
@@ -162,20 +156,24 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
   const [evalData, setEvalData] = useState({ positive: '', negative: '' });
 
-  // Assignments State
-  const [assignments, setAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS);
+  // Assignments State (for Professor Mode)
+  const [profModeAssignments, setProfModeAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS_PROF_MODE);
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '' });
 
-  // Uniform State
+  // Uniform State (for Professor Mode)
   const [myOrders, setMyOrders] = useState<UniformOrder[]>([]);
   const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
   const [costPixCopied, setCostPixCopied] = useState(false);
 
-  // Music State
+  // Music State (for Professor Mode)
   const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '' });
   
-  // New Class Form State
+  // New Class Form State (for Professor Mode)
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
+
+  // Student Details Tab State
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [studentDetailsSearch, setStudentDetailsSearch] = useState('');
 
   // --- SUPABASE USER MANAGEMENT ---
   const fetchManagedUsers = useCallback(async () => {
@@ -188,7 +186,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         id: profile.id,
         name: profile.first_name || profile.email || 'Usuário',
         nickname: profile.nickname || undefined,
-        email: profile.email || '',
+        email: session?.user.email || '', // Use session email if profile doesn't have it
         role: profile.role as UserRole,
         avatarUrl: profile.avatar_url || undefined,
         belt: profile.belt || undefined,
@@ -202,7 +200,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       }));
       setManagedUsers(fetchedUsers);
     }
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     fetchManagedUsers();
@@ -264,7 +262,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   const handleMarkAsPaid = (studentId: string) => {
     setPayments(prev => prev.map(p => 
-      p.studentId === studentId ? { ...p, status: 'paid', paidAt: new Date().toISOString().split('T')[0] } : p
+      p.student_id === studentId ? { ...p, status: 'paid', paid_at: new Date().toISOString().split('T')[0] } : p
     ));
   };
 
@@ -472,24 +470,25 @@ export const DashboardAdmin: React.FC<Props> = ({
       if (!newAssignment.title || !newAssignment.dueDate) return;
       
       const assignment: Assignment = {
-          id: Date.now(),
+          id: Date.now().toString(), // Changed to string for consistency with Supabase
+          created_by: user.id, // Admin is creating it
           title: newAssignment.title,
           description: newAssignment.description,
-          dueDate: newAssignment.dueDate,
+          due_date: newAssignment.dueDate,
           status: 'pending'
       };
 
-      setAssignments([...assignments, assignment]);
+      setProfModeAssignments([...profModeAssignments, assignment]);
       setNewAssignment({ title: '', description: '', dueDate: '' });
       onNotifyAdmin(`Admin criou trabalho: ${newAssignment.title}`, user);
   };
 
-  const handleCompleteAssignment = (id: number, file: File) => {
+  const handleCompleteAssignment = (id: string, file: File) => { // Changed id type to string
       const reader = new FileReader();
       reader.onload = (ev) => {
           if (ev.target?.result) {
-              setAssignments(prev => prev.map(a => 
-                  a.id === id ? { ...a, status: 'completed', attachment: ev.target?.result as string } : a
+              setProfModeAssignments(prev => prev.map(a => 
+                  a.id === id ? { ...a, status: 'completed', attachment_url: ev.target?.result as string } : a
               ));
           }
       };
@@ -508,13 +507,13 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const newOrder: UniformOrder = {
         id: Date.now().toString(),
-        userId: user.id,
-        userName: user.nickname || user.name,
-        userRole: user.role,
+        user_id: user.id,
+        user_name: user.nickname || user.name,
+        user_role: user.role,
         date: new Date().toLocaleDateString('pt-BR'),
         item: itemName,
-        shirtSize: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
-        pantsSize: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
+        shirt_size: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
+        pants_size: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
         total: price,
         status: 'pending'
     };
@@ -544,6 +543,28 @@ export const DashboardAdmin: React.FC<Props> = ({
     }
   };
 
+  // --- Student Details Handlers ---
+  const handleViewReport = async (fileUrl: string, fileName: string) => {
+    try {
+        const { data, error } = await supabase.storage
+            .from('school_reports_files')
+            .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+
+        if (error) throw error;
+
+        window.open(data.signedUrl, '_blank');
+    } catch (error: any) {
+        console.error('Error generating signed URL:', error);
+        alert('Erro ao visualizar o arquivo: ' + error.message);
+    }
+  };
+
+  const handleViewHomeTrainingVideo = async (videoUrl: string) => {
+    // For public URLs, we can directly open them.
+    // If it were a private bucket, we'd need a signed URL.
+    window.open(videoUrl, '_blank');
+  };
+
   const filteredPayments = payments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
   const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
   const studentBeingEvaluated = MY_STUDENTS_LIST.find(s => s.id === selectedStudentForEval);
@@ -553,6 +574,13 @@ export const DashboardAdmin: React.FC<Props> = ({
       u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
       (u.nickname && u.nickname.toLowerCase().includes(userSearch.toLowerCase())) ||
       u.email.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const filteredStudentsForDetails = managedUsers.filter(u => 
+    u.role === 'aluno' && 
+    (u.name.toLowerCase().includes(studentDetailsSearch.toLowerCase()) || 
+     (u.nickname && u.nickname.toLowerCase().includes(studentDetailsSearch.toLowerCase())) ||
+     u.email.toLowerCase().includes(studentDetailsSearch.toLowerCase()))
   );
 
   return (
@@ -604,6 +632,12 @@ export const DashboardAdmin: React.FC<Props> = ({
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'users' ? 'bg-stone-800 text-pink-500 border-t-2 border-pink-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
         >
           Gerenciar Usuários
+        </button>
+        <button 
+          onClick={() => setActiveTab('student_details')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'student_details' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+        >
+          <Users size={16}/> Alunos Detalhes
         </button>
         <button 
           onClick={() => setActiveTab('finance')}
@@ -662,7 +696,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                       {notifications.length > 0 ? (
                           notifications.map(notif => (
                               <div key={notif.id} className="bg-stone-900 p-3 rounded-lg border-l-2 border-yellow-500">
-                                  <p className="text-sm font-bold text-white">{notif.userName}</p>
+                                  <p className="text-sm font-bold text-white">{notif.user_name}</p>
                                   <p className="text-xs text-stone-300">{notif.action}</p>
                                   <p className="text-[10px] text-stone-500 mt-1">{notif.timestamp}</p>
                               </div>
@@ -704,7 +738,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label className="text-xs text-stone-400 block mb-1">Título</label>
+                        <label className="block text-sm text-stone-400 mb-1">Título</label>
                         <input 
                             type="text" 
                             value={eventFormData.title}
@@ -714,7 +748,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         />
                     </div>
                     <div>
-                        <label className="text-xs text-stone-400 block mb-1">Data</label>
+                        <label className="block text-sm text-stone-400 mb-1">Data</label>
                         <input 
                             type="text" 
                             value={eventFormData.date}
@@ -872,14 +906,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                         {uniformOrders.map(order => (
                             <tr key={order.id} className={`hover:bg-stone-700/30 ${order.status === 'pending' ? 'bg-orange-900/10' : ''}`}>
                                 <td className="p-4">
-                                    <div className="font-bold text-white">{order.userName}</div>
-                                    <div className="text-xs text-stone-500 capitalize">{order.userRole}</div>
+                                    <div className="font-bold text-white">{order.user_name}</div>
+                                    <div className="text-xs text-stone-500 capitalize">{order.user_role}</div>
                                 </td>
                                 <td className="p-4 text-stone-300">{order.date}</td>
                                 <td className="p-4 text-white font-medium">{order.item}</td>
                                 <td className="p-4 text-stone-400 text-xs">
-                                    {order.shirtSize && <div>Blusa: {order.shirtSize}</div>}
-                                    {order.pantsSize && <div>Calça: {order.pantsSize}</div>}
+                                    {order.shirt_size && <div>Blusa: {order.shirt_size}</div>}
+                                    {order.pants_size && <div>Calça: {order.pants_size}</div>}
                                 </td>
                                 <td className="p-4 text-green-400 font-bold">R$ {order.total},00</td>
                                 <td className="p-4">
@@ -982,15 +1016,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                  </thead>
                  <tbody className="divide-y divide-stone-700 text-sm">
                    {filteredPayments.map((payment) => (
-                     <tr key={payment.studentId} className="hover:bg-stone-700/30">
-                       <td className="p-4 font-medium text-white">{payment.studentName}</td>
+                     <tr key={payment.id} className="hover:bg-stone-700/30">
+                       <td className="p-4 font-medium text-white">{payment.student_name}</td>
                        <td className="p-4 text-stone-300">{payment.month}</td>
-                       <td className="p-4 text-stone-300">{payment.dueDate}</td>
+                       <td className="p-4 text-stone-300">{payment.due_date}</td>
                        <td className="p-4 text-white font-mono">R$ {payment.amount},00</td>
                        <td className="p-4">
                          {payment.status === 'paid' && (
                            <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                             <CheckCircle size={12} /> Pago em {payment.paidAt}
+                             <CheckCircle size={12} /> Pago em {payment.paid_at}
                            </span>
                          )}
                          {payment.status === 'pending' && (
@@ -1007,7 +1041,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                        <td className="p-4 text-right">
                           {payment.status !== 'paid' && (
                             <button 
-                              onClick={() => handleMarkAsPaid(payment.studentId)}
+                              onClick={() => handleMarkAsPaid(payment.student_id)}
                               className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
                             >
                               Dar Baixa
@@ -1129,13 +1163,20 @@ export const DashboardAdmin: React.FC<Props> = ({
                               {userForm.role === 'aluno' && (
                                   <div>
                                       <label className="block text-sm text-stone-400 mb-1">Professor Responsável</label>
-                                      <input 
-                                          type="text" 
+                                      <select 
+                                          id="professor_name"
+                                          name="professor_name"
                                           value={userForm.professorName}
                                           onChange={(e) => setUserForm({...userForm, professorName: e.target.value})}
                                           className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                          placeholder="Ex: Vicente 'Anu Branco'"
-                                      />
+                                      >
+                                        <option value="">Selecione um professor</option>
+                                        {managedUsers.filter(u => u.role === 'professor' || u.role === 'admin').map(prof => (
+                                            <option key={prof.id} value={prof.nickname || prof.first_name || prof.name}>
+                                                {prof.nickname ? `${prof.nickname} (${prof.first_name || prof.name})` : prof.first_name || prof.name}
+                                            </option>
+                                        ))}
+                                      </select>
                                   </div>
                               )}
 
@@ -1258,6 +1299,161 @@ export const DashboardAdmin: React.FC<Props> = ({
                               )}
                           </tbody>
                       </table>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* --- TAB: STUDENT DETAILS --- */}
+      {activeTab === 'student_details' && (
+          <div className="space-y-6 animate-fade-in">
+              <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+                  <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                      <div>
+                          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                              <Users className="text-blue-500" />
+                              Detalhes dos Alunos
+                          </h2>
+                          <p className="text-stone-400 text-sm">Visualize informações detalhadas de cada aluno.</p>
+                      </div>
+                      <div className="relative flex-1 md:w-64">
+                          <Search className="absolute left-3 top-2.5 text-stone-500" size={16} />
+                          <input 
+                              type="text" 
+                              placeholder="Buscar aluno por nome ou apelido..."
+                              value={studentDetailsSearch}
+                              onChange={(e) => setStudentDetailsSearch(e.target.value)}
+                              className="w-full bg-stone-900 border border-stone-600 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                          />
+                      </div>
+                  </div>
+
+                  <div className="space-y-4">
+                      {filteredStudentsForDetails.length > 0 ? (
+                          filteredStudentsForDetails.map(student => (
+                              <div key={student.id} className="bg-stone-900 rounded-lg border border-stone-700 overflow-hidden">
+                                  <div 
+                                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-stone-800 transition-colors"
+                                      onClick={() => setExpandedStudent(expandedStudent === student.id ? null : student.id)}
+                                  >
+                                      <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
+                                              {student.avatarUrl ? <img src={student.avatarUrl} className="w-full h-full object-cover"/> : student.name.charAt(0)}
+                                          </div>
+                                          <div>
+                                              <h3 className="font-bold text-white text-lg">{student.nickname || student.name}</h3>
+                                              <p className="text-xs text-stone-400">{student.belt || 'Sem Cordel'}</p>
+                                          </div>
+                                      </div>
+                                      {expandedStudent === student.id ? <ChevronUp className="text-stone-400"/> : <ChevronDown className="text-stone-400"/>}
+                                  </div>
+
+                                  {expandedStudent === student.id && (
+                                      <div className="border-t border-stone-700 bg-stone-900/50 p-4 animate-fade-in-down">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                              <div>
+                                                  <p className="text-stone-400 text-xs uppercase font-bold mb-2">Informações Pessoais</p>
+                                                  <p className="text-white text-sm mb-1"><span className="text-stone-500">Nome:</span> {student.first_name} {student.last_name}</p>
+                                                  <p className="text-white text-sm mb-1"><span className="text-stone-500">Email:</span> {student.email}</p>
+                                                  {student.phone && <p className="text-white text-sm mb-1"><span className="text-stone-500">Telefone:</span> {student.phone}</p>}
+                                                  {student.birthDate && <p className="text-white text-sm mb-1"><span className="text-stone-500">Nascimento:</span> {new Date(student.birthDate).toLocaleDateString('pt-BR')}</p>}
+                                                  {student.professorName && <p className="text-white text-sm mb-1"><span className="text-stone-500">Professor:</span> {student.professorName}</p>}
+                                              </div>
+                                              <div>
+                                                  <p className="text-stone-400 text-xs uppercase font-bold mb-2">Status Acadêmico</p>
+                                                  <p className="text-white text-sm mb-1"><span className="text-stone-500">Cordel:</span> {student.belt || 'Não Definido'}</p>
+                                                  {student.graduationCost && student.graduationCost > 0 && <p className="text-white text-sm mb-1"><span className="text-stone-500">Custo Graduação:</span> R$ {student.graduationCost.toFixed(2).replace('.', ',')}</p>}
+                                              </div>
+                                          </div>
+
+                                          {/* School Reports */}
+                                          <div className="mb-6">
+                                              <h4 className="text-orange-400 font-bold text-sm mb-3 flex items-center gap-2">
+                                                  <FileText size={16} /> Boletins Escolares
+                                              </h4>
+                                              <div className="space-y-2">
+                                                  {schoolReports.filter(report => report.user_id === student.id).length > 0 ? (
+                                                      schoolReports.filter(report => report.user_id === student.id).map(report => (
+                                                          <div key={report.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex justify-between items-center">
+                                                              <div>
+                                                                  <p className="text-white font-medium">{report.file_name}</p>
+                                                                  <p className="text-xs text-stone-500">Período: {report.period} • Enviado em: {report.date}</p>
+                                                              </div>
+                                                              <Button 
+                                                                  variant="secondary" 
+                                                                  className="text-xs h-auto px-2 py-1"
+                                                                  onClick={() => handleViewReport(report.file_url, report.file_name)}
+                                                              >
+                                                                  <FileText size={14} className="mr-1"/> Ver
+                                                              </Button>
+                                                          </div>
+                                                      ))
+                                                  ) : (
+                                                      <p className="text-stone-500 text-sm italic">Nenhum boletim enviado.</p>
+                                                  )}
+                                              </div>
+                                          </div>
+
+                                          {/* Home Trainings */}
+                                          <div className="mb-6">
+                                              <h4 className="text-purple-400 font-bold text-sm mb-3 flex items-center gap-2">
+                                                  <Video size={16} /> Treinos em Casa
+                                              </h4>
+                                              <div className="space-y-2">
+                                                  {homeTrainings.filter(training => training.user_id === student.id).length > 0 ? (
+                                                      homeTrainings.filter(training => training.user_id === student.id).map(training => (
+                                                          <div key={training.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex justify-between items-center">
+                                                              <div>
+                                                                  <p className="text-white font-medium">{training.video_name}</p>
+                                                                  <p className="text-xs text-stone-500">Enviado em: {training.date} • Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
+                                                              </div>
+                                                              <Button 
+                                                                  variant="secondary" 
+                                                                  className="text-xs h-auto px-2 py-1"
+                                                                  onClick={() => handleViewHomeTrainingVideo(training.video_url)}
+                                                              >
+                                                                  <Video size={14} className="mr-1"/> Ver
+                                                              </Button>
+                                                          </div>
+                                                      ))
+                                                  ) : (
+                                                      <p className="text-stone-500 text-sm italic">Nenhum treino em casa enviado.</p>
+                                                  )}
+                                              </div>
+                                          </div>
+
+                                          {/* Assignments */}
+                                          <div>
+                                              <h4 className="text-blue-400 font-bold text-sm mb-3 flex items-center gap-2">
+                                                  <BookOpen size={16} /> Trabalhos e Tarefas
+                                              </h4>
+                                              <div className="space-y-2">
+                                                  {assignments.filter(assign => assign.student_id === student.id || assign.student_id === null).length > 0 ? (
+                                                      assignments.filter(assign => assign.student_id === student.id || assign.student_id === null).map(assign => (
+                                                          <div key={assign.id} className="bg-stone-800 p-3 rounded border border-stone-700">
+                                                              <p className="text-white font-medium">{assign.title}</p>
+                                                              <p className="text-xs text-stone-500">Entrega: {assign.due_date} • Status: {assign.status === 'pending' ? 'Pendente' : 'Concluído'}</p>
+                                                              {assign.attachment_url && (
+                                                                  <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-1 hover:underline">
+                                                                      <Paperclip size={12}/> Ver Anexo
+                                                                  </a>
+                                                              )}
+                                                          </div>
+                                                      ))
+                                                  ) : (
+                                                      <p className="text-stone-500 text-sm italic">Nenhum trabalho atribuído.</p>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          ))
+                      ) : (
+                          <p className="text-stone-500 italic text-center py-8 bg-stone-900/30 rounded-lg">
+                              Nenhum aluno encontrado com os critérios de busca.
+                          </p>
+                      )}
                   </div>
               </div>
           </div>
@@ -1544,7 +1740,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <Clock className="text-yellow-500" size={18} /> Pendentes
                           </h3>
                           <div className="space-y-3">
-                              {assignments.filter(a => a.status === 'pending').map(assign => (
+                              {profModeAssignments.filter(a => a.status === 'pending').map(assign => (
                                   <div key={assign.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500">
                                       <div className="mb-2">
                                           <h4 className="font-bold text-white">{assign.title}</h4>
@@ -1552,9 +1748,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                       <p className="text-xs text-stone-400 mb-3">{assign.description}</p>
                                       <div className="flex justify-between items-center text-xs text-stone-500 mb-3">
                                           <span className="flex items-center gap-1">
-                                              <Calendar size={12}/> Entrega: {assign.dueDate}
+                                              <Calendar size={12}/> Entrega: {assign.due_date}
                                           </span>
-                                          {assign.dueDate === today && (
+                                          {assign.due_date === today && (
                                               <span className="text-red-500 font-bold flex items-center gap-1 animate-pulse">
                                                   <AlertCircle size={12}/> Vence Hoje!
                                               </span>
@@ -1574,7 +1770,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                       </label>
                                   </div>
                               ))}
-                              {assignments.filter(a => a.status === 'pending').length === 0 && (
+                              {profModeAssignments.filter(a => a.status === 'pending').length === 0 && (
                                   <p className="text-stone-500 text-sm text-center py-4">Nenhum trabalho pendente.</p>
                               )}
                           </div>
@@ -1586,18 +1782,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <Check className="text-green-500" size={18} /> Concluídos
                           </h3>
                           <div className="space-y-3">
-                              {assignments.filter(a => a.status === 'completed').map(assign => (
+                              {profModeAssignments.filter(a => a.status === 'completed').map(assign => (
                                   <div key={assign.id} className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 opacity-80">
                                       <h4 className="font-bold text-stone-300 line-through decoration-stone-500">{assign.title}</h4>
-                                      <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.dueDate}</p>
-                                      {assign.attachment && (
+                                      <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.due_date}</p>
+                                      {assign.attachment_url && (
                                           <div className="flex items-center gap-2 text-xs text-green-500 bg-green-900/10 p-2 rounded">
                                               <Paperclip size={12} /> Arquivo Anexado
                                           </div>
                                       )}
                                   </div>
                               ))}
-                               {assignments.filter(a => a.status === 'completed').length === 0 && (
+                               {profModeAssignments.filter(a => a.status === 'completed').length === 0 && (
                                   <p className="text-stone-500 text-sm text-center py-4">Nenhum trabalho concluído ainda.</p>
                               )}
                           </div>
@@ -1731,7 +1927,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <BookOpen size={16} className="text-blue-400"/>
                                 <span className="text-sm font-bold text-white">Trabalhos Pendentes</span>
                             </div>
-                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{assignments.filter(a => a.status === 'pending').length}</span>
+                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{profModeAssignments.filter(a => a.status === 'pending').length}</span>
                         </div>
 
                         <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
