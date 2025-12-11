@@ -75,13 +75,24 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
       // Fetch available professors and admins
       const { data: profsData, error: profsError } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, nickname, role')
-        .or('role.eq.professor,role.eq.admin');
+        .select('id, first_name, last_name, nickname, role'); // Fetch all necessary fields
 
       if (profsError) {
         console.error('Error fetching professors:', profsError);
       } else {
-        setAvailableProfessors(profsData || []);
+        // Filter for professors and admins and map to User interface
+        const filteredProfs: User[] = (profsData || [])
+          .filter(p => p.role === 'professor' || p.role === 'admin')
+          .map(p => ({
+            id: p.id,
+            name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
+            nickname: p.nickname || undefined,
+            email: '', // Email is not fetched here, can be empty
+            role: p.role as UserRole,
+            first_name: p.first_name || undefined,
+            last_name: p.last_name || undefined,
+          }));
+        setAvailableProfessors(filteredProfs);
       }
       
       setLoading(false);
@@ -335,11 +346,11 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
             </select>
           </div>
 
-          {/* Role is now pre-determined, not user selectable */}
-          <div className="bg-stone-900 p-3 rounded border border-stone-700 text-sm text-stone-400 flex items-center gap-2">
+          {/* REMOVED: Role is now pre-determined, not user selectable */}
+          {/* <div className="bg-stone-900 p-3 rounded border border-stone-700 text-sm text-stone-400 flex items-center gap-2">
             <UserIcon size={16} />
             Sua função: <span className="text-white font-bold capitalize">{formData.role}</span>
-          </div>
+          </div> */}
 
           {formData.role === 'aluno' && (
             <div>
