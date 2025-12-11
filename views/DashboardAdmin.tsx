@@ -3,6 +3,7 @@ import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification,
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
+import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
 
 interface Props {
   user: User;
@@ -102,6 +103,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     assignments, // New prop
     homeTrainings, // New prop
 }) => {
+  const { session } = useSession(); // Get session from context
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -200,7 +202,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       }));
       setManagedUsers(fetchedUsers);
     }
-  }, [session]);
+  }, [session]); // Add session to dependency array
 
   useEffect(() => {
     fetchManagedUsers();
