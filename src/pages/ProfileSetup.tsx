@@ -30,35 +30,37 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
   const [isNewUser, setIsNewUser] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [availableProfessors, setAvailableProfessors] = useState<User[]>([]); // New state for professors
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndProfessors = async () => {
       if (!session) {
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
+      // Fetch current user profile
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 means "no rows found"
-        console.error('Error fetching profile:', error);
-      } else if (data) {
+      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means "no rows found"
+        console.error('Error fetching profile:', profileError);
+      } else if (profileData) {
         setFormData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          nickname: data.nickname || '',
-          birth_date: data.birth_date || '',
-          phone: data.phone || '',
-          belt: data.belt || ALL_BELTS[0],
-          role: data.role as UserRole || 'aluno',
-          professor_name: data.professor_name || '',
-          avatar_url: data.avatar_url || '',
+          first_name: profileData.first_name || '',
+          last_name: profileData.last_name || '',
+          nickname: profileData.nickname || '',
+          birth_date: profileData.birth_date || '',
+          phone: profileData.phone || '',
+          belt: profileData.belt || ALL_BELTS[0],
+          role: profileData.role as UserRole || 'aluno',
+          professor_name: profileData.professor_name || '',
+          avatar_url: profileData.avatar_url || '',
         });
-        setAvatarPreview(data.avatar_url || null);
+        setAvatarPreview(profileData.avatar_url || null);
         setIsNewUser(false);
       } else {
         // No profile found, it's a new user
@@ -69,10 +71,23 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
           first_name: emailNamePart || '',
         }));
       }
+
+      // Fetch available professors and admins
+      const { data: profsData, error: profsError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, nickname, role')
+        .or('role.eq.professor,role.eq.admin');
+
+      if (profsError) {
+        console.error('Error fetching professors:', profsError);
+      } else {
+        setAvailableProfessors(profsData || []);
+      }
+      
       setLoading(false);
     };
 
-    fetchProfile();
+    fetchProfileAndProfessors();
   }, [session]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -329,15 +344,20 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
           {formData.role === 'aluno' && (
             <div>
               <label htmlFor="professor_name" className="block text-sm text-stone-400 mb-1">Professor Responsável</label>
-              <input 
-                type="text" 
+              <select 
                 id="professor_name"
                 name="professor_name"
                 value={formData.professor_name}
                 onChange={handleChange}
                 className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                placeholder="Ex: Vicente 'Anu Branco'"
-              />
+              >
+                <option value="">Selecione um professor</option>
+                {availableProfessors.map(prof => (
+                  <option key={prof.id} value={prof.nickname || prof.first_name || prof.name}>
+                    {prof.nickname ? `${prof.nickname} (${prof.first_name || prof.name})` : prof.first_name || prof.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
