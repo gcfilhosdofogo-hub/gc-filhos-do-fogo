@@ -365,18 +365,15 @@ export const DashboardAluno: React.FC<Props> = ({
                   {/* Graduation Cost */}
                   <div className="bg-stone-900 rounded-lg p-4 mb-4 border border-stone-700">
                       <h4 className="text-stone-400 text-xs uppercase font-bold mb-2">Minha Próxima Graduação</h4>
-                      {user.graduationCost !== undefined ? ( // Check if it's explicitly defined (can be 0)
-                         <div className="flex items-center gap-2">
-                             <span className="text-2xl font-bold text-green-400">R$ {user.graduationCost.toFixed(2).replace('.', ',')}</span>
-                             {user.graduationCost === 0 ? (
-                                 <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
-                             ) : (
-                                 <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Definido pela Coordenação</span>
-                             )}
-                         </div>
-                      ) : (
-                          <p className="text-stone-500 italic">Nenhum custo definido no momento.</p>
-                      )}
+                      {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
+                      <div className="flex items-center gap-2">
+                          <span className="text-2xl font-bold text-green-400">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</span>
+                          {(user.graduationCost ?? 0) === 0 ? (
+                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
+                          ) : (
+                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Definido pela Coordenação</span>
+                          )}
+                      </div>
                   </div>
 
                   {/* PIX Copy inside Modal */}
@@ -465,21 +462,18 @@ export const DashboardAluno: React.FC<Props> = ({
               </div>
 
               {/* Graduation Cost Alert */}
-              {user.graduationCost !== undefined ? ( // Check if it's explicitly defined (can be 0)
-                  <div className="w-full bg-green-900/30 border border-green-800 rounded-lg p-4 mb-4 animate-pulse">
-                      <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-                          <Wallet size={12}/> Próxima Graduação
-                      </p>
-                      <p className="text-xl font-bold text-white">R$ {user.graduationCost.toFixed(2).replace('.', ',')}</p>
-                      {user.graduationCost === 0 ? (
-                          <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
-                      ) : (
-                          <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
-                      )}
-                  </div>
-              ) : (
-                  <p className="text-stone-500 italic text-sm text-center">Custo de graduação não definido.</p>
-              )}
+              {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
+              <div className="w-full bg-green-900/30 border border-green-800 rounded-lg p-4 mb-4 animate-pulse">
+                  <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
+                      <Wallet size={12}/> Próxima Graduação
+                  </p>
+                  <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                  {(user.graduationCost ?? 0) === 0 ? (
+                      <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
+                  ) : (
+                      <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                  )}
+              </div>
               
               {user.professorName && (
                 <div className="mb-4">

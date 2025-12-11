@@ -366,21 +366,18 @@ export const DashboardProfessor: React.FC<Props> = ({
         {profView === 'dashboard' && (
             <div className="space-y-6">
                 {/* Graduation Cost Alert for Professor */}
-                {user.graduationCost !== undefined ? ( // Check if it's explicitly defined (can be 0)
-                    <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
-                        <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-                            <Wallet size={12}/> Sua Próxima Graduação
-                        </p>
-                        <p className="text-xl font-bold text-white">R$ {user.graduationCost.toFixed(2).replace('.', ',')}</p>
-                        {user.graduationCost === 0 ? (
-                            <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
-                        ) : (
-                            <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
-                        )}
-                    </div>
-                ) : (
-                    <p className="text-stone-500 italic text-sm text-center">Custo de graduação não definido.</p>
-                )}
+                {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
+                <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
+                    <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
+                        <Wallet size={12}/> Sua Próxima Graduação
+                    </p>
+                    <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                    {(user.graduationCost ?? 0) === 0 ? (
+                        <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
+                    ) : (
+                        <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                    )}
+                </div>
 
                 {/* Photo Upload Card */}
                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
@@ -394,10 +391,9 @@ export const DashboardProfessor: React.FC<Props> = ({
                     </div>
                 </div>
 
-                {/* Classes List */}
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="xl font-bold text-white mb-4">Minhas Aulas</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
                         <div className="space-y-4">
                             {myClasses.map(cls => (
                                 <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
@@ -414,7 +410,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                     </div>
 
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="xl font-bold text-white mb-4">Acompanhamento</h3>
+                        <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-3">
                             {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
                             {/* For now, using a mock list for display */}
