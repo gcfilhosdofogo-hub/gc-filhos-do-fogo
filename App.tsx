@@ -116,14 +116,16 @@ function AppContent() {
 
           if (error && error.code !== 'PGRST116') {
             console.error('Error fetching profile:', error);
+            // Fallback to a basic user object if profile fetch fails
             setUser({
               id: session.user.id,
               name: session.user.email || 'User',
               email: session.user.email || '',
-              role: 'aluno',
+              role: 'aluno', // Default to aluno if profile not found or error
             });
             setCurrentView('profile_setup');
           } else if (profile) {
+            console.log('Fetched profile from Supabase:', profile); // Log fetched profile
             if (!profile.first_name || !profile.nickname || !profile.birth_date) {
               setCurrentView('profile_setup');
             } else {
@@ -142,10 +144,12 @@ function AppContent() {
                 graduationCost: profile.graduation_cost || undefined,
                 phone: profile.phone || undefined,
               };
+              console.log('Constructed user object:', fetchedUser); // Log constructed user
               setUser(fetchedUser);
               setCurrentView('dashboard');
             }
           } else {
+            // No profile found, it's a new user or profile not completed
             setCurrentView('profile_setup');
           }
         };
