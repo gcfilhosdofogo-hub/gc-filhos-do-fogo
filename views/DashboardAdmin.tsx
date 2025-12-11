@@ -380,7 +380,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       }
   };
 
-  const handleUpdateStudentGraduationCost = async (studentId: string) => {
+  const handleUpdateUserGraduationCost = async (userIdToUpdate: string) => { // Renamed function
     const newCost = parseFloat(editingGradCostValue);
     if (isNaN(newCost) || newCost < 0) {
         alert('Por favor, insira um valor numérico válido para o custo de graduação.');
@@ -390,7 +390,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const { error } = await supabase
         .from('profiles')
         .update({ graduation_cost: newCost })
-        .eq('id', studentId);
+        .eq('id', userIdToUpdate);
 
     if (error) {
         console.error('Error updating graduation cost:', error);
@@ -400,8 +400,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         setEditingGradCostId(null);
         setEditingGradCostValue('');
         fetchManagedUsers(); // Re-fetch to update the list
-        const studentName = managedUsers.find(u => u.id === studentId)?.nickname || 'Aluno';
-        onNotifyAdmin(`Atualizou custo de graduação do aluno: ${studentName} para R$ ${newCost.toFixed(2)}`, user);
+        const userName = managedUsers.find(u => u.id === userIdToUpdate)?.nickname || 'Usuário';
+        onNotifyAdmin(`Atualizou custo de graduação do usuário: ${userName} para R$ ${newCost.toFixed(2)}`, user);
     }
   };
 
@@ -1356,7 +1356,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                           {u.belt}
                                       </td>
                                       <td className="p-4"> {/* Graduation Cost Column */}
-                                          {u.role === 'aluno' ? (
+                                          {(u.role === 'aluno' || u.role === 'professor') ? ( // Allow editing for aluno and professor
                                               editingGradCostId === u.id ? (
                                                   <div className="flex items-center gap-1">
                                                       <input
@@ -1369,7 +1369,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                           step="0.01"
                                                       />
                                                       <button
-                                                          onClick={() => handleUpdateStudentGraduationCost(u.id)}
+                                                          onClick={() => handleUpdateUserGraduationCost(u.id)} // Use generic function
                                                           className="text-green-500 hover:text-green-400 p-1 rounded"
                                                           title="Salvar Custo"
                                                       >

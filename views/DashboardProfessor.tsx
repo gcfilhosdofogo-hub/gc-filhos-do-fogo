@@ -79,7 +79,6 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   // Assignments
   const [assignmentsState, setAssignmentsState] = useState<Assignment[]>(INITIAL_ASSIGNMENTS); // Renamed to avoid conflict with prop
-  const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '' });
 
   // Music
   const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '' });
@@ -97,7 +96,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [evalData, setEvalData] = useState({ positive: '', negative: '' });
 
   // Filter my orders
-  const myOrders = uniformOrders.filter(o => o.userId === user.id);
+  const myOrders = uniformOrders.filter(o => o.user_id === user.id);
 
   // Handlers
   const handleCopyPix = () => {
@@ -139,6 +138,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const handleSaveNewClass = (e: React.FormEvent) => {
       e.preventDefault();
       setMyClasses([...myClasses, { id: Date.now(), title: newClassData.title, time: `${newClassData.date} ${newClassData.time}`, location: newClassData.location }]);
+      setNewClassData({ title: '', date: '', time: '', location: '' });
       setProfView('dashboard');
       onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
   };
@@ -170,13 +170,13 @@ export const DashboardProfessor: React.FC<Props> = ({
 
     const newOrder: UniformOrder = {
         id: Date.now().toString(),
-        userId: user.id,
-        userName: user.nickname || user.name,
-        userRole: user.role,
+        user_id: user.id,
+        user_name: user.nickname || user.name,
+        user_role: user.role,
         date: new Date().toLocaleDateString('pt-BR'),
         item: itemName,
-        shirtSize: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
-        pantsSize: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
+        shirt_size: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
+        pants_size: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
         total: price,
         status: 'pending'
     };
@@ -365,6 +365,17 @@ export const DashboardProfessor: React.FC<Props> = ({
         {/* --- DEFAULT DASHBOARD --- */}
         {profView === 'dashboard' && (
             <div className="space-y-6">
+                {/* Graduation Cost Alert for Professor */}
+                {user.graduationCost && user.graduationCost > 0 && (
+                    <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
+                        <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
+                            <Wallet size={12}/> Sua Próxima Graduação
+                        </p>
+                        <p className="text-xl font-bold text-white">R$ {user.graduationCost.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                    </div>
+                )}
+
                 {/* Photo Upload Card */}
                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                     <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
