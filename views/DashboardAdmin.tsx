@@ -7,7 +7,7 @@ import { useSession } from '../src/components/SessionContextProvider'; // Import
 
 interface Props {
   user: User;
-  onAddEvent: (event: Omit<GroupEvent, 'id' | 'created_at'>) => void; // Changed to Omit<GroupEvent, 'id' | 'created_at'>
+  onAddEvent: (event: Omit<GroupEvent, 'id' | 'created_at'>) => void;
   onEditEvent: (event: GroupEvent) => void;
   onCancelEvent: (eventId: string) => void;
   events: GroupEvent[];
@@ -173,23 +173,28 @@ export const DashboardAdmin: React.FC<Props> = ({
       console.error('Error fetching managed users:', error);
       // Optionally show a toast notification
     } else {
-      const fetchedUsers: User[] = data.map(profile => ({
-        id: profile.id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
-        nickname: profile.nickname || undefined,
-        email: session?.user.email || '', // Use session email if profile doesn't have it
-        role: profile.role as UserRole,
-        avatarUrl: profile.avatar_url || undefined,
-        belt: profile.belt || undefined,
-        beltColor: profile.belt_color || undefined,
-        professorName: profile.professor_name || undefined,
-        birthDate: profile.birth_date || undefined,
-        graduationCost: profile.graduation_cost || undefined,
-        phone: profile.phone || undefined,
-        first_name: profile.first_name || undefined,
-        last_name: profile.last_name || undefined,
-      }));
+      const fetchedUsers: User[] = data.map(profile => {
+        console.log('Fetched profile:', profile); // Log each profile
+        return {
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
+          nickname: profile.nickname || undefined,
+          email: session?.user.email || '', // Use session email if profile doesn't have it
+          role: profile.role as UserRole, // This is where the role is read
+          avatarUrl: profile.avatar_url || undefined,
+          belt: profile.belt || undefined,
+          beltColor: profile.belt_color || undefined,
+          professorName: profile.professor_name || undefined,
+          birthDate: profile.birth_date || undefined,
+          graduationCost: profile.graduation_cost || undefined,
+          phone: profile.phone || undefined,
+          first_name: profile.first_name || undefined,
+          last_name: profile.last_name || undefined,
+        };
+      });
       setManagedUsers(fetchedUsers);
+      console.log('Managed Users after fetch:', fetchedUsers); // Log the entire array
+      console.log('Total Alunos (filtered in fetch):', fetchedUsers.filter(u => u.role === 'aluno').length);
     }
   }, [session]); // Add session to dependency array
 
@@ -633,6 +638,9 @@ export const DashboardAdmin: React.FC<Props> = ({
      (u.nickname && u.nickname.toLowerCase().includes(studentDetailsSearch.toLowerCase())) ||
      u.email.toLowerCase().includes(studentDetailsSearch.toLowerCase()))
   );
+
+  console.log('Managed Users for display:', managedUsers); // Log the entire array before rendering
+  console.log('Total Alunos (filtered for display):', managedUsers.filter(u => u.role === 'aluno').length);
 
   return (
     <div className="space-y-6">
