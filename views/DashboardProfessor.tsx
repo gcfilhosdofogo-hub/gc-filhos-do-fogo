@@ -12,6 +12,13 @@ interface Props {
   onAddMusic: (music: MusicItem) => void;
   onNotifyAdmin: (action: string, user: User) => void;
   onUpdateProfile: (data: Partial<User>) => void;
+  classSessions: any[]; // Assuming classSessions are passed, but not directly used in this fix
+  onAddClassSession: (newSession: any) => Promise<void>;
+  onUpdateClassSession: (updatedSession: any) => Promise<void>;
+  assignments: any[];
+  onAddAssignment: (newAssignment: any) => Promise<void>;
+  onUpdateAssignment: (updatedAssignment: any) => Promise<void>;
+  homeTrainings: any[];
 }
 
 interface Assignment {
@@ -41,11 +48,12 @@ const INITIAL_ASSIGNMENTS: Assignment[] = [
     { id: 101, title: 'Pesquisa: Mestre Bimba', description: 'Trazer resumo impresso sobre a criação da Regional.', dueDate: new Date().toISOString().split('T')[0], status: 'pending' }, 
 ];
 
-const MY_STUDENTS_LIST = [
-  { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
-  { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
-  { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
-];
+// Removed MY_STUDENTS_LIST as it will be fetched from managedUsers in DashboardAdmin
+// const MY_STUDENTS_LIST = [
+//   { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
+//   { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
+//   { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
+// ];
 
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
 
@@ -70,7 +78,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Assignments
-  const [assignments, setAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS);
+  const [assignmentsState, setAssignmentsState] = useState<Assignment[]>(INITIAL_ASSIGNMENTS); // Renamed to avoid conflict with prop
   const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '' });
 
   // Music
@@ -105,8 +113,14 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleOpenAttendance = (classId: number) => {
+    // This list should come from a prop or fetched from Supabase based on the professor's students
+    const mockStudents = [
+      { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
+      { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
+      { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
+    ];
     const initial: Record<string, boolean> = {};
-    MY_STUDENTS_LIST.forEach(s => initial[s.id] = true);
+    mockStudents.forEach(s => initial[s.id] = true);
     setAttendanceData(initial);
     setSelectedClassId(classId);
     setProfView('attendance');
@@ -139,7 +153,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   const handleAddAssignment = (e: React.FormEvent) => {
       e.preventDefault();
-      setAssignments([...assignments, { id: Date.now(), ...newAssignment, status: 'pending' }]);
+      setAssignmentsState([...assignmentsState, { id: Date.now(), ...newAssignment, status: 'pending' }]);
       setNewAssignment({ title: '', description: '', dueDate: '' });
       onNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
   };
@@ -179,6 +193,20 @@ export const DashboardProfessor: React.FC<Props> = ({
         onNotifyAdmin('Enviou foto da aula', user);
     }
   }
+
+  const handleSaveEvaluation = () => {
+    alert("Avaliação salva com sucesso!");
+    setProfView('all_students');
+    setSelectedStudentForEval(null);
+    // This list should come from a prop or fetched from Supabase based on the professor's students
+    const mockStudents = [
+      { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
+      { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
+      { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
+    ];
+    const studentName = mockStudents.find(s => s.id === selectedStudentForEval)?.name || 'Aluno';
+    onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user); // Added notification
+  };
 
   const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
 
@@ -268,7 +296,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                      <Button type="submit">Criar Tarefa</Button>
                  </form>
                  <div className="space-y-2">
-                     {assignments.map(a => (
+                     {assignmentsState.map(a => (
                          <div key={a.id} className="bg-stone-900 p-3 rounded border-l-4 border-blue-500">
                              <p className="font-bold text-white">{a.title}</p>
                              <p className="text-xs text-stone-400">Entrega: {a.dueDate}</p>
@@ -301,7 +329,13 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <Button onClick={handleSaveAttendance} disabled={showSuccess}>{showSuccess ? 'Salvo!' : 'Salvar'}</Button>
                  </div>
                  <div className="space-y-2">
-                     {MY_STUDENTS_LIST.map(s => (
+                     {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
+                     {/* For now, using a mock list for attendance */}
+                     {[
+                        { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
+                        { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
+                        { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
+                     ].map(s => (
                          <div key={s.id} className={`flex justify-between items-center p-3 rounded cursor-pointer ${attendanceData[s.id] ? 'bg-green-900/20 border border-green-900' : 'bg-red-900/20 border border-red-900'}`} onClick={() => setAttendanceData({...attendanceData, [s.id]: !attendanceData[s.id]})}>
                              <span className="text-white">{s.name}</span>
                              <span className={`text-xs font-bold px-2 py-1 rounded ${attendanceData[s.id] ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{attendanceData[s.id] ? 'Presente' : 'Ausente'}</span>
@@ -360,7 +394,13 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                         <h3 className="text-lg font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-2">
-                             {MY_STUDENTS_LIST.slice(0,3).map(s => (
+                             {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
+                             {/* For now, using a mock list for display */}
+                             {[
+                                { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
+                                { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
+                                { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
+                             ].slice(0,3).map(s => (
                                  <div key={s.id} className="bg-stone-900 p-3 rounded flex items-center gap-3">
                                      <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white">{s.name.charAt(0)}</div>
                                      <span className="text-white text-sm">{s.name}</span>

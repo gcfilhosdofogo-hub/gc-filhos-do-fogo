@@ -203,7 +203,7 @@ export const DashboardAluno: React.FC<Props> = ({
         
         await onAddSchoolReport(newReport); // Call prop to add to Supabase
         setUploadingReport(false);
-        onNotifyAdmin('Enviou Boletim Escolar', user);
+        onNotifyAdmin('Enviou Boletim Escolar', user); // Added notification
         alert("Boletim enviado com sucesso para a coordenação!");
     } catch (error: any) {
         console.error('Error uploading report:', error);
@@ -221,6 +221,7 @@ export const DashboardAluno: React.FC<Props> = ({
         if (error) throw error;
 
         window.open(data.signedUrl, '_blank');
+        onNotifyAdmin(`Visualizou boletim: ${fileName}`, user); // Added notification
     } catch (error: any) {
         console.error('Error generating signed URL:', error);
         alert('Erro ao visualizar o arquivo: ' + error.message);
@@ -249,6 +250,7 @@ export const DashboardAluno: React.FC<Props> = ({
             .getPublicUrl(filePath);
         
         onUpdateProfile({ avatarUrl: publicUrlData.publicUrl });
+        onNotifyAdmin('Atualizou foto de perfil', user); // Added notification
         alert("Avatar atualizado com sucesso!");
     } catch (error: any) {
         console.error('Error uploading avatar:', error);

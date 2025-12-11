@@ -24,16 +24,13 @@ interface Props {
   schoolReports: SchoolReport[];
   assignments: Assignment[];
   homeTrainings: HomeTraining[];
+  monthlyPayments: PaymentRecord[]; // Now receiving from App.tsx
+  onAddPaymentRecord: (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => Promise<void>;
+  onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>;
 }
 
 // --- MOCK DATA FOR ADMIN (GLOBAL) ---
-const INITIAL_PAYMENTS: PaymentRecord[] = [
-  { id: '1', student_id: '1', student_name: 'João "Gafanhoto" Silva', month: 'Dezembro', due_date: '2024-12-10', status: 'paid', paid_at: '2024-12-05', amount: 50 },
-  { id: '2', student_id: '2', student_name: 'Maria "Vespa" Oliveira', month: 'Dezembro', due_date: '2024-12-10', status: 'overdue', amount: 50 },
-  { id: '3', student_id: '3', student_name: 'Pedro "Ouriço" Santos', month: 'Dezembro', due_date: '2024-12-10', status: 'pending', amount: 50 },
-  { id: '4', student_id: '4', student_name: 'Lucas "Sombra" Lima', month: 'Dezembro', due_date: '2024-12-10', status: 'paid', paid_at: '2024-12-10', amount: 50 },
-  { id: '5', student_id: '5', student_name: 'Ana "Sol" Costa', month: 'Dezembro', due_date: '2024-12-10', status: 'pending', amount: 50 },
-];
+// Removed INITIAL_PAYMENTS as we will use the prop monthlyPayments
 
 const INITIAL_PROFESSORS_DATA: ProfessorClassData[] = [
   {
@@ -90,6 +87,9 @@ export const DashboardAdmin: React.FC<Props> = ({
     schoolReports, // New prop
     assignments, // New prop
     homeTrainings, // New prop
+    monthlyPayments, // Use prop for payments
+    onAddPaymentRecord,
+    onUpdatePaymentRecord,
 }) => {
   const { session } = useSession(); // Get session from context
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -98,7 +98,7 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [eventFormData, setEventFormData] = useState({ title: '', date: '', description: '', price: '' });
   
   // Finance State
-  const [payments, setPayments] = useState<PaymentRecord[]>(INITIAL_PAYMENTS);
+  // const [payments, setPayments] = useState<PaymentRecord[]>(INITIAL_PAYMENTS); // Removed, use monthlyPayments prop
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
   const [showBeltConfig, setShowBeltConfig] = useState(false);
   const [beltPrices, setBeltPrices] = useState<Record<string, number>>(() => {
@@ -200,8 +200,8 @@ export const DashboardAdmin: React.FC<Props> = ({
   }, [fetchManagedUsers, assignments, user.id]);
 
   // --- ADMIN HANDLERS ---
-  const totalRevenue = payments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-  const pendingRevenue = payments.filter(p => p.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+  const totalRevenue = monthlyPayments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+  const pendingRevenue = monthlyPayments.filter(p => p.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
 
   const pendingUniformOrders = uniformOrders.filter(o => o.status === 'pending');
 
@@ -253,10 +253,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     setShowEventForm(false);
   };
 
-  const handleMarkAsPaid = (studentId: string) => {
-    setPayments(prev => prev.map(p => 
-      p.student_id === studentId ? { ...p, status: 'paid', paid_at: new Date().toISOString().split('T')[0] } : p
-    ));
+  const handleMarkAsPaid = async (paymentId: string) => {
+    const paymentToUpdate = monthlyPayments.find(p => p.id === paymentId);
+    if (paymentToUpdate) {
+        await onUpdatePaymentRecord({ ...paymentToUpdate, status: 'paid', paid_at: new Date().toISOString().split('T')[0] });
+        onNotifyAdmin(`Marcar pagamento de ${paymentToUpdate.student_name} como pago`, user);
+    }
   };
 
   const handleEditGradCost = (studentId: string, currentCost: number = 0) => {
@@ -347,6 +349,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           alert('Usuário atualizado com sucesso!');
           setShowUserModal(false);
           fetchManagedUsers(); // Re-fetch to update the list
+          onNotifyAdmin(`Atualizou perfil do usuário: ${editingUser.nickname || editingUser.name}`, user);
       }
   };
 
@@ -363,6 +366,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           } else {
               alert('Perfil do usuário excluído com sucesso!');
               fetchManagedUsers(); // Re-fetch to update the list
+              onNotifyAdmin(`Excluiu perfil do usuário ID: ${userId}`, user);
           }
       }
   };
@@ -416,6 +420,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       setProfView('dashboard');
       setShowSuccess(false);
       setJustifications({});
+      onNotifyAdmin('Realizou chamada de aula', user); // Added notification
     }, 1500);
   };
 
@@ -431,6 +436,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     setMyClasses([...myClasses, newClass]);
     setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
     setProfView('dashboard');
+    onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user); // Added notification
   };
 
   const handleOpenEvaluation = (studentId: string) => {
@@ -443,6 +449,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     alert("Avaliação salva com sucesso!");
     setProfView('all_students');
     setSelectedStudentForEval(null);
+    const studentName = managedUsers.find(s => s.id === selectedStudentForEval)?.nickname || 'Aluno';
+    onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user); // Added notification
   };
 
   const handleMusicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -565,6 +573,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         const reader = new FileReader();
         reader.onload = (ev) => { if (ev.target?.result) setClassPhoto(ev.target.result as string); };
         reader.readAsDataURL(e.target.files[0]);
+        onNotifyAdmin('Enviou foto da aula', user); // Added notification
     }
   };
 
@@ -574,6 +583,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         reader.onload = (ev) => {
             if (ev.target?.result) {
                 onUpdateProfile({ avatarUrl: ev.target.result as string });
+                onNotifyAdmin('Atualizou foto de perfil', user); // Added notification
             }
         };
         reader.readAsDataURL(e.target.files[0]);
@@ -590,6 +600,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         if (error) throw error;
 
         window.open(data.signedUrl, '_blank');
+        onNotifyAdmin(`Visualizou boletim: ${fileName}`, user); // Added notification
     } catch (error: any) {
         console.error('Error generating signed URL:', error);
         alert('Erro ao visualizar o arquivo: ' + error.message);
@@ -600,9 +611,10 @@ export const DashboardAdmin: React.FC<Props> = ({
     // For public URLs, we can directly open them.
     // If it were a private bucket, we'd need a signed URL.
     window.open(videoUrl, '_blank');
+    onNotifyAdmin(`Visualizou vídeo de treino em casa: ${videoUrl}`, user); // Added notification
   };
 
-  const filteredPayments = payments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
+  const filteredPayments = monthlyPayments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
   const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
   const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === user.nickname); // Filter by admin's nickname as professor
   const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
@@ -1079,7 +1091,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                        <td className="p-4 text-right">
                           {payment.status !== 'paid' && (
                             <button 
-                              onClick={() => handleMarkAsPaid(payment.student_id)}
+                              onClick={() => handleMarkAsPaid(payment.id)}
                               className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
                             >
                               Dar Baixa
