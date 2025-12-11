@@ -371,11 +371,11 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
                         <Wallet size={12}/> Sua Próxima Graduação
                     </p>
-                    <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                    <p className="text-xl font-bold text-white text-center">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
                     {(user.graduationCost ?? 0) === 0 ? (
-                        <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
+                        <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
                     ) : (
-                        <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                        <p className="text-[10px] text-stone-400 mt-1 text-center">Valor definido pela coordenação</p>
                     )}
                 </div>
 
