@@ -140,7 +140,8 @@ function AppContent() {
                 beltColor: profile.belt_color || undefined,
                 professorName: profile.professor_name || undefined,
                 birthDate: profile.birth_date || undefined,
-                graduationCost: profile.graduation_cost || undefined,
+                // Corrected: Ensure 0 is kept as a number, not converted to undefined
+                graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : undefined,
                 phone: profile.phone || undefined,
               };
               setUser(fetchedUser);

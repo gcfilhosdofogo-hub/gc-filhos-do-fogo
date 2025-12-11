@@ -366,57 +366,68 @@ export const DashboardProfessor: React.FC<Props> = ({
         {profView === 'dashboard' && (
             <div className="space-y-6">
                 {/* Graduation Cost Alert for Professor */}
-                {user.graduationCost && user.graduationCost > 0 && (
+                {user.graduationCost !== undefined ? ( // Check if it's explicitly defined (can be 0)
                     <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
                         <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
                             <Wallet size={12}/> Sua Próxima Graduação
                         </p>
                         <p className="text-xl font-bold text-white">R$ {user.graduationCost.toFixed(2).replace('.', ',')}</p>
-                        <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                        {user.graduationCost === 0 ? (
+                            <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
+                        ) : (
+                            <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                        )}
                     </div>
+                ) : (
+                    <p className="text-stone-500 italic text-sm text-center">Custo de graduação não definido.</p>
                 )}
 
                 {/* Photo Upload Card */}
-                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
-                    <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex justify-center bg-stone-900/30">
-                         {classPhoto ? (
-                             <div className="relative"><img src={classPhoto} className="h-40 rounded" /><button onClick={() => setClassPhoto(null)} className="absolute -top-2 -right-2 bg-red-600 rounded-full p-1"><X size={12}/></button></div>
-                         ) : (
-                             <label className="cursor-pointer text-stone-400 flex flex-col items-center hover:text-white"><UploadCloud size={32}/><span className="mt-2 text-sm">Enviar Foto da Turma</span><input type="file" className="hidden" onChange={handlePhotoUpload} /></label>
-                         )}
+                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
+                    <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50">
+                        {classPhoto ? (
+                            <div className="relative w-full h-32 rounded overflow-hidden"><img src={classPhoto} className="w-full h-full object-cover" /><button onClick={() => setClassPhoto(null)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"><X size={12}/></button></div>
+                        ) : (
+                            <label className="cursor-pointer flex flex-col items-center"><Camera size={32} className="text-stone-500 mb-2"/><span className="text-purple-400 font-bold">Enviar Foto</span><input type="file" className="hidden" onChange={handlePhotoUpload} /></label>
+                        )}
                     </div>
                 </div>
 
                 {/* Classes List */}
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="text-lg font-bold text-white mb-4">Minhas Aulas</h3>
-                        <div className="space-y-3">
-                            {myClasses.map(c => (
-                                <div key={c.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500 flex justify-between items-center">
-                                    <div><p className="font-bold text-white">{c.title}</p><p className="text-xs text-stone-500">{c.time}</p></div>
-                                    <Button onClick={() => handleOpenAttendance(c.id)}>Chamada</Button>
+                        <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
+                        <div className="space-y-4">
+                            {myClasses.map(cls => (
+                                <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.time} - {cls.location}</p></div>
+                                        {/* Removed confirmedClasses logic for simplicity, can be re-added if needed */}
+                                        {/* {!confirmedClasses.includes(cls.id) && <button onClick={() => handleConfirmClass(cls.id)} className="text-xs bg-yellow-600 text-white px-2 py-1 rounded animate-pulse">Confirmar</button>}
+                                        {confirmedClasses.includes(cls.id) && <span className="text-xs text-green-500 flex items-center gap-1"><Check size={12}/> OK</span>} */}
+                                    </div>
+                                    <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>Realizar Chamada</Button>
                                 </div>
                             ))}
                         </div>
                     </div>
 
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                        <h3 className="text-lg font-bold text-white mb-4">Acompanhamento</h3>
-                        <div className="space-y-2">
-                             {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
-                             {/* For now, using a mock list for display */}
-                             {[
+                        <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
+                        <div className="space-y-3">
+                            {/* This list should come from a prop or fetched from Supabase based on the professor's students */}
+                            {/* For now, using a mock list for display */}
+                            {[
                                 { id: 's1', name: 'João "Gafanhoto" Silva', belt: 'Cordel Verde', phone: '5511999999999' },
                                 { id: 's2', name: 'Maria "Vespa" Oliveira', belt: 'Cordel Amarelo', phone: '5511988888888' },
                                 { id: 's3', name: 'Pedro "Ouriço" Santos', belt: 'Cordel Cinza', phone: '5511977777777' },
-                             ].slice(0,3).map(s => (
-                                 <div key={s.id} className="bg-stone-900 p-3 rounded flex items-center gap-3">
-                                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white">{s.name.charAt(0)}</div>
-                                     <span className="text-white text-sm">{s.name}</span>
-                                 </div>
-                             ))}
+                            ].slice(0,3).map(s => (
+                                <div key={s.id} className="bg-stone-900 p-3 rounded flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">{s.name.charAt(0)}</div>
+                                    <span className="text-white text-sm">{s.name}</span>
+                                </div>
+                            ))}
                         </div>
                         <Button fullWidth variant="secondary" className="mt-4 text-xs" onClick={() => setProfView('attendance')}>Ver Todos</Button>
                     </div>
