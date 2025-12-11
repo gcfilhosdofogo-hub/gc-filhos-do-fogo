@@ -113,7 +113,8 @@ export const DashboardAdmin: React.FC<Props> = ({
   // Pedagogy State
   const [professorsData, setProfessorsData] = useState<ProfessorClassData[]>(INITIAL_PROFESSORS_DATA);
   const [expandedProfessor, setExpandedProfessor] = useState<string | null>(null);
-  const [editingGradCost, setEditingGradCost] = useState<{studentId: string, cost: string} | null>(null);
+  // Removed editingGradCost and handleSaveGradCost from here as they will be handled in Users tab
+  // const [editingGradCost, setEditingGradCost] = useState<{studentId: string, cost: string} | null>(null);
 
   // Users Management State
   const [managedUsers, setManagedUsers] = useState<User[]>([]); // Initialize empty, will fetch from Supabase
@@ -130,6 +131,10 @@ export const DashboardAdmin: React.FC<Props> = ({
       professorName: '',
       birthDate: ''
   });
+  // State for inline graduation cost editing
+  const [editingGradCostId, setEditingGradCostId] = useState<string | null>(null);
+  const [editingGradCostValue, setEditingGradCostValue] = useState<string>('');
+
 
   // --- PROFESSOR MODE STATE ---
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
@@ -168,13 +173,12 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   // --- SUPABASE USER MANAGEMENT ---
   const fetchManagedUsers = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('*');
+    const { data, error } = await supabase.from('profiles').select('*, graduation_cost'); // Select graduation_cost
     if (error) {
       console.error('Error fetching managed users:', error);
       // Optionally show a toast notification
     } else {
       const fetchedUsers: User[] = data.map(profile => {
-        // console.log('Fetched profile:', profile); // Removed log
         return {
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
@@ -186,15 +190,13 @@ export const DashboardAdmin: React.FC<Props> = ({
           beltColor: profile.belt_color || undefined,
           professorName: profile.professor_name || undefined,
           birthDate: profile.birth_date || undefined,
-          graduationCost: profile.graduation_cost || undefined,
+          graduationCost: profile.graduation_cost || undefined, // Include graduation_cost
           phone: profile.phone || undefined,
           first_name: profile.first_name || undefined,
           last_name: profile.last_name || undefined,
         };
       });
       setManagedUsers(fetchedUsers);
-      // console.log('Managed Users after fetch:', fetchedUsers); // Removed log
-      // console.log('Total Alunos (filtered in fetch):', fetchedUsers.filter(u => u.role === 'aluno').length); // Removed log
     }
   }, [session]); // Add session to dependency array
 
@@ -267,24 +269,25 @@ export const DashboardAdmin: React.FC<Props> = ({
     }
   };
 
-  const handleEditGradCost = (studentId: string, currentCost: number = 0) => {
-      setEditingGradCost({ studentId, cost: currentCost.toString() });
-  };
+  // Removed handleEditGradCost and handleSaveGradCost from here as they will be handled in Users tab
+  // const handleEditGradCost = (studentId: string, currentCost: number = 0) => {
+  //     setEditingGradCost({ studentId, cost: currentCost.toString() });
+  // };
 
-  const handleSaveGradCost = (professorId: string, studentId: string) => {
-      if (!editingGradCost) return;
-      const newCost = parseFloat(editingGradCost.cost) || 0;
-      setProfessorsData(prev => prev.map(prof => {
-          if (prof.professorId !== professorId) return prof;
-          return {
-              ...prof,
-              students: prof.students.map(std => 
-                  std.studentId === studentId ? { ...std, graduationCost: newCost } : std
-              )
-          };
-      }));
-      setEditingGradCost(null);
-  };
+  // const handleSaveGradCost = (professorId: string, studentId: string) => {
+  //     if (!editingGradCost) return;
+  //     const newCost = parseFloat(editingGradCost.cost) || 0;
+  //     setProfessorsData(prev => prev.map(prof => {
+  //         if (prof.professorId !== professorId) return prof;
+  //         return {
+  //             ...prof,
+  //             students: prof.students.map(std => 
+  //                 std.studentId === studentId ? { ...std, graduationCost: newCost } : std
+  //             )
+  //         };
+  //     }));
+  //     setEditingGradCost(null);
+  // };
 
   const handleUpdateBeltPrice = (belt: string, value: string) => {
       const numValue = parseFloat(value) || 0;
@@ -375,6 +378,31 @@ export const DashboardAdmin: React.FC<Props> = ({
               onNotifyAdmin(`Excluiu perfil do usuário ID: ${userId}`, user);
           }
       }
+  };
+
+  const handleUpdateStudentGraduationCost = async (studentId: string) => {
+    const newCost = parseFloat(editingGradCostValue);
+    if (isNaN(newCost) || newCost < 0) {
+        alert('Por favor, insira um valor numérico válido para o custo de graduação.');
+        return;
+    }
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ graduation_cost: newCost })
+        .eq('id', studentId);
+
+    if (error) {
+        console.error('Error updating graduation cost:', error);
+        alert('Erro ao atualizar custo de graduação.');
+    } else {
+        alert('Custo de graduação atualizado com sucesso!');
+        setEditingGradCostId(null);
+        setEditingGradCostValue('');
+        fetchManagedUsers(); // Re-fetch to update the list
+        const studentName = managedUsers.find(u => u.id === studentId)?.nickname || 'Aluno';
+        onNotifyAdmin(`Atualizou custo de graduação do aluno: ${studentName} para R$ ${newCost.toFixed(2)}`, user);
+    }
   };
 
   // --- PROFESSOR MODE HANDLERS ---
@@ -638,9 +666,6 @@ export const DashboardAdmin: React.FC<Props> = ({
      (u.nickname && u.nickname.toLowerCase().includes(studentDetailsSearch.toLowerCase())) ||
      u.email.toLowerCase().includes(studentDetailsSearch.toLowerCase()))
   );
-
-  // console.log('Managed Users for display:', managedUsers); // Removed log
-  // console.log('Total Alunos (filtered for display):', managedUsers.filter(u => u.role === 'aluno').length); // Removed log
 
   return (
     <div className="space-y-6">
@@ -1294,6 +1319,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   <th className="p-4">Função</th>
                                   <th className="p-4">Contato</th>
                                   <th className="p-4">Graduação</th>
+                                  <th className="p-4">Custo Graduação (R$)</th> {/* New column */}
                                   <th className="p-4 rounded-tr-lg text-right">Ações</th>
                               </tr>
                           </thead>
@@ -1329,6 +1355,52 @@ export const DashboardAdmin: React.FC<Props> = ({
                                       <td className="p-4 text-stone-300 text-xs">
                                           {u.belt}
                                       </td>
+                                      <td className="p-4"> {/* Graduation Cost Column */}
+                                          {u.role === 'aluno' ? (
+                                              editingGradCostId === u.id ? (
+                                                  <div className="flex items-center gap-1">
+                                                      <input
+                                                          type="number"
+                                                          value={editingGradCostValue}
+                                                          onChange={(e) => setEditingGradCostValue(e.target.value)}
+                                                          className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
+                                                          placeholder="0.00"
+                                                          min="0"
+                                                          step="0.01"
+                                                      />
+                                                      <button
+                                                          onClick={() => handleUpdateStudentGraduationCost(u.id)}
+                                                          className="text-green-500 hover:text-green-400 p-1 rounded"
+                                                          title="Salvar Custo"
+                                                      >
+                                                          <Save size={16} />
+                                                      </button>
+                                                      <button
+                                                          onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); }}
+                                                          className="text-stone-500 hover:text-red-500 p-1 rounded"
+                                                          title="Cancelar"
+                                                      >
+                                                          <X size={16} />
+                                                      </button>
+                                                  </div>
+                                              ) : (
+                                                  <div className="flex items-center gap-2 group">
+                                                      <span className={`${u.graduationCost && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
+                                                          {u.graduationCost && u.graduationCost > 0 ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
+                                                      </span>
+                                                      <button
+                                                          onClick={() => { setEditingGradCostId(u.id); setEditingGradCostValue(u.graduationCost?.toString() || '0'); }}
+                                                          className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded"
+                                                          title="Editar Custo"
+                                                      >
+                                                          <Edit2 size={12} />
+                                                      </button>
+                                                  </div>
+                                              )
+                                          ) : (
+                                              <span className="text-stone-600 italic text-xs">N/A</span>
+                                          )}
+                                      </td>
                                       <td className="p-4 text-right">
                                           <div className="flex justify-end gap-2">
                                               <button 
@@ -1351,7 +1423,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               ))}
                               {filteredManagedUsers.length === 0 && (
                                   <tr>
-                                      <td colSpan={5} className="p-8 text-center text-stone-500 italic">
+                                      <td colSpan={6} className="p-8 text-center text-stone-500 italic"> {/* Updated colspan */}
                                           Nenhum usuário encontrado.
                                       </td>
                                   </tr>
@@ -1614,26 +1686,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   <td className="py-3 text-stone-300">{student.technicalGrade.toFixed(1)}</td>
                                   <td className="py-3 text-stone-400 text-xs italic">"{student.lastEvaluation}"</td>
                                   <td className="py-3">
-                                      {editingGradCost?.studentId === student.studentId ? (
-                                          <div className="flex items-center gap-1">
-                                              <input 
-                                                type="number" 
-                                                value={editingGradCost.cost}
-                                                onChange={(e) => setEditingGradCost({ ...editingGradCost, cost: e.target.value })}
-                                                className="w-20 bg-stone-800 border border-stone-600 rounded px-2 py-1 text-white text-xs"
-                                              />
-                                              <button onClick={() => handleSaveGradCost(prof.professorId, student.studentId)} className="text-green-500 hover:text-green-400"><Save size={16}/></button>
-                                          </div>
-                                      ) : (
-                                          <div className="flex items-center gap-2 group">
-                                              <span className={`${student.graduationCost && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
-                                                  {student.graduationCost && student.graduationCost > 0 ? `R$ ${student.graduationCost.toFixed(2)}` : '-'}
-                                              </span>
-                                              <button onClick={() => handleEditGradCost(student.studentId, student.graduationCost)} className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity">
-                                                  <Edit2 size={12} />
-                                              </button>
-                                          </div>
-                                      )}
+                                      {/* This section is now handled in the 'Gerenciar Usuários' tab */}
+                                      <span className={`${student.graduationCost && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
+                                          {student.graduationCost && student.graduationCost > 0 ? `R$ ${student.graduationCost.toFixed(2)}` : '-'}
+                                      </span>
                                   </td>
                                 </tr>
                               ))}
