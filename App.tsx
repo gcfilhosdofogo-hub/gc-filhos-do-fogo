@@ -125,7 +125,6 @@ function AppContent() {
             });
             setCurrentView('profile_setup');
           } else if (profile) {
-            console.log('Fetched profile from Supabase:', profile); // Log fetched profile
             if (!profile.first_name || !profile.nickname || !profile.birth_date) {
               setCurrentView('profile_setup');
             } else {
@@ -144,7 +143,6 @@ function AppContent() {
                 graduationCost: profile.graduation_cost || undefined,
                 phone: profile.phone || undefined,
               };
-              console.log('Constructed user object:', fetchedUser); // Log constructed user
               setUser(fetchedUser);
               setCurrentView('dashboard');
             }
