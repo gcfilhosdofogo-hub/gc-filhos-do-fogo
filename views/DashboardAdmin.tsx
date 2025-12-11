@@ -1356,49 +1356,45 @@ export const DashboardAdmin: React.FC<Props> = ({
                                           {u.belt}
                                       </td>
                                       <td className="p-4"> {/* Graduation Cost Column */}
-                                          {u.graduationCost !== undefined ? ( // Allow editing for aluno and professor
-                                              editingGradCostId === u.id ? (
-                                                  <div className="flex items-center gap-1">
-                                                      <input
-                                                          type="number"
-                                                          value={editingGradCostValue}
-                                                          onChange={(e) => setEditingGradCostValue(e.target.value)}
-                                                          className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
-                                                          placeholder="0.00"
-                                                          min="0"
-                                                          step="0.01"
-                                                      />
-                                                      <button
-                                                          onClick={() => handleUpdateUserGraduationCost(u.id)} // Use generic function
-                                                          className="text-green-500 hover:text-green-400 p-1 rounded"
-                                                          title="Salvar Custo"
-                                                      >
-                                                          <Save size={16} />
-                                                      </button>
-                                                      <button
-                                                          onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); }}
-                                                          className="text-stone-500 hover:text-red-500 p-1 rounded"
-                                                          title="Cancelar"
-                                                      >
-                                                          <X size={16} />
-                                                      </button>
-                                                  </div>
-                                              ) : (
-                                                  <div className="flex items-center gap-2 group">
-                                                      <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
-                                                          {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
-                                                      </span>
-                                                      <button
-                                                          onClick={() => { setEditingGradCostId(u.id); setEditingGradCostValue(u.graduationCost?.toString() || '0'); }}
-                                                          className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded"
-                                                          title="Editar Custo"
-                                                      >
-                                                          <Edit2 size={12} />
-                                                      </button>
-                                                  </div>
-                                              )
+                                          {editingGradCostId === u.id ? (
+                                              <div className="flex items-center gap-1">
+                                                  <input
+                                                      type="number"
+                                                      value={editingGradCostValue}
+                                                      onChange={(e) => setEditingGradCostValue(e.target.value)}
+                                                      className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
+                                                      placeholder="0.00"
+                                                      min="0"
+                                                      step="0.01"
+                                                  />
+                                                  <button
+                                                      onClick={() => handleUpdateUserGraduationCost(u.id)} // Use generic function
+                                                      className="text-green-500 hover:text-green-400 p-1 rounded"
+                                                      title="Salvar Custo"
+                                                  >
+                                                      <Save size={16} />
+                                                  </button>
+                                                  <button
+                                                      onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); }}
+                                                      className="text-stone-500 hover:text-red-500 p-1 rounded"
+                                                      title="Cancelar"
+                                                  >
+                                                      <X size={16} />
+                                                  </button>
+                                              </div>
                                           ) : (
-                                              <span className="text-stone-600 italic text-xs">N/A</span>
+                                              <div className="flex items-center gap-2 group">
+                                                  <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
+                                                      {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
+                                                  </span>
+                                                  <button
+                                                      onClick={() => { setEditingGradCostId(u.id); setEditingGradCostValue(u.graduationCost?.toString() || '0'); }}
+                                                      className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded"
+                                                      title="Editar Custo"
+                                                  >
+                                                      <Edit2 size={12} />
+                                                  </button>
+                                              </div>
                                           )}
                                       </td>
                                       <td className="p-4 text-right">
