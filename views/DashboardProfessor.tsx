@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus } from 'lucide-react';
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield } from 'lucide-react'; // Adicionado Shield
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -302,6 +302,26 @@ export const DashboardProfessor: React.FC<Props> = ({
   return (
     <div className="space-y-6 animate-fade-in relative">
         
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-900 to-stone-900 p-8 rounded-2xl border border-purple-900/50 shadow-2xl relative overflow-hidden">
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+                <div className="relative group">
+                    <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg">
+                        <Logo className="w-full h-full object-cover" />
+                    </div>
+                </div>
+                
+                <div className="text-center md:text-left">
+                    <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
+                        <Shield className="text-purple-500" /> {/* Changed icon color for professor */}
+                        Painel do Professor
+                    </h1>
+                    <p className="text-purple-200 mt-2">Olá, {user.nickname || user.name}!</p>
+                </div>
+            </div>
+            <div className="absolute right-0 top-0 w-64 h-64 bg-purple-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
+        </div>
+
         {/* Top Actions */}
         <div className="flex flex-wrap gap-2 justify-end bg-stone-800 p-4 rounded-xl border border-stone-700">
             <Button variant="secondary" onClick={() => setProfView('music_manager')} className="border border-stone-600">
@@ -496,7 +516,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                             {myStudents.slice(0, 3).map(s => (
                                 <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
-                                      <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
+                                      {s.name.charAt(0)} {/* Revertido para a inicial do nome */}
                                     </div>
                                     <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
                                     <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
