@@ -76,7 +76,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
             appearance={appearance}
             theme="dark" // Using dark theme for consistency with your app's background
             providers={[]} // No third-party providers unless specified
-            // REMOVED: redirectTo={window.location.origin + '/dashboard'} // Let App.tsx handle navigation
+            redirectTo={window.location.origin + '/dashboard'} // Redirect to dashboard after auth
             localization={{
               variables: {
                 sign_in: {

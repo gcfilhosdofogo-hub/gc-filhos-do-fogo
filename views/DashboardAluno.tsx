@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Eye, PlayCircle, DollarSign, User as UserIcon } from 'lucide-react';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
@@ -235,6 +235,36 @@ export const DashboardAluno: React.FC<Props> = ({
     } catch (error: any) {
         console.error('Error generating signed URL:', error);
         alert('Erro ao visualizar o arquivo: ' + error.message);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/avatar.${fileExt}`; // Consistent avatar path
+        
+        const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true,
+            });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+        
+        onUpdateProfile({ avatarUrl: publicUrlData.publicUrl });
+        onNotifyAdmin('Atualizou foto de perfil', user); // Added notification
+        alert("Avatar atualizado com sucesso!");
+    } catch (error: any) {
+        console.error('Error uploading avatar:', error);
+        alert("Erro ao atualizar avatar: " + error.message);
     }
   };
 
@@ -518,17 +548,16 @@ export const DashboardAluno: React.FC<Props> = ({
         <div className="w-full md:w-1/3 space-y-4">
           <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
             <div className="flex flex-col items-center text-center">
-              {/* Profile Image with Upload - Removido */}
+              {/* Profile Image with Upload */}
               <div className="relative group cursor-pointer mb-4">
                   <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-orange-600 overflow-hidden">
-                    {/* <img 
+                    <img 
                         src={user.avatarUrl || `https://picsum.photos/seed/${user.id}/200`} 
                         alt="Avatar" 
                         className="w-full h-full object-cover"
-                    /> */}
-                    <UserIcon size={48} className="text-stone-400" /> {/* Placeholder icon */}
+                    />
                   </div>
-                  {/* <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                       <Camera size={24} className="text-white" />
                       <input 
                           type="file" 
@@ -536,7 +565,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           onChange={handleAvatarChange} 
                           className="hidden" 
                       />
-                  </label> */}
+                  </label>
               </div>
 
               <h2 className="text-2xl font-bold text-white">{user.nickname || user.name}</h2>
@@ -724,15 +753,16 @@ export const DashboardAluno: React.FC<Props> = ({
                                   <Ticket size={16} className="mr-1"/> Inscrever-se
                               </Button>
                           )}
-                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') ? (
+                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
                               <span className="text-yellow-400 text-sm flex items-center gap-1">
                                   <Clock size={14}/> Inscrição Pendente
                               </span>
-                          ) : myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') ? (
+                          )}
+                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
                               <span className="text-green-400 text-sm flex items-center gap-1">
                                   <Check size={14}/> Já Inscrito
                               </span>
-                          ) : null}
+                          )}
                       </div>
                    </div>
                  ))
