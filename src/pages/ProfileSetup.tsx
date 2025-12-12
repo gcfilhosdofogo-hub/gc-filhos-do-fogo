@@ -5,7 +5,7 @@ import { supabase } from '../integrations/supabase/client';
 import { useSession } from '../components/SessionContextProvider';
 import { User, UserRole, ALL_BELTS } from '../../types';
 import { Button } from '../../components/Button';
-import { ArrowLeft, User as UserIcon, GraduationCap, Calendar, Phone, Save, AlertCircle } from 'lucide-react'; // Removido Camera, UploadCloud
+import { ArrowLeft, User as UserIcon, GraduationCap, Calendar, Phone, Save, AlertCircle } from 'lucide-react';
 import { Logo } from '../../components/Logo';
 
 interface ProfileSetupProps {
@@ -305,7 +305,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
               onChange={handleChange}
               className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
               placeholder="Ex: Gafanhoto"
-              required {/* Adicionado required */}
+              required
             />
           </div>
 
@@ -318,7 +318,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
               value={formData.birth_date}
               onChange={handleChange}
               className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
-              required {/* Adicionado required */}
+              required
             />
           </div>
 
