@@ -3,6 +3,7 @@ import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSe
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
+import { Logo } from '../components/Logo'; // Import Logo component
 
 interface Props {
   user: User;
@@ -493,8 +494,10 @@ export const DashboardProfessor: React.FC<Props> = ({
                         <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-3">
                             {myStudents.slice(0, 3).map(s => (
-                                <div key={s.id} className="bg-stone-900 p-3 rounded flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">{s.name.charAt(0)}</div>
+                                <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
+                                    <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
+                                      <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
+                                    </div>
                                     <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
                                     <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
                                 </div>
