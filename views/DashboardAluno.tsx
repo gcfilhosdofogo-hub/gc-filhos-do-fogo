@@ -721,19 +721,18 @@ export const DashboardAluno: React.FC<Props> = ({
                                   className="text-sm h-auto px-3 py-1.5"
                                   onClick={() => handleOpenEventRegisterModal(event)}
                               >
-                                  <Ticket size={16} className="mr-1}/> Inscrever-se
+                                  <Ticket size={16} className="mr-1"/> Inscrever-se
                               </Button>
                           )}
-                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
+                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') ? (
                               <span className="text-yellow-400 text-sm flex items-center gap-1">
                                   <Clock size={14}/> Inscrição Pendente
                               </span>
-                          )}
-                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
+                          ) : myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') ? (
                               <span className="text-green-400 text-sm flex items-center gap-1">
                                   <Check size={14}/> Já Inscrito
                               </span>
-                          )}
+                          ) : null}
                       </div>
                    </div>
                  ))
