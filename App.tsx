@@ -120,7 +120,7 @@ function AppContent() {
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email') // Removed avatar_url from select
+            .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email')
             .eq('id', session.user.id)
             .single();
 
@@ -135,7 +135,8 @@ function AppContent() {
             });
             setCurrentView('profile_setup');
           } else if (profile) {
-            if (!profile.first_name || !profile.nickname || !profile.birth_date) {
+            // MODIFIED: Only check for first_name as mandatory for initial profile completion
+            if (!profile.first_name) { 
               setCurrentView('profile_setup');
             } else {
               const userRole: UserRole = profile.role as UserRole;
@@ -198,7 +199,6 @@ function AppContent() {
                 first_name: updatedData.first_name,
                 last_name: updatedData.last_name,
                 nickname: updatedData.nickname,
-                // avatar_url: updatedData.avatarUrl, // Removed avatar_url from update
                 belt: updatedData.belt,
                 belt_color: updatedData.beltColor,
                 professor_name: updatedData.professorName,
