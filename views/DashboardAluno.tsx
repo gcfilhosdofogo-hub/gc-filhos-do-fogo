@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Eye, PlayCircle, DollarSign } from 'lucide-react'; // Removido Camera
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Eye, PlayCircle, DollarSign, User as UserIcon } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
@@ -237,36 +237,6 @@ export const DashboardAluno: React.FC<Props> = ({
         alert('Erro ao visualizar o arquivo: ' + error.message);
     }
   };
-
-  // const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => { // Removido
-  //   if (!e.target.files || e.target.files.length === 0) return; // Removido
-
-  //   const file = e.target.files[0]; // Removido
-  //   try { // Removido
-  //       const fileExt = file.name.split('.').pop(); // Removido
-  //       const filePath = `${user.id}/avatar.${fileExt}`; // Consistent avatar path // Removido
-        
-  //       const { error: uploadError } = await supabase.storage // Removido
-  //           .from('avatars') // Removido
-  //           .upload(filePath, file, { // Removido
-  //               cacheControl: '3600', // Removido
-  //               upsert: true, // Removido
-  //           }); // Removido
-
-  //       if (uploadError) throw uploadError; // Removido
-
-  //       const { data: publicUrlData } = supabase.storage // Removido
-  //           .from('avatars') // Removido
-  //           .getPublicUrl(filePath); // Removido
-        
-  //       onUpdateProfile({ avatarUrl: publicUrlData.publicUrl }); // Removido
-  //       onNotifyAdmin('Atualizou foto de perfil', user); // Added notification // Removido
-  //       alert("Avatar atualizado com sucesso!"); // Removido
-  //   } catch (error: any) { // Removido
-  //       console.error('Error uploading avatar:', error); // Removido
-  //       alert("Erro ao atualizar avatar: " + error.message); // Removido
-  //   } // Removido
-  // }; // Removido
 
   const handleGoToUpload = () => {
       setShowPendingVideoPopup(false);
@@ -751,7 +721,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                   className="text-sm h-auto px-3 py-1.5"
                                   onClick={() => handleOpenEventRegisterModal(event)}
                               >
-                                  <Ticket size={16} className="mr-1"/> Inscrever-se
+                                  <Ticket size={16} className="mr-1}/> Inscrever-se
                               </Button>
                           )}
                           {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
