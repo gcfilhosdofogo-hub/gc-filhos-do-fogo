@@ -305,6 +305,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
               onChange={handleChange}
               className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
               placeholder="Ex: Gafanhoto"
+              required {/* Adicionado required */}
             />
           </div>
 
@@ -317,6 +318,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onProfileComplete, o
               value={formData.birth_date}
               onChange={handleChange}
               className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
+              required {/* Adicionado required */}
             />
           </div>
 
