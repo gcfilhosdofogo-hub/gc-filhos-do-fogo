@@ -135,7 +135,8 @@ function AppContent() {
             });
             setCurrentView('profile_setup');
           } else if (profile) {
-            if (!profile.first_name || !profile.nickname || !profile.birth_date) {
+            // MODIFIED: Use .trim() to check for empty strings as well as null
+            if (!profile.first_name?.trim() || !profile.nickname?.trim() || !profile.birth_date?.trim()) {
               setCurrentView('profile_setup');
             } else {
               const userRole: UserRole = profile.role as UserRole;
