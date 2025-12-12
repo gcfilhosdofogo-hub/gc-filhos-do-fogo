@@ -120,7 +120,7 @@ function AppContent() {
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role')
+            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email') // Added email to select
             .eq('id', session.user.id)
             .single();
 
@@ -143,7 +143,7 @@ function AppContent() {
                 id: session.user.id,
                 name: profile.first_name || session.user.email || 'User',
                 nickname: profile.nickname || undefined,
-                email: session.user.email || '',
+                email: profile.email || session.user.email || '', // Use profile email or session email
                 role: userRole,
                 avatarUrl: profile.avatar_url || undefined,
                 belt: profile.belt || undefined,
@@ -295,7 +295,7 @@ function AppContent() {
     if (!session) return;
     const { data, error } = await supabase.from('assignments').insert({ ...newAssignment, created_by: session.user.id }).select().single();
     if (error) console.error('Error adding assignment:', error);
-    else setAssignments(prev => [data, ...prev]);
+    else setAssignments(prev => [...prev, data]);
   };
 
   const handleUpdateAssignment = async (updatedAssignment: Assignment) => {

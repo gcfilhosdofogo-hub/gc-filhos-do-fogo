@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData } from '../types';
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
@@ -13,23 +13,21 @@ interface Props {
   onAddMusic: (music: MusicItem) => void;
   onNotifyAdmin: (action: string, user: User) => void;
   onUpdateProfile: (data: Partial<User>) => void;
-  classSessions: any[]; // Assuming classSessions are passed, but not directly used in this fix
-  onAddClassSession: (newSession: any) => Promise<void>;
-  onUpdateClassSession: (updatedSession: any) => Promise<void>;
-  assignments: any[];
-  onAddAssignment: (newAssignment: any) => Promise<void>;
-  onUpdateAssignment: (updatedAssignment: any) => Promise<void>;
+  classSessions: ClassSession[]; // Use real class sessions
+  onAddClassSession: (newSession: Omit<ClassSession, 'id' | 'created_at'>) => Promise<void>;
+  onUpdateClassSession: (updatedSession: ClassSession) => Promise<void>;
+  assignments: AssignmentType[]; // Use real assignments
+  onAddAssignment: (newAssignment: Omit<AssignmentType, 'id' | 'created_at'>) => Promise<void>;
+  onUpdateAssignment: (updatedAssignment: AssignmentType) => Promise<void>;
   homeTrainings: any[];
   eventRegistrations: any[]; // Added for consistency, though not directly used in this component's logic
 }
 
-interface Assignment {
-  id: string; // Changed to string for consistency with Supabase
+interface AssignmentFormState {
   title: string;
   description: string;
-  due_date: string; // Changed to due_date for consistency with Supabase
-  status: 'pending' | 'completed';
-  attachment_url?: string; // Changed to attachment_url for consistency with Supabase
+  dueDate: string; // Changed to dueDate for consistency with Supabase
+  studentId: string; // Added for specific student assignment
 }
 
 const UNIFORM_PRICES = {
@@ -59,7 +57,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   homeTrainings,
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
-  const [myClasses, setMyClasses] = useState(classSessions); // Use real class sessions
+  const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Use real class sessions
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '' });
   
   // Attendance State
@@ -69,10 +67,16 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Assignments
-  const [assignmentsState, setAssignmentsState] = useState<Assignment[]>(assignments); // Use real assignments
+  const [profAssignments, setProfAssignments] = useState<AssignmentType[]>(assignments.filter(a => a.created_by === user.id)); // Filter assignments created by this professor
+  const [newAssignment, setNewAssignment] = useState<AssignmentFormState>({ title: '', description: '', dueDate: '', studentId: '' }); // Added studentId
+  const [showAssignToStudentModal, setShowAssignToStudentModal] = useState(false);
+  const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<AssignmentType | null>(null);
+  const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<string>('');
+
 
   // Music
-  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '' });
+  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '', file: null as File | null });
+  const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
 
   // Uniform
   const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
@@ -115,6 +119,11 @@ export const DashboardProfessor: React.FC<Props> = ({
 
     fetchMyStudents();
   }, [user.nickname, user.first_name, user.name]);
+
+  useEffect(() => {
+    setMyClasses(classSessions.filter(cs => cs.professor_id === user.id));
+    setProfAssignments(assignments.filter(a => a.created_by === user.id));
+  }, [classSessions, assignments, user.id]);
 
 
   // Filter my orders
@@ -191,20 +200,56 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   const handleAddAssignment = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newAssignment.title || !newAssignment.due_date) { // Changed to due_date
+      if (!newAssignment.title || !newAssignment.dueDate) {
         alert('Por favor, preencha o título e a data de entrega do trabalho.');
         return;
       }
-      const assignmentPayload = {
+      const assignmentPayload: Omit<AssignmentType, 'id' | 'created_at'> = {
         created_by: user.id,
         title: newAssignment.title,
         description: newAssignment.description,
-        due_date: newAssignment.due_date, // Changed to due_date
+        due_date: newAssignment.dueDate,
         status: 'pending',
+        student_id: newAssignment.studentId || null, // Assign to specific student or null for general
       };
       await onAddAssignment(assignmentPayload);
-      setNewAssignment({ title: '', description: '', due_date: '' }); // Changed to due_date
+      setNewAssignment({ title: '', description: '', dueDate: '', studentId: '' });
       onNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
+      setShowAssignToStudentModal(false); // Close modal after adding
+  };
+
+  const handleCompleteAssignment = async (assignmentId: string, studentId: string, file: File) => {
+    setUploadingMusicFile(true); // Reusing this state for any file upload
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${studentId}/assignments/${assignmentId}-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('assignment_submissions')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('assignment_submissions')
+            .getPublicUrl(filePath);
+        
+        const updatedAssignment: AssignmentType = {
+            ...assignments.find(a => a.id === assignmentId)!,
+            status: 'completed',
+            attachment_url: publicUrlData.publicUrl,
+            attachment_name: file.name,
+            student_id: studentId, // Ensure student_id is set for submission
+        };
+        await onUpdateAssignment(updatedAssignment);
+        onNotifyAdmin(`Aluno ${myStudents.find(u => u.id === studentId)?.nickname || 'desconhecido'} entregou trabalho: ${updatedAssignment.title}`, user);
+        alert('Entrega registrada com sucesso!');
+    } catch (error: any) {
+        console.error('Error uploading assignment submission:', error);
+        alert('Erro ao fazer upload da entrega: ' + error.message);
+    } finally {
+        setUploadingMusicFile(false);
+    }
   };
 
   const handleOrderUniform = (e: React.FormEvent) => {
@@ -217,8 +262,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     else if (orderForm.item === 'pants_train') { price = UNIFORM_PRICES.pants_train; itemName = 'Calça de Treino'; }
     else if (orderForm.item === 'combo') { price = UNIFORM_PRICES.combo; itemName = 'Combo'; }
 
-    const newOrder: UniformOrder = {
-        id: Date.now().toString(),
+    const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
         user_id: user.id,
         user_name: user.nickname || user.name,
         user_role: user.role,
@@ -336,14 +380,15 @@ export const DashboardProfessor: React.FC<Props> = ({
                  <form onSubmit={handleAddAssignment} className="mb-6 space-y-4 bg-stone-900 p-4 rounded">
                      <input type="text" placeholder="Título" value={newAssignment.title} onChange={e => setNewAssignment({...newAssignment, title: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" required />
                      <textarea placeholder="Descrição" value={newAssignment.description} onChange={e => setNewAssignment({...newAssignment, description: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" />
-                     <input type="date" value={newAssignment.due_date} onChange={e => setNewAssignment({...newAssignment, due_date: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white [color-scheme:dark]" required />
+                     <input type="date" value={newAssignment.dueDate} onChange={e => setNewAssignment({...newAssignment, dueDate: e.target.value})} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white [color-scheme:dark]" required />
                      <Button type="submit">Criar Tarefa</Button>
                  </form>
                  <div className="space-y-2">
-                     {assignmentsState.map(a => (
+                     {profAssignments.map(a => (
                          <div key={a.id} className="bg-stone-900 p-3 rounded border-l-4 border-blue-500">
                              <p className="font-bold text-white">{a.title}</p>
                              <p className="text-xs text-stone-400">Entrega: {a.due_date}</p>
+                             {a.student_id && <p className="text-xs text-stone-500">Atribuído a: {myStudents.find(s => s.id === a.student_id)?.nickname || 'Aluno Desconhecido'}</p>}
                          </div>
                      ))}
                  </div>
@@ -447,14 +492,27 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                         <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
                         <div className="space-y-3">
-                            {myStudents.slice(0,3).map(s => (
+                            {myStudents.slice(0, 3).map(s => (
                                 <div key={s.id} className="bg-stone-900 p-3 rounded flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">{s.name.charAt(0)}</div>
-                                    <span className="text-white text-sm">{s.nickname || s.name}</span>
+                                    <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
+                                    <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
                                 </div>
                             ))}
                         </div>
-                        <Button fullWidth variant="secondary" className="mt-4 text-xs" onClick={() => setProfView('all_students')}>Ver Todos</Button>
+                        {/* New Assignments Card Summary */}
+                        <div 
+                            onClick={() => setProfView('assignments')}
+                            className="mt-4 bg-stone-900 p-3 rounded cursor-pointer hover:bg-stone-700 transition-colors border border-stone-600 flex justify-between items-center"
+                        >
+                            <div className="flex items-center gap-2">
+                                <BookOpen size={16} className="text-blue-400"/>
+                                <span className="text-sm font-bold text-white">Trabalhos Pendentes</span>
+                            </div>
+                            <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{profAssignments.filter(a => a.status === 'pending').length}</span>
+                        </div>
+
+                        <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
                     </div>
                 </div>
             </div>
