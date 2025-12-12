@@ -6,7 +6,7 @@ export interface User {
   nickname?: string; // Apelido
   email: string; // Adicionado para ser buscado do perfil
   role: UserRole;
-  // avatarUrl?: string; // Removido
+  avatarUrl?: string;
   belt?: string; // Cordel/Graduação
   beltColor?: string; // CSS Color or Gradient
   professorName?: string; // Nome/Apelido do Professor do aluno
