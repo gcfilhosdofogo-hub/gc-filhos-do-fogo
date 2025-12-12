@@ -15,6 +15,7 @@ function AppContent() {
   const { session, isLoading } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
+  const [isProfileChecked, setIsProfileChecked] = useState(false); // Novo estado para controlar a verificação do perfil
   
   // Supabase Data States
   const [events, setEvents] = useState<GroupEvent[]>([]);
@@ -26,14 +27,14 @@ function AppContent() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [monthlyPayments, setMonthlyPayments] = useState<PaymentRecord[]>([]);
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
-  const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]); // NEW: Event Registrations
+  const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
-    if (!session) return;
+    if (!session || !user) return; // Depende do usuário estar definido
 
     const userId = session.user.id;
-    const userRole = user?.role; // Use current user role if available
+    const userRole = user.role; // Use a role do usuário atual
 
     // Fetch Group Events
     const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
@@ -103,7 +104,7 @@ function AppContent() {
     if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
     else setClassSessions(classSessionData || []);
 
-    // NEW: Fetch Event Registrations (all for admin, own for others)
+    // Fetch Event Registrations (all for admin, own for others)
     let eventRegQuery = supabase.from('event_registrations').select('*');
     if (userRole !== 'admin') {
       eventRegQuery = eventRegQuery.eq('user_id', userId);
@@ -112,67 +113,72 @@ function AppContent() {
     if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
     else setEventRegistrations(eventRegData || []);
 
-  }, [session, user?.role, user?.professorName]); // Re-fetch if session or user role/professor changes
+  }, [session, user]); // Re-fetch if session or user changes
 
+  // Função para buscar o perfil do usuário
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email')
+      .eq('id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 means "no rows found"
+      console.error('Error fetching profile:', error);
+      return null; // Indica falha ou que o perfil não foi encontrado
+    }
+    return profile;
+  }, []);
+
+  // Efeito para gerenciar a sessão e o status do perfil
   useEffect(() => {
-    if (!isLoading) {
-      if (session) {
-        const fetchUserProfile = async () => {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email')
-            .eq('id', session.user.id)
-            .single();
+    const setupUserAndProfile = async () => {
+      if (isLoading) {
+        // Ainda carregando a sessão, não faça nada ainda
+        return;
+      }
 
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
-            // Fallback to a basic user object if profile fetch fails
-            setUser({
-              id: session.user.id,
-              name: session.user.email || 'User',
-              email: session.user.email || '',
-              role: 'aluno', // Default to aluno if profile not found or error
-            });
-            setCurrentView('profile_setup');
-          } else if (profile) {
-            // MODIFIED: Only check for first_name as mandatory for initial profile completion
-            if (!profile.first_name) { 
-              setCurrentView('profile_setup');
-            } else {
-              const userRole: UserRole = profile.role as UserRole;
-              const fetchedUser: User = {
-                id: session.user.id,
-                name: profile.first_name || session.user.email || 'User',
-                nickname: profile.nickname || undefined,
-                email: profile.email || session.user.email || '', // Use profile email or session email
-                role: userRole,
-                belt: profile.belt || undefined,
-                beltColor: profile.belt_color || undefined,
-                professorName: profile.professor_name || undefined,
-                birthDate: profile.birth_date || undefined,
-                // MODIFIED: Ensure 0 is kept as a number, or default to 0 if null
-                graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : 0,
-                phone: profile.phone || undefined,
-                first_name: profile.first_name || undefined,
-                last_name: profile.last_name || undefined,
-              };
-              setUser(fetchedUser);
-              setCurrentView('dashboard');
-            }
-          } else {
-            // No profile found, it's a new user or profile not completed
-            setCurrentView('profile_setup');
-          }
-        };
-        fetchUserProfile();
+      if (session) {
+        const profileData = await fetchUserProfile(session.user.id);
+
+        if (profileData && profileData.first_name) {
+          // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
+          const userRole: UserRole = profileData.role as UserRole;
+          const fetchedUser: User = {
+            id: session.user.id,
+            name: profileData.first_name || session.user.email || 'User',
+            nickname: profileData.nickname || undefined,
+            email: profileData.email || session.user.email || '',
+            role: userRole,
+            belt: profileData.belt || undefined,
+            beltColor: profileData.belt_color || undefined,
+            professorName: profileData.professor_name || undefined,
+            birthDate: profileData.birth_date || undefined,
+            graduationCost: profileData.graduation_cost !== null ? Number(profileData.graduation_cost) : 0,
+            phone: profileData.phone || undefined,
+            first_name: profileData.first_name || undefined,
+            last_name: profileData.last_name || undefined,
+          };
+          setUser(fetchedUser);
+          setCurrentView('dashboard');
+        } else {
+          // Perfil não existe ou está incompleto (primeiro nome ausente)
+          setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
+          setCurrentView('profile_setup');
+        }
       } else {
+        // Não há sessão, volta para a tela inicial
         setUser(null);
         setCurrentView('home');
       }
-    }
-  }, [session, isLoading]);
+      setIsProfileChecked(true); // Marca a verificação do perfil como completa
+    };
 
-  // Fetch data whenever user or session changes
+    setIsProfileChecked(false); // Reseta o status de verificação ao mudar a sessão/carregamento
+    setupUserAndProfile();
+  }, [session, isLoading, fetchUserProfile]); // Dependências
+
+  // Efeito para buscar dados do dashboard quando o usuário estiver definido
   useEffect(() => {
     if (session && user) {
       fetchData();
@@ -189,6 +195,7 @@ function AppContent() {
     await supabase.auth.signOut();
     setUser(null);
     setCurrentView('home');
+    setIsProfileChecked(false); // Reseta a verificação do perfil ao deslogar
   };
 
   const handleUpdateProfile = async (updatedData: Partial<User>) => {
@@ -214,9 +221,29 @@ function AppContent() {
             console.error('Error updating profile:', error);
             alert('Failed to update profile.');
         } else {
-            setUser({ ...user, ...updatedData });
-            alert('Profile updated successfully!');
-            fetchData(); // Re-fetch all data after profile update
+            // Após a atualização, re-fetch o perfil para garantir que o estado do App esteja sincronizado
+            const updatedProfile = await fetchUserProfile(session.user.id);
+            if (updatedProfile) {
+                const userRole: UserRole = updatedProfile.role as UserRole;
+                const fetchedUser: User = {
+                    id: session.user.id,
+                    name: updatedProfile.first_name || session.user.email || 'User',
+                    nickname: updatedProfile.nickname || undefined,
+                    email: updatedProfile.email || session.user.email || '',
+                    role: userRole,
+                    belt: updatedProfile.belt || undefined,
+                    beltColor: updatedProfile.belt_color || undefined,
+                    professorName: updatedProfile.professor_name || undefined,
+                    birthDate: updatedProfile.birth_date || undefined,
+                    graduationCost: updatedProfile.graduation_cost !== null ? Number(updatedProfile.graduation_cost) : 0,
+                    phone: updatedProfile.phone || undefined,
+                    first_name: updatedProfile.first_name || undefined,
+                    last_name: updatedProfile.last_name || undefined,
+                };
+                setUser(fetchedUser);
+                alert('Profile updated successfully!');
+                fetchData(); // Re-fetch all data after profile update
+            }
         }
     }
   };
@@ -328,7 +355,7 @@ function AppContent() {
     else setClassSessions(prev => prev.map(cs => cs.id === updatedSession.id ? data : cs));
   };
 
-  // NEW: Event Registration Handlers
+  // Event Registration Handlers
   const handleAddEventRegistration = async (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => {
     if (!session) return;
     const { data, error } = await supabase.from('event_registrations').insert(newRegistration).select().single();
@@ -351,14 +378,18 @@ function AppContent() {
     }
   };
 
-  const handleProfileComplete = (updatedUser: User) => {
+  const handleProfileComplete = async (updatedUser: User) => {
+    // O ProfileSetup já fez o upsert. Aqui, apenas atualizamos o estado local
+    // e acionamos o re-fetch de dados para o dashboard.
     setUser(updatedUser);
     setCurrentView('dashboard');
-    fetchData(); // Re-fetch all data after profile is completed
+    await fetchData(); // Garante que os dados do dashboard sejam carregados com o perfil atualizado
+    // O useEffect de gerenciamento de sessão/perfil irá re-avaliar e confirmar que o perfil está completo.
   };
 
   const renderContent = () => {
-    if (isLoading) {
+    // Mostra um loader enquanto a sessão e o perfil estão sendo verificados
+    if (isLoading || !isProfileChecked) {
       return (
         <div className="flex justify-center items-center min-h-[calc(100vh-64px)]">
           <p className="text-white text-xl">Carregando...</p>
