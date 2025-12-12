@@ -179,7 +179,6 @@ export const DashboardAdmin: React.FC<Props> = ({
           nickname: profile.nickname || undefined,
           email: profile.email || '', // Use profile email if available
           role: profile.role as UserRole, // This is where the role is read
-          // avatarUrl: profile.avatar_url || undefined, // Removed
           belt: profile.belt || undefined,
           beltColor: profile.belt_color || undefined,
           professorName: profile.professor_name || undefined,
@@ -694,19 +693,6 @@ export const DashboardAdmin: React.FC<Props> = ({
     }
   };
 
-  // const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => { // Removido
-  //   if (e.target.files && e.target.files[0]) {
-  //       const reader = new FileReader();
-  //       reader.onload = (ev) => {
-  //           if (ev.target?.result) {
-  //               onUpdateProfile({ avatarUrl: ev.target.result as string });
-  //               onNotifyAdmin('Atualizou foto de perfil', user); // Added notification
-  //           }
-  //       };
-  //       reader.readAsDataURL(e.target.files[0]);
-  //   }
-  // };
-
   // --- Student Details Handlers ---
   const handleViewReport = async (fileUrl: string, fileName: string) => {
     try {
@@ -758,22 +744,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
            <div className="relative group cursor-pointer">
               <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg">
-                {/* <img // Removido
-                    src={user.avatarUrl || `https://picsum.photos/seed/${user.id}/200`} 
-                    alt="Admin Avatar" 
-                    className="w-full h-full object-cover"
-                /> */}
                 <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
               </div>
-              {/* <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"> // Removido
-                  <Camera size={24} className="text-white" /> // Removido
-                  <input // Removido
-                      type="file" // Removido
-                      accept="image/*" // Removido
-                      onChange={handleAvatarChange} // Removido
-                      className="hidden" // Removido
-                  /> // Removido
-              </label> // Removido */}
            </div>
            
            <div className="text-center md:text-left">
@@ -1653,7 +1625,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                       <td className="p-4">
                                           <div className="flex items-center gap-3">
                                               <div className="w-8 h-8 rounded-full bg-stone-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-                                                  {/* {u.avatarUrl ? <img src={u.avatarUrl} className="w-full h-full object-cover"/> : u.name.charAt(0)} // Removido */}
                                                   <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                                               </div>
                                               <div>
@@ -1790,7 +1761,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   >
                                       <div className="flex items-center gap-3">
                                           <div className="w-10 h-10 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-                                              {/* {student.avatarUrl ? <img src={student.avatarUrl} className="w-full h-full object-cover"/> : student.name.charAt(0)} // Removido */}
                                               <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                                           </div>
                                           <div>
@@ -1943,7 +1913,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     e.stopPropagation();
                                     handleWhatsApp(prof.phone);
                                 }}
-                                className="text-green-500 hover:text-green-400 ml-1 transition-colors"
+                                className="text-green-500 hover:text-green-400 transition-colors p-1"
                                 title="Enviar WhatsApp"
                              >
                                 <MessageCircle size={18} />
@@ -2126,7 +2096,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                      <div key={student.id} className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border transition-all duration-200 ${isPresent ? 'bg-green-900/10 border-green-500/30' : 'bg-red-900/10 border-red-500/30'}`}>
                        <div className="flex items-center gap-4 cursor-pointer mb-3 md:mb-0" onClick={() => togglePresence(student.id)}>
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-colors ${isPresent ? 'bg-green-600' : 'bg-red-900'}`}>
-                            {/* {student.name.charAt(0)} // Removido */}
                             <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                           </div>
                           <div><p className={`font-medium ${isPresent ? 'text-white' : 'text-stone-300'}`}>{student.nickname || student.name}</p><p className="text-xs text-stone-500">{student.belt}</p></div>
@@ -2421,7 +2390,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
            {/* --- PROF MODE: ALL STUDENTS --- */}
            {profView === 'all_students' && (
-              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in p-6">
                   <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
                   <h2 className="2xl font-bold text-white mb-6">Meus Alunos (Admin Class)</h2>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -2473,7 +2442,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                             {studentsForAttendance.slice(0, 3).map(student => ( // Use real students here
                                 <div key={student.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
-                                      {/* {student.name.charAt(0)} // Removido */}
                                       <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                                     </div>
                                     <div className="flex-1"><p className="text-white text-sm font-bold">{student.nickname || student.name}</p></div>

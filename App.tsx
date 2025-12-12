@@ -120,7 +120,7 @@ function AppContent() {
         const fetchUserProfile = async () => {
           const { data: profile, error } = await supabase
             .from('profiles')
-            .select('first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email') // Added email to select
+            .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email') // Removed avatar_url from select
             .eq('id', session.user.id)
             .single();
 
@@ -145,7 +145,6 @@ function AppContent() {
                 nickname: profile.nickname || undefined,
                 email: profile.email || session.user.email || '', // Use profile email or session email
                 role: userRole,
-                avatarUrl: profile.avatar_url || undefined,
                 belt: profile.belt || undefined,
                 beltColor: profile.belt_color || undefined,
                 professorName: profile.professor_name || undefined,
@@ -199,7 +198,7 @@ function AppContent() {
                 first_name: updatedData.first_name,
                 last_name: updatedData.last_name,
                 nickname: updatedData.nickname,
-                avatar_url: updatedData.avatarUrl,
+                // avatar_url: updatedData.avatarUrl, // Removed avatar_url from update
                 belt: updatedData.belt,
                 belt_color: updatedData.beltColor,
                 professor_name: updatedData.professorName,

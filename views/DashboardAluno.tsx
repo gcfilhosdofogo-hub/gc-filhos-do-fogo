@@ -239,36 +239,6 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
-  // const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => { // Removido
-  //   if (!e.target.files || e.target.files.length === 0) return; // Removido
-
-  //   const file = e.target.files[0]; // Removido
-  //   try { // Removido
-  //       const fileExt = file.name.split('.').pop(); // Removido
-  //       const filePath = `${user.id}/avatar.${fileExt}`; // Consistent avatar path // Removido
-        
-  //       const { error: uploadError } = await supabase.storage // Removido
-  //           .from('avatars') // Removido
-  //           .upload(filePath, file, { // Removido
-  //               cacheControl: '3600', // Removido
-  //               upsert: true, // Removido
-  //           }); // Removido
-
-  //       if (uploadError) throw uploadError; // Removido
-
-  //       const { data: publicUrlData } = supabase.storage // Removido
-  //           .from('avatars') // Removido
-  //           .getPublicUrl(filePath); // Removido
-        
-  //       onUpdateProfile({ avatarUrl: publicUrlData.publicUrl }); // Removido
-  //       onNotifyAdmin('Atualizou foto de perfil', user); // Added notification // Removido
-  //       alert("Avatar atualizado com sucesso!"); // Removido
-  //   } catch (error: any) { // Removido
-  //       console.error('Error uploading avatar:', error); // Removido
-  //       alert("Erro ao atualizar avatar: " + error.message); // Removido
-  //   } // Removido
-  // }; // Removido
-
   const handleGoToUpload = () => {
       setShowPendingVideoPopup(false);
       setActiveView('home_training');
@@ -552,22 +522,8 @@ export const DashboardAluno: React.FC<Props> = ({
               {/* Profile Image with Upload */}
               <div className="relative group cursor-pointer mb-4">
                   <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-orange-600 overflow-hidden">
-                    {/* <img // Removido
-                        src={user.avatarUrl || `https://picsum.photos/seed/${user.id}/200`} 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover"
-                    /> */}
                     <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                   </div>
-                  {/* <label className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"> // Removido
-                      <Camera size={24} className="text-white" /> // Removido
-                      <input // Removido
-                          type="file" // Removido
-                          accept="image/*" // Removido
-                          onChange={handleAvatarChange} // Removido
-                          className="hidden" // Removido
-                      /> // Removido
-                  </label> // Removido */}
               </div>
 
               <h2 className="text-2xl font-bold text-white">{user.nickname || user.name}</h2>
@@ -959,7 +915,7 @@ export const DashboardAluno: React.FC<Props> = ({
                     >
                         <ArrowLeft size={16} /> Voltar
                     </button>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h2 className="2xl font-bold text-white flex items-center gap-2">
                         <GraduationCap className="text-orange-500" />
                         Boletim Escolar
                     </h2>
