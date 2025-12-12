@@ -192,10 +192,10 @@ export const DashboardAdmin: React.FC<Props> = ({
           .map(student => ({
             studentId: student.id,
             studentName: student.nickname || student.name,
-            attendanceRate: 0, // Placeholder, needs real data
-            technicalGrade: 0, // Placeholder, needs real data
-            musicalityGrade: 0, // Placeholder, needs real data
-            lastEvaluation: 'Nenhuma avaliação recente', // Placeholder, needs real data
+            attendanceRate: 0, // Placeholder, needs real data from attendance records
+            technicalGrade: 0, // Placeholder, needs real data from evaluations
+            musicalityGrade: 0, // Placeholder, needs real data from evaluations
+            lastEvaluation: 'Nenhuma avaliação recente', // Placeholder, needs real data from evaluations
             graduationCost: student.graduationCost,
             phone: student.phone,
           }));
@@ -204,7 +204,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           professorId: prof.id,
           professorName: prof.nickname || prof.name,
           phone: prof.phone,
-          currentContent: 'Conteúdo não definido', // Placeholder, needs real data
+          currentContent: 'Conteúdo não definido', // Placeholder, needs real data from class planning
           students: profStudents,
         };
       });
@@ -423,7 +423,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     await onAddPaymentRecord(newPayment);
     onNotifyAdmin(`Adicionou registro de pagamento para ${student.nickname || student.name}`, user);
     setShowAddPaymentModal(false);
-    setNewPaymentForm({ studentId: '', month: '', dueDate: '', amount: '' });
+    setNewPaymentForm({ studentId: '', month: '', dueDate: '', 'amount': '' });
   };
 
   const handleUpdateEventRegistration = async (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => {
@@ -807,7 +807,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                   <DollarSign size={24} />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">R$ {totalRevenue},00</h3>
+              <h3 className="text-2xl font-bold text-white">R$ {totalRevenue.toFixed(2).replace('.', ',')}</h3>
               <p className="text-stone-400 text-sm">Receita Confirmada</p>
             </button>
             <button 
@@ -819,7 +819,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                   <Wallet size={24} />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white">R$ {pendingRevenue},00</h3>
+              <h3 className="text-2xl font-bold text-white">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</h3>
               <p className="text-stone-400 text-sm">Receita Pendente</p>
             </button>
             <button 
@@ -1161,7 +1161,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     {order.shirt_size && <div>Blusa: {order.shirt_size}</div>}
                                     {order.pants_size && <div>Calça: {order.pants_size}</div>}
                                 </td>
-                                <td className="p-4 text-green-400 font-bold">R$ {order.total},00</td>
+                                <td className="p-4 text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</td>
                                 <td className="p-4">
                                     {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente Pagamento</span>}
                                     {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">Pago / Preparar</span>}
@@ -1289,7 +1289,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                <div className="flex items-center gap-4">
                    <div className="bg-stone-900 p-3 rounded-lg border border-stone-600">
                       <span className="text-stone-400 text-xs uppercase font-bold">Pendente a Receber</span>
-                      <p className="text-2xl font-bold text-red-500">R$ {pendingRevenue},00</p>
+                      <p className="text-2xl font-bold text-red-500">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</p>
                    </div>
                    <button 
                         onClick={() => setShowBeltConfig(true)}
@@ -1340,7 +1340,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                        <td className="p-4 font-medium text-white">{payment.student_name}</td>
                        <td className="p-4 text-stone-300">{payment.month}</td>
                        <td className="p-4 text-stone-300">{payment.due_date}</td>
-                       <td className="p-4 text-white font-mono">R$ {payment.amount},00</td>
+                       <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
                        <td className="p-4">
                          {payment.status === 'paid' && (
                            <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
@@ -1920,7 +1920,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                   <td className="py-3">
                                       {/* This section is now handled in the 'Gerenciar Usuários' tab */}
                                       <span className={`${student.graduationCost !== undefined && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
-                                          {student.graduationCost !== undefined ? `R$ ${student.graduationCost.toFixed(2)}` : '-'}
+                                          {student.graduationCost !== undefined ? `R$ ${student.graduationCost.toFixed(2).replace('.', ',')}` : '-'}
                                       </span>
                                   </td>
                                 </tr>
@@ -2178,7 +2178,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                       </form>
                       <div className="bg-stone-900 p-4 rounded text-sm text-stone-400">
                           <h3 className="text-white font-bold mb-2">Meus Pedidos</h3>
-                          {myOrders.length === 0 ? <p>Nenhum pedido.</p> : myOrders.map(o => <div key={o.id} className="border-b border-stone-700 py-1">{o.item} - R$ {o.total}</div>)}
+                          {myOrders.length === 0 ? <p>Nenhum pedido.</p> : myOrders.map(o => <div key={o.id} className="border-b border-stone-700 py-1">{o.item} - R$ {o.total.toFixed(2).replace('.', ',')}</div>)}
                       </div>
                   </div>
               </div>
