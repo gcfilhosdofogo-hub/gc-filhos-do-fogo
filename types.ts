@@ -84,6 +84,18 @@ export interface Assignment {
   student_id?: string; // If assignment is specific to a student
 }
 
+// NEW: Event Registration Type
+export interface EventRegistration {
+  id: string;
+  event_id: string;
+  user_id: string;
+  user_name: string; // Denormalized for easier display
+  event_title: string; // Denormalized
+  amount_paid: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  registered_at: string; // ISO string
+}
+
 // New Types for Admin Dashboard
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
 

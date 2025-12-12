@@ -8,7 +8,7 @@ import { DashboardAdmin } from './views/DashboardAdmin';
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration } from './types';
 
 
 function AppContent() {
@@ -26,6 +26,7 @@ function AppContent() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [monthlyPayments, setMonthlyPayments] = useState<PaymentRecord[]>([]);
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
+  const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]); // NEW: Event Registrations
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
@@ -82,7 +83,7 @@ function AppContent() {
     // Fetch Assignments (all for admin/professor, relevant for student)
     let assignmentQuery = supabase.from('assignments').select('*');
     if (userRole === 'aluno') {
-      assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},student_id.is.null`);
+      assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},created_by.eq.${user?.professorName}`); // Students see their own or general assignments from their professor
     }
     const { data: assignmentData, error: assignmentError } = await assignmentQuery;
     if (assignmentError) console.error('Error fetching assignments:', assignmentError);
@@ -102,7 +103,16 @@ function AppContent() {
     if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
     else setClassSessions(classSessionData || []);
 
-  }, [session, user?.role]); // Re-fetch if session or user role changes
+    // NEW: Fetch Event Registrations (all for admin, own for others)
+    let eventRegQuery = supabase.from('event_registrations').select('*');
+    if (userRole !== 'admin') {
+      eventRegQuery = eventRegQuery.eq('user_id', userId);
+    }
+    const { data: eventRegData, error: eventRegError } = await eventRegQuery;
+    if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
+    else setEventRegistrations(eventRegData || []);
+
+  }, [session, user?.role, user?.professorName]); // Re-fetch if session or user role/professor changes
 
   useEffect(() => {
     if (!isLoading) {
@@ -143,6 +153,8 @@ function AppContent() {
                 // MODIFIED: Ensure 0 is kept as a number, or default to 0 if null
                 graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : 0,
                 phone: profile.phone || undefined,
+                first_name: profile.first_name || undefined,
+                last_name: profile.last_name || undefined,
               };
               setUser(fetchedUser);
               setCurrentView('dashboard');
@@ -183,7 +195,20 @@ function AppContent() {
     if (user && session) {
         const { error } = await supabase
             .from('profiles')
-            .update(updatedData)
+            .update({
+                first_name: updatedData.first_name,
+                last_name: updatedData.last_name,
+                nickname: updatedData.nickname,
+                avatar_url: updatedData.avatarUrl,
+                belt: updatedData.belt,
+                belt_color: updatedData.beltColor,
+                professor_name: updatedData.professorName,
+                birth_date: updatedData.birthDate,
+                graduation_cost: updatedData.graduationCost,
+                phone: updatedData.phone,
+                role: updatedData.role, // Allow admin to update role
+                updated_at: new Date().toISOString(),
+            })
             .eq('id', session.user.id);
 
         if (error) {
@@ -304,6 +329,21 @@ function AppContent() {
     else setClassSessions(prev => prev.map(cs => cs.id === updatedSession.id ? data : cs));
   };
 
+  // NEW: Event Registration Handlers
+  const handleAddEventRegistration = async (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => {
+    if (!session) return;
+    const { data, error } = await supabase.from('event_registrations').insert(newRegistration).select().single();
+    if (error) console.error('Error adding event registration:', error);
+    else setEventRegistrations(prev => [...prev, data]);
+  };
+
+  const handleUpdateEventRegistrationStatus = async (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => {
+    const { data, error } = await supabase.from('event_registrations').update({ status }).eq('id', registrationId).select().single();
+    if (error) console.error('Error updating event registration status:', error);
+    else setEventRegistrations(prev => prev.map(reg => reg.id === registrationId ? data : reg));
+  };
+
+
   const navigate = (view: string) => {
     if (view === 'login' && user) {
       setCurrentView('dashboard');
@@ -358,6 +398,8 @@ function AppContent() {
               classSessions={classSessions}
               assignments={assignments.filter(a => a.student_id === user.id || a.student_id === null)} // Pass relevant assignments
               onUpdateAssignment={handleUpdateAssignment}
+              eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
+              onAddEventRegistration={handleAddEventRegistration}
             />
           )}
           {user.role === 'professor' && (
@@ -377,6 +419,7 @@ function AppContent() {
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings} // Professor can see all home trainings
+              eventRegistrations={eventRegistrations} // Professor can see all event registrations
             />
           )}
           {user.role === 'admin' && (
@@ -404,6 +447,10 @@ function AppContent() {
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings}
               schoolReports={schoolReports} 
+              eventRegistrations={eventRegistrations} // Pass event registrations to admin
+              onAddEventRegistration={handleAddEventRegistration}
+              onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
+              onNavigate={navigate} // Pass navigate function
             />
           )}
         </div>
