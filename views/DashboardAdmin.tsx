@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle } from 'lucide-react';
+import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration } from '../types';
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -27,39 +27,12 @@ interface Props {
   monthlyPayments: PaymentRecord[]; // Now receiving from App.tsx
   onAddPaymentRecord: (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => Promise<void>;
   onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>;
+  // New props for Event Registrations
+  eventRegistrations: EventRegistration[];
+  onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>;
+  onUpdateEventRegistrationStatus: (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => Promise<void>;
+  onNavigate: (view: string) => void; // Added for card navigation
 }
-
-// --- MOCK DATA FOR ADMIN (GLOBAL) ---
-// Removed INITIAL_PAYMENTS as we will use the prop monthlyPayments
-
-const INITIAL_PROFESSORS_DATA: ProfessorClassData[] = [
-  {
-    professorId: 'p1',
-    professorName: 'Vicente "Anu Branco"',
-    phone: '5511999999999',
-    currentContent: 'Sequência de Bimba (1-4), Movimentação de Angola básica e Toques de Berimbau (São Bento Grande).',
-    students: [
-      { studentId: 's1', studentName: 'João "Gafanhoto"', attendanceRate: 92, technicalGrade: 8.5, musicalityGrade: 7.0, lastEvaluation: 'Bom desenvolvimento na ginga', graduationCost: 0, phone: '5511999999999' },
-      { studentId: 's2', studentName: 'Pedro "Ouriço"', attendanceRate: 75, technicalGrade: 6.5, musicalityGrade: 8.0, lastEvaluation: 'Precisa melhorar a flexibilidade', graduationCost: 0, phone: '5511988888888' },
-    ]
-  },
-  {
-    professorId: 'p2',
-    professorName: 'Jefferson "Zeus"',
-    phone: '5511988888888',
-    currentContent: 'Acrobacias intermediárias (Macaco, Au sem mão), Jogo de Iúna e Improvisação.',
-    students: [
-      { studentId: 's3', studentName: 'Maria "Vespa"', attendanceRate: 100, technicalGrade: 9.5, musicalityGrade: 9.0, lastEvaluation: 'Pronta para troca de corda', graduationCost: 0, phone: '5511977777777' },
-      { studentId: 's4', studentName: 'Lucas "Sombra"', attendanceRate: 85, technicalGrade: 8.0, musicalityGrade: 6.5, lastEvaluation: 'Focar mais nos instrumentos', graduationCost: 0, phone: '5511966666666' },
-    ]
-  },
-];
-
-// --- MOCK DATA FOR PROFESSOR MODE (Admin's own classes) ---
-const INITIAL_MY_CLASSES = [
-  { id: 100, title: 'Treino Avançado - Graduados', time: 'Hoje, 20:30', location: 'Sede' },
-  { id: 101, title: 'Roda de Mestres', time: 'Sábado, 15:00', location: 'Centro Cultural' }
-];
 
 const UNIFORM_PRICES = {
     shirt: 30,
@@ -68,7 +41,7 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-type Tab = 'overview' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
 
 export const DashboardAdmin: React.FC<Props> = ({ 
@@ -90,15 +63,20 @@ export const DashboardAdmin: React.FC<Props> = ({
     monthlyPayments, // Use prop for payments
     onAddPaymentRecord,
     onUpdatePaymentRecord,
+    eventRegistrations, // New prop
+    onAddEventRegistration,
+    onUpdateEventRegistrationStatus,
+    onNavigate, // New prop
 }) => {
   const { session } = useSession(); // Get session from context
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  
+  // Event Management State
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [eventFormData, setEventFormData] = useState({ title: '', date: '', description: '', price: '' });
   
   // Finance State
-  // const [payments, setPayments] = useState<PaymentRecord[]>(INITIAL_PAYMENTS); // Removed, use monthlyPayments prop
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
   const [showBeltConfig, setShowBeltConfig] = useState(false);
   const [beltPrices, setBeltPrices] = useState<Record<string, number>>(() => {
@@ -109,12 +87,17 @@ export const DashboardAdmin: React.FC<Props> = ({
       defaults["Cordel Verde"] = 150;
       return defaults;
   });
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [newPaymentForm, setNewPaymentForm] = useState({
+      studentId: '',
+      month: '',
+      dueDate: '',
+      amount: '',
+  });
 
   // Pedagogy State
-  const [professorsData, setProfessorsData] = useState<ProfessorClassData[]>(INITIAL_PROFESSORS_DATA);
+  const [professorsData, setProfessorsData] = useState<ProfessorClassData[]>([]); // Now real data
   const [expandedProfessor, setExpandedProfessor] = useState<string | null>(null);
-  // Removed editingGradCost and handleSaveGradCost from here as they will be handled in Users tab
-  // const [editingGradCost, setEditingGradCost] = useState<{studentId: string, cost: string} | null>(null);
 
   // Users Management State
   const [managedUsers, setManagedUsers] = useState<User[]>([]); // Initialize empty, will fetch from Supabase
@@ -136,9 +119,9 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [editingGradCostValue, setEditingGradCostValue] = useState<string>('');
 
 
-  // --- PROFESSOR MODE STATE ---
+  // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
-  const [myClasses, setMyClasses] = useState(INITIAL_MY_CLASSES);
+  const [myClasses, setMyClasses] = useState([]); // This should also come from Supabase
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [confirmedClasses, setConfirmedClasses] = useState<number[]>([]);
   const [attendanceData, setAttendanceData] = useState<Record<string, boolean>>({});
@@ -173,7 +156,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   // --- SUPABASE USER MANAGEMENT ---
   const fetchManagedUsers = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role'); // Explicitly select all fields
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, avatar_url, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email'); // Explicitly select all fields
     if (error) {
       console.error('Error fetching managed users:', error);
       // Optionally show a toast notification
@@ -181,9 +164,9 @@ export const DashboardAdmin: React.FC<Props> = ({
       const fetchedUsers: User[] = data.map(profile => {
         return {
           id: profile.id,
-          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email || 'Usuário',
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.nickname || 'Usuário',
           nickname: profile.nickname || undefined,
-          email: session?.user.email || '', // Use session email if profile doesn't have it
+          email: profile.email || '', // Use profile email if available
           role: profile.role as UserRole, // This is where the role is read
           avatarUrl: profile.avatar_url || undefined,
           belt: profile.belt || undefined,
@@ -198,6 +181,34 @@ export const DashboardAdmin: React.FC<Props> = ({
         };
       });
       setManagedUsers(fetchedUsers);
+
+      // Process for Pedagogy tab
+      const professors = fetchedUsers.filter(u => u.role === 'professor' || u.role === 'admin');
+      const students = fetchedUsers.filter(u => u.role === 'aluno');
+
+      const realProfessorsData: ProfessorClassData[] = professors.map(prof => {
+        const profStudents: StudentAcademicData[] = students
+          .filter(student => student.professorName === (prof.nickname || prof.first_name || prof.name))
+          .map(student => ({
+            studentId: student.id,
+            studentName: student.nickname || student.name,
+            attendanceRate: 0, // Placeholder, needs real data
+            technicalGrade: 0, // Placeholder, needs real data
+            musicalityGrade: 0, // Placeholder, needs real data
+            lastEvaluation: 'Nenhuma avaliação recente', // Placeholder, needs real data
+            graduationCost: student.graduationCost,
+            phone: student.phone,
+          }));
+        
+        return {
+          professorId: prof.id,
+          professorName: prof.nickname || prof.name,
+          phone: prof.phone,
+          currentContent: 'Conteúdo não definido', // Placeholder, needs real data
+          students: profStudents,
+        };
+      });
+      setProfessorsData(realProfessorsData);
     }
   }, [session]); // Add session to dependency array
 
@@ -212,6 +223,7 @@ export const DashboardAdmin: React.FC<Props> = ({
   const pendingRevenue = monthlyPayments.filter(p => p.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
 
   const pendingUniformOrders = uniformOrders.filter(o => o.status === 'pending');
+  const pendingEventRegistrations = eventRegistrations.filter(reg => reg.status === 'pending');
 
   const handleStartEdit = (e: React.MouseEvent, event: GroupEvent) => {
     e.preventDefault();
@@ -270,26 +282,6 @@ export const DashboardAdmin: React.FC<Props> = ({
     }
   };
 
-  // Removed handleEditGradCost and handleSaveGradCost from here as they will be handled in Users tab
-  // const handleEditGradCost = (studentId: string, currentCost: number = 0) => {
-  //     setEditingGradCost({ studentId, cost: currentCost.toString() });
-  // };
-
-  // const handleSaveGradCost = (professorId: string, studentId: string) => {
-  //     if (!editingGradCost) return;
-  //     const newCost = parseFloat(editingGradCost.cost) || 0;
-  //     setProfessorsData(prev => prev.map(prof => {
-  //         if (prof.professorId !== professorId) return prof;
-  //         return {
-  //             ...prof,
-  //             students: prof.students.map(std => 
-  //                 std.studentId === studentId ? { ...std, graduationCost: newCost } : std
-  //             )
-  //         };
-  //     }));
-  //     setEditingGradCost(null);
-  // };
-
   const handleUpdateBeltPrice = (belt: string, value: string) => {
       const numValue = parseFloat(value) || 0;
       setBeltPrices(prev => ({ ...prev, [belt]: numValue }));
@@ -308,7 +300,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       if (userToEdit) {
           setEditingUser(userToEdit);
           setUserForm({
-              name: userToEdit.first_name || userToEdit.name,
+              name: `${userToEdit.first_name || ''} ${userToEdit.last_name || ''}`.trim(),
               nickname: userToEdit.nickname || '',
               email: userToEdit.email,
               role: userToEdit.role,
@@ -403,6 +395,42 @@ export const DashboardAdmin: React.FC<Props> = ({
         fetchManagedUsers(); // Re-fetch to update the list
         const userName = managedUsers.find(u => u.id === userIdToUpdate)?.nickname || 'Usuário';
         onNotifyAdmin(`Atualizou custo de graduação do usuário: ${userName} para R$ ${newCost.toFixed(2)}`, user);
+    }
+  };
+
+  // --- FINANCE TAB HANDLERS ---
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPaymentForm.studentId || !newPaymentForm.month || !newPaymentForm.dueDate || !newPaymentForm.amount) {
+        alert('Por favor, preencha todos os campos para adicionar um pagamento.');
+        return;
+    }
+    const student = managedUsers.find(u => u.id === newPaymentForm.studentId);
+    if (!student) {
+        alert('Aluno não encontrado.');
+        return;
+    }
+
+    const newPayment: Omit<PaymentRecord, 'id' | 'created_at'> = {
+        student_id: student.id,
+        student_name: student.nickname || student.name,
+        month: newPaymentForm.month,
+        due_date: newPaymentForm.dueDate,
+        amount: parseFloat(newPaymentForm.amount),
+        status: 'pending',
+    };
+
+    await onAddPaymentRecord(newPayment);
+    onNotifyAdmin(`Adicionou registro de pagamento para ${student.nickname || student.name}`, user);
+    setShowAddPaymentModal(false);
+    setNewPaymentForm({ studentId: '', month: '', dueDate: '', amount: '' });
+  };
+
+  const handleUpdateEventRegistration = async (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => {
+    await onUpdateEventRegistrationStatus(registrationId, status);
+    const registration = eventRegistrations.find(reg => reg.id === registrationId);
+    if (registration) {
+        onNotifyAdmin(`Atualizou status de registro de evento para ${registration.user_name} no evento ${registration.event_title} para ${status}`, user);
     }
   };
 
@@ -559,7 +587,6 @@ export const DashboardAdmin: React.FC<Props> = ({
       };
 
       setProfModeAssignments([...profModeAssignments, assignment]);
-      setNewAssignment({ title: '', description: '', dueDate: '' });
       onNotifyAdmin(`Admin criou trabalho: ${newAssignment.title}`, user);
   };
 
@@ -713,6 +740,12 @@ export const DashboardAdmin: React.FC<Props> = ({
           Visão Geral
         </button>
         <button 
+          onClick={() => setActiveTab('events')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'events' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+        >
+          <CalendarPlus size={16}/> Eventos
+        </button>
+        <button 
           onClick={() => setActiveTab('users')}
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'users' ? 'bg-stone-800 text-pink-500 border-t-2 border-pink-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
         >
@@ -729,8 +762,10 @@ export const DashboardAdmin: React.FC<Props> = ({
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'finance' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
         >
           Financeiro
-          {pendingUniformOrders.length > 0 && (
-              <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full animate-pulse">{pendingUniformOrders.length}</span>
+          {(pendingUniformOrders.length > 0 || pendingEventRegistrations.length > 0) && (
+              <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
+                {pendingUniformOrders.length + pendingEventRegistrations.length}
+              </span>
           )}
         </button>
         <button 
@@ -751,22 +786,54 @@ export const DashboardAdmin: React.FC<Props> = ({
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Alunos', value: managedUsers.filter(u => u.role === 'aluno').length.toString(), icon: Users, color: 'text-blue-500' },
-              { label: 'Receita Confirmada', value: `R$ ${totalRevenue},00`, icon: DollarSign, color: 'text-green-500' },
-              { label: 'Eventos Ativos', value: events.length.toString(), icon: CalendarPlus, color: 'text-orange-500' },
-              { label: 'Notificações', value: notifications.length.toString(), icon: Bell, color: 'text-yellow-500' },
-            ].map((item, idx) => (
-              <div key={idx} className="bg-stone-800 p-6 rounded-xl border border-stone-700">
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`p-2 rounded-lg bg-stone-900 ${item.color}`}>
-                    <item.icon size={24} />
-                  </div>
+            <button 
+                onClick={() => setActiveTab('users')}
+                className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-blue-500 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2 rounded-lg bg-stone-900 text-blue-500`}>
+                  <Users size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-white">{item.value}</h3>
-                <p className="text-stone-400 text-sm">{item.label}</p>
               </div>
-            ))}
+              <h3 className="text-2xl font-bold text-white">{managedUsers.filter(u => u.role === 'aluno').length}</h3>
+              <p className="text-stone-400 text-sm">Total Alunos</p>
+            </button>
+            <button 
+                onClick={() => setActiveTab('finance')}
+                className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-green-500 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2 rounded-lg bg-stone-900 text-green-500`}>
+                  <DollarSign size={24} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-white">R$ {totalRevenue},00</h3>
+              <p className="text-stone-400 text-sm">Receita Confirmada</p>
+            </button>
+            <button 
+                onClick={() => setActiveTab('finance')}
+                className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-red-500 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2 rounded-lg bg-stone-900 text-red-500`}>
+                  <Wallet size={24} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-white">R$ {pendingRevenue},00</h3>
+              <p className="text-stone-400 text-sm">Receita Pendente</p>
+            </button>
+            <button 
+                onClick={() => setActiveTab('events')}
+                className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-orange-500 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2 rounded-lg bg-stone-900 text-orange-500`}>
+                  <CalendarPlus size={24} />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-white">{events.length}</h3>
+              <p className="text-stone-400 text-sm">Eventos Ativos</p>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -792,8 +859,24 @@ export const DashboardAdmin: React.FC<Props> = ({
                   </div>
               </div>
 
-              {/* Event Management */}
+              {/* Placeholder for other overview content if needed */}
               <div className="bg-stone-800 rounded-xl border border-stone-700 p-6 lg:col-span-2">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-4">
+                    <Info className="text-blue-500" />
+                    Informações Rápidas
+                </h3>
+                <p className="text-stone-400">
+                    Aqui você pode adicionar outros widgets ou resumos importantes para a visão geral do seu painel.
+                </p>
+              </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TAB: EVENTS --- */}
+      {activeTab === 'events' && (
+        <div className="space-y-6 animate-fade-in">
+            <div className="bg-stone-800 rounded-xl border border-stone-700 p-6">
                 <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <CalendarPlus className="text-orange-500" />
@@ -913,8 +996,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="text-stone-500 text-sm col-span-full text-center py-4">Nenhum evento ativo.</div>
                 )}
                 </div>
-              </div>
-          </div>
+            </div>
         </div>
       )}
 
@@ -962,6 +1044,85 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <Save size={18} /> Salvar Alterações
                           </Button>
                       </div>
+                  </div>
+              </div>
+          )}
+
+          {/* ADD PAYMENT MODAL */}
+          {showAddPaymentModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                  <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
+                      <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
+                          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                              <PlusCircle className="text-green-500" />
+                              Adicionar Novo Pagamento
+                          </h3>
+                          <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white"><X size={24}/></button>
+                      </div>
+                      <form onSubmit={handleAddPayment} className="space-y-4">
+                          <div>
+                              <label htmlFor="studentId" className="block text-sm text-stone-400 mb-1">Aluno</label>
+                              <select
+                                  id="studentId"
+                                  name="studentId"
+                                  value={newPaymentForm.studentId}
+                                  onChange={(e) => setNewPaymentForm({...newPaymentForm, studentId: e.target.value})}
+                                  className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                  required
+                              >
+                                  <option value="">Selecione um aluno</option>
+                                  {managedUsers.filter(u => u.role === 'aluno').map(student => (
+                                      <option key={student.id} value={student.id}>{student.nickname || student.name}</option>
+                                  ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Mês de Referência</label>
+                              <input
+                                  type="text"
+                                  id="month"
+                                  name="month"
+                                  value={newPaymentForm.month}
+                                  onChange={(e) => setNewPaymentForm({...newPaymentForm, month: e.target.value})}
+                                  className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                  placeholder="Ex: Outubro"
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Data de Vencimento</label>
+                              <input
+                                  type="date"
+                                  id="dueDate"
+                                  name="dueDate"
+                                  value={newPaymentForm.dueDate}
+                                  onChange={(e) => setNewPaymentForm({...newPaymentForm, dueDate: e.target.value})}
+                                  className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
+                              <input
+                                  type="number"
+                                  id="amount"
+                                  name="amount"
+                                  value={newPaymentForm.amount}
+                                  onChange={(e) => setNewPaymentForm({...newPaymentForm, amount: e.target.value})}
+                                  className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                  placeholder="Ex: 100.00"
+                                  min="0"
+                                  step="0.01"
+                                  required
+                              />
+                          </div>
+                          <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
+                              <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                              <Button type="submit">
+                                  <Plus size={18} /> Adicionar Pagamento
+                              </Button>
+                          </div>
+                      </form>
                   </div>
               </div>
           )}
@@ -1044,6 +1205,77 @@ export const DashboardAdmin: React.FC<Props> = ({
              </div>
           </div>
 
+          {/* EVENT REGISTRATIONS PANEL */}
+          <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+             <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
+                <Ticket className="text-purple-500" />
+                Registros de Eventos
+                {pendingEventRegistrations.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingEventRegistrations.length} pendentes</span>}
+             </h2>
+
+             <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
+                            <th className="p-4">Participante</th>
+                            <th className="p-4">Evento</th>
+                            <th className="p-4">Valor Pago</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-700 text-sm">
+                        {eventRegistrations.map(reg => (
+                            <tr key={reg.id} className={`hover:bg-stone-700/30 ${reg.status === 'pending' ? 'bg-purple-900/10' : ''}`}>
+                                <td className="p-4">
+                                    <div className="font-bold text-white">{reg.user_name}</div>
+                                    <div className="text-xs text-stone-500">Registrado em: {new Date(reg.registered_at).toLocaleDateString('pt-BR')}</div>
+                                </td>
+                                <td className="p-4 text-white font-medium">{reg.event_title}</td>
+                                <td className="p-4 text-green-400 font-bold">R$ {reg.amount_paid.toFixed(2).replace('.', ',')}</td>
+                                <td className="p-4">
+                                    {reg.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente Pagamento</span>}
+                                    {reg.status === 'paid' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Pago</span>}
+                                    {reg.status === 'cancelled' && <span className="px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs border border-red-900/50">Cancelado</span>}
+                                </td>
+                                <td className="p-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        {reg.status === 'pending' && (
+                                            <Button 
+                                                className="text-xs px-2 py-1 h-auto" 
+                                                variant="secondary"
+                                                onClick={() => handleUpdateEventRegistration(reg.id, 'paid')}
+                                                title="Confirmar Pagamento"
+                                            >
+                                                <DollarSign size={14} className="mr-1"/> Confirmar Pagto
+                                            </Button>
+                                        )}
+                                        {reg.status === 'paid' && (
+                                            <span className="text-stone-600 text-xs flex items-center justify-end gap-1"><CheckCircle size={12}/> Finalizado</span>
+                                        )}
+                                        {reg.status !== 'cancelled' && (
+                                            <button 
+                                                onClick={() => handleUpdateEventRegistration(reg.id, 'cancelled')}
+                                                className="p-2 bg-stone-900 hover:bg-stone-700 text-stone-400 hover:text-red-500 rounded transition-colors"
+                                                title="Cancelar Registro"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {eventRegistrations.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="p-8 text-center text-stone-500 italic">Nenhum registro de evento.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+             </div>
+          </div>
+
           <div className="bg-stone-800 p-6 rounded-xl border border-stone-700 mt-6">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                <div>
@@ -1066,6 +1298,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                    >
                        <Settings size={24} />
                    </button>
+                   <Button onClick={() => setShowAddPaymentModal(true)} className="h-12">
+                       <Plus size={18} /> Adicionar Pagamento
+                   </Button>
                </div>
              </div>
 
@@ -2012,7 +2247,7 @@ export const DashboardAdmin: React.FC<Props> = ({
            {profView === 'all_students' && (
               <div className="bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
                   <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                  <h2 className="text-2xl font-bold text-white mb-6">Meus Alunos (Admin Class)</h2>
+                  <h2 className="2xl font-bold text-white mb-6">Meus Alunos (Admin Class)</h2>
                   <div className="grid md:grid-cols-2 gap-4">
                       {studentsForAttendance.map(student => ( // Use real students here
                           <div key={student.id} className="bg-stone-900 p-4 rounded border border-stone-700 flex justify-between items-center">

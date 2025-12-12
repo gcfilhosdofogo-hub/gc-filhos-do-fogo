@@ -4,7 +4,7 @@ export interface User {
   id: string;
   name: string;
   nickname?: string; // Apelido
-  email: string;
+  email: string; // Adicionado para ser buscado do perfil
   role: UserRole;
   avatarUrl?: string;
   belt?: string; // Cordel/Graduação

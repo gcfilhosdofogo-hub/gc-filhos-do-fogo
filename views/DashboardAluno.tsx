@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle } from 'lucide-react';
+import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration } from '../types';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 
@@ -19,6 +19,8 @@ interface Props {
   classSessions: ClassSession[];
   assignments: any[]; // Assuming assignments are passed, but not directly used in this fix
   onUpdateAssignment: (assignment: any) => Promise<void>; // Assuming assignments are passed, but not directly used in this fix
+  eventRegistrations: EventRegistration[]; // NEW: Event Registrations
+  onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>; // NEW: Event Registrations
 }
 
 // Mock de todas as aulas disponíveis no sistema com diferentes professores
@@ -29,7 +31,7 @@ const ALL_CLASSES: ClassSession[] = [
   { id: '4', date: 'Segunda', time: '20:00', instructor: 'Mestre Fumaça', location: 'Sede Principal', level: 'Graduados' },
 ];
 
-type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform';
+type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'event_registration';
 
 const UNIFORM_PRICES = {
     shirt: 30,
@@ -52,7 +54,9 @@ export const DashboardAluno: React.FC<Props> = ({
   onAddSchoolReport, // Use prop
   classSessions,
   assignments,
-  onUpdateAssignment
+  onUpdateAssignment,
+  eventRegistrations, // NEW: Event Registrations
+  onAddEventRegistration, // NEW: Event Registrations
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
@@ -75,10 +79,16 @@ export const DashboardAluno: React.FC<Props> = ({
       pantsSize: ''
   });
 
+  // Event Registration State
+  const [showEventRegisterModal, setShowEventRegisterModal] = useState(false);
+  const [selectedEventToRegister, setSelectedEventToRegister] = useState<GroupEvent | null>(null);
+  const [eventRegistrationAmount, setEventRegistrationAmount] = useState('');
+
   // Filter my orders from global state
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
   const myHomeTrainings = homeTrainings.filter(ht => ht.user_id === user.id);
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
+  const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
@@ -321,6 +331,39 @@ export const DashboardAluno: React.FC<Props> = ({
       }
   };
 
+  const handleOpenEventRegisterModal = (event: GroupEvent) => {
+    setSelectedEventToRegister(event);
+    setEventRegistrationAmount(event.price ? event.price.toString() : '0');
+    setShowEventRegisterModal(true);
+  };
+
+  const handleRegisterForEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventToRegister || !eventRegistrationAmount) return;
+
+    const amount = parseFloat(eventRegistrationAmount);
+    if (isNaN(amount) || amount < 0) {
+        alert('Por favor, insira um valor válido para o pagamento.');
+        return;
+    }
+
+    const newRegistration: Omit<EventRegistration, 'id' | 'registered_at'> = {
+        event_id: selectedEventToRegister.id,
+        user_id: user.id,
+        user_name: user.nickname || user.name,
+        event_title: selectedEventToRegister.title,
+        amount_paid: amount,
+        status: amount > 0 ? 'pending' : 'paid', // If price is 0, mark as paid directly
+    };
+
+    await onAddEventRegistration(newRegistration);
+    onNotifyAdmin(`Registrou-se no evento: ${selectedEventToRegister.title}`, user);
+    alert(`Inscrição no evento "${selectedEventToRegister.title}" realizada com sucesso!`);
+    setShowEventRegisterModal(false);
+    setSelectedEventToRegister(null);
+    setEventRegistrationAmount('');
+  };
+
   return (
     <div className="space-y-6 animate-fade-in relative">
 
@@ -371,7 +414,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           {(user.graduationCost ?? 0) === 0 ? (
                               <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
                           ) : (
-                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Definido pela Coordenação</span>
+                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Valor definido pela coordenação</span>
                           )}
                       </div>
                   </div>
@@ -397,16 +440,35 @@ export const DashboardAluno: React.FC<Props> = ({
                       <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
                         {events.length > 0 ? (
                             events.map(event => (
-                                <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-bold text-white text-sm">{event.title}</p>
-                                            <p className="text-stone-500 text-xs">{event.date}</p>
-                                        </div>
+                                <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500 flex justify-between items-center">
+                                    <div>
+                                        <p className="font-bold text-white text-sm">{event.title}</p>
+                                        <p className="text-stone-500 text-xs">{event.date}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                         {event.price ? (
                                             <span className="text-green-400 text-xs font-bold border border-green-900/50 bg-green-900/20 px-2 py-1 rounded">R$ {event.price.toFixed(2).replace('.', ',')}</span>
                                         ) : (
                                             <span className="text-stone-400 text-xs">Grátis</span>
+                                        )}
+                                        {!myEventRegistrations.some(reg => reg.event_id === event.id) && (
+                                            <Button 
+                                                variant="secondary" 
+                                                className="text-xs h-auto px-2 py-1"
+                                                onClick={() => handleOpenEventRegisterModal(event)}
+                                            >
+                                                <Ticket size={14} className="mr-1"/> Inscrever
+                                            </Button>
+                                        )}
+                                        {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
+                                            <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                                <Clock size={12}/> Pendente
+                                            </span>
+                                        )}
+                                        {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
+                                            <span className="text-green-400 text-xs flex items-center gap-1">
+                                                <Check size={12}/> Inscrito
+                                            </span>
                                         )}
                                     </div>
                                 </div>
@@ -416,6 +478,64 @@ export const DashboardAluno: React.FC<Props> = ({
                         )}
                       </div>
                   </div>
+              </div>
+          </div>
+      )}
+
+      {/* EVENT REGISTRATION MODAL */}
+      {showEventRegisterModal && selectedEventToRegister && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative">
+                  <button onClick={() => setShowEventRegisterModal(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white"><X size={20}/></button>
+                  <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                      <Ticket className="text-purple-500" />
+                      Inscrever-se em Evento
+                  </h3>
+                  <form onSubmit={handleRegisterForEvent} className="space-y-4">
+                      <div>
+                          <label className="block text-sm text-stone-400 mb-1">Evento</label>
+                          <input 
+                              type="text" 
+                              value={selectedEventToRegister.title} 
+                              className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" 
+                              disabled 
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm text-stone-400 mb-1">Data</label>
+                          <input 
+                              type="text" 
+                              value={selectedEventToRegister.date} 
+                              className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" 
+                              disabled 
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-sm text-stone-400 mb-1">Valor</label>
+                          <div className="relative">
+                              <span className="absolute left-3 top-2.5 text-stone-400">R$</span>
+                              <input 
+                                  type="number" 
+                                  value={eventRegistrationAmount}
+                                  onChange={(e) => setEventRegistrationAmount(e.target.value)}
+                                  className="w-full bg-stone-900 border border-stone-600 rounded pl-10 pr-3 py-2 text-white"
+                                  min="0"
+                                  step="0.01"
+                                  required
+                                  disabled={selectedEventToRegister.price === 0}
+                              />
+                          </div>
+                          {selectedEventToRegister.price === 0 && (
+                              <p className="text-xs text-stone-500 mt-1">Este evento é gratuito.</p>
+                          )}
+                      </div>
+                      <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
+                          <button type="button" onClick={() => setShowEventRegisterModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                          <Button type="submit">
+                              <Ticket size={18} /> Confirmar Inscrição
+                          </Button>
+                      </div>
+                  </form>
               </div>
           </div>
       )}
@@ -617,12 +737,33 @@ export const DashboardAluno: React.FC<Props> = ({
                             <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
                             {event.price && (
                                 <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                    <Ticket size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
+                                    <DollarSign size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
                                 </span>
                             )}
                         </div>
                       </div>
                       <p className="text-stone-400 text-sm mt-1">{event.description}</p>
+                      <div className="mt-3 flex justify-end">
+                          {!myEventRegistrations.some(reg => reg.event_id === event.id) && (
+                              <Button 
+                                  variant="primary" 
+                                  className="text-sm h-auto px-3 py-1.5"
+                                  onClick={() => handleOpenEventRegisterModal(event)}
+                              >
+                                  <Ticket size={16} className="mr-1"/> Inscrever-se
+                              </Button>
+                          )}
+                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
+                              <span className="text-yellow-400 text-sm flex items-center gap-1">
+                                  <Clock size={14}/> Inscrição Pendente
+                              </span>
+                          )}
+                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
+                              <span className="text-green-400 text-sm flex items-center gap-1">
+                                  <Check size={14}/> Já Inscrito
+                              </span>
+                          )}
+                      </div>
                    </div>
                  ))
                ) : (
