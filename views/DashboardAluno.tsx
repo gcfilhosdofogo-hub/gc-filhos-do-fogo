@@ -101,12 +101,17 @@ export const DashboardAluno: React.FC<Props> = ({
   );
   const studentProfessorId = studentProfessor?.id;
 
+  // Debugging logs for class display
+  // console.log('User Professor Name:', user.professorName);
+  // console.log('Student Professor ID:', studentProfessorId);
+  // classSessions.forEach(session => console.log(`Class Session ID: ${session.id}, Professor ID: ${session.professor_id}, Instructor: ${session.instructor}`));
+
   // NEW: Filter classes based on real data
   const myClasses = classSessions.filter(
-    (session) => session.professor_id === studentProfessorId
+    (session) => studentProfessorId && session.professor_id === studentProfessorId
   );
   const groupClasses = classSessions.filter(
-    (session) => session.professor_id !== studentProfessorId
+    (session) => studentProfessorId && session.professor_id !== studentProfessorId
   );
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
@@ -365,13 +370,12 @@ export const DashboardAluno: React.FC<Props> = ({
 
         if (uploadError) throw uploadError;
 
-        const { data: publicUrlData } = supabase.storage
-            .from('payment_proofs')
-            .getPublicUrl(filePath);
+        // For private buckets, we store the path and generate a signed URL when needed for viewing
+        const fileUrl = uploadData.path; 
         
         const updatedPayment: PaymentRecord = {
             ...selectedPaymentToProof,
-            proof_url: publicUrlData.publicUrl,
+            proof_url: fileUrl, // Store the path, not public URL for private buckets
             proof_name: file.name,
             status: 'pending', // Keep as pending until admin confirms
         };

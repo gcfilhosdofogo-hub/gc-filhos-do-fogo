@@ -303,11 +303,16 @@ export const DashboardAdmin: React.FC<Props> = ({
     }
   };
 
-  const handleViewPaymentProof = async (proofUrl: string, proofName: string) => {
+  const handleViewPaymentProof = async (filePath: string, proofName: string) => {
     try {
-        // Assuming 'payment_proofs' bucket is public or has RLS for admin access
-        // If private, you'd need to generate a signed URL
-        window.open(proofUrl, '_blank');
+        // Generate a signed URL for private buckets
+        const { data, error } = await supabase.storage
+            .from('payment_proofs')
+            .createSignedUrl(filePath, 60); // URL valid for 60 seconds
+
+        if (error) throw error;
+
+        window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
         console.error('Error viewing payment proof:', error);
@@ -1555,7 +1560,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <div>
                                   <label className="block text-sm text-stone-400 mb-1">Cordel / Graduação</label>
                                   <select 
-                                      value={userForm.belt}
+                                      value={formData.belt}
                                       onChange={(e) => setUserForm({...userForm, belt: e.target.value})}
                                       className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                   >
