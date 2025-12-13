@@ -28,6 +28,7 @@ function AppContent() {
   const [monthlyPayments, setMonthlyPayments] = useState<PaymentRecord[]>([]);
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
+  const [allUsersProfiles, setAllUsersProfiles] = useState<User[]>([]); // NEW: State to hold all user profiles
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
@@ -35,6 +36,23 @@ function AppContent() {
 
     const userId = session.user.id;
     const userRole = user.role; // Use a role do usuário atual
+
+    // Fetch ALL profiles to determine professor IDs for filtering
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, email');
+    if (allProfilesError) {
+      console.error('Error fetching all profiles:', allProfilesError);
+    } else {
+      const mappedProfiles: User[] = (allProfilesData || []).map(p => ({
+        id: p.id,
+        name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
+        nickname: p.nickname || undefined,
+        email: p.email || '',
+        role: p.role as UserRole,
+        first_name: p.first_name || undefined,
+        last_name: p.last_name || undefined,
+      }));
+      setAllUsersProfiles(mappedProfiles);
+    }
 
     // Fetch Group Events
     const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
@@ -431,6 +449,7 @@ function AppContent() {
               onUpdateAssignment={handleUpdateAssignment}
               eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
               onAddEventRegistration={handleAddEventRegistration}
+              allUsersProfiles={allUsersProfiles} // NEW: Pass all user profiles
             />
           )}
           {user.role === 'professor' && (

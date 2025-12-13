@@ -17,20 +17,13 @@ interface Props {
   onAddHomeTraining: (training: Omit<HomeTraining, 'id' | 'created_at'>) => Promise<void>;
   schoolReports: SchoolReport[]; // Now receiving from App.tsx
   onAddSchoolReport: (report: Omit<SchoolReport, 'id' | 'created_at'>) => Promise<void>; // Now receiving from App.tsx
-  classSessions: ClassSession[];
+  classSessions: ClassSession[]; // Use real class sessions
   assignments: any[]; // Assuming assignments are passed, but not directly used in this fix
   onUpdateAssignment: (assignment: any) => Promise<void>; // Assuming assignments are passed, but not directly used in this fix
   eventRegistrations: EventRegistration[]; // NEW: Event Registrations
   onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>; // NEW: Event Registrations
+  allUsersProfiles: User[]; // NEW: All user profiles to find professor ID
 }
-
-// Mock de todas as aulas disponíveis no sistema com diferentes professores
-const ALL_CLASSES: ClassSession[] = [
-  { id: '1', date: 'Hoje', time: '19:30', instructor: 'Vicente "Anu Branco"', location: 'Sede Principal', level: 'Todos os Níveis' },
-  { id: '2', date: 'Amanhã', time: '19:00', instructor: 'Jefferson "Zeus"', location: 'Filial Norte', level: 'Iniciantes' },
-  { id: '3', date: 'Sábado', time: '10:00', instructor: 'Wallace "Fênix"', location: 'Praça Central', level: 'Intermediário' },
-  { id: '4', date: 'Segunda', time: '20:00', instructor: 'Mestre Fumaça', location: 'Sede Principal', level: 'Graduados' },
-];
 
 type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'event_registration';
 
@@ -53,11 +46,12 @@ export const DashboardAluno: React.FC<Props> = ({
   onAddHomeTraining,
   schoolReports, // Use prop
   onAddSchoolReport, // Use prop
-  classSessions,
+  classSessions, // Use real class sessions
   assignments,
   onUpdateAssignment,
   eventRegistrations, // NEW: Event Registrations
   onAddEventRegistration, // NEW: Event Registrations
+  allUsersProfiles, // NEW: All user profiles
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
@@ -91,6 +85,20 @@ export const DashboardAluno: React.FC<Props> = ({
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
 
+  // NEW: Determine the professor's ID based on the student's professorName
+  const studentProfessor = allUsersProfiles.find(
+    (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
+  );
+  const studentProfessorId = studentProfessor?.id;
+
+  // NEW: Filter classes based on real data
+  const myClasses = classSessions.filter(
+    (session) => session.professor_id === studentProfessorId
+  );
+  const groupClasses = classSessions.filter(
+    (session) => session.professor_id !== studentProfessorId
+  );
+
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
 
@@ -118,10 +126,6 @@ export const DashboardAluno: React.FC<Props> = ({
     }
     return age >= 18;
   }, [user.birthDate]);
-
-  // Filter Classes logic
-  const myClasses = ALL_CLASSES.filter(c => user.professorName && c.instructor.includes(user.professorName));
-  const groupClasses = ALL_CLASSES.filter(c => !user.professorName || !c.instructor.includes(user.professorName));
 
   const handleCopyPix = () => {
     const pixKey = 'soufilhodofogo@gmail.com';
