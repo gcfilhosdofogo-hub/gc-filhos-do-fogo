@@ -38,11 +38,12 @@ function AppContent() {
     const userRole = user.role; // Use a role do usuário atual
 
     // Fetch ALL profiles to determine professor IDs for filtering
+    let mappedProfiles: User[] = []; // Declarar e inicializar aqui
     const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name'); // Removed 'email'
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
-      const mappedProfiles: User[] = (allProfilesData || []).map(p => ({
+      mappedProfiles = (allProfilesData || []).map(p => ({ // Atribuir aqui
         id: p.id,
         name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
         nickname: p.nickname || undefined,
@@ -104,7 +105,7 @@ function AppContent() {
     let assignmentQuery = supabase.from('assignments').select('*');
     if (userRole === 'aluno') {
       // Find the professor's ID based on the student's professorName
-      const studentProfessorProfile = mappedProfiles.find(
+      const studentProfessorProfile = mappedProfiles.find( // <-- mappedProfiles agora estará definida
         (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
       );
       const professorId = studentProfessorProfile?.id;
@@ -461,6 +462,8 @@ function AppContent() {
               eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
               onAddEventRegistration={handleAddEventRegistration}
               allUsersProfiles={allUsersProfiles} // NEW: Pass all user profiles
+              monthlyPayments={monthlyPayments}
+              onUpdatePaymentRecord={handleUpdatePaymentRecord}
             />
           )}
           {user.role === 'professor' && (
