@@ -7,6 +7,7 @@ import { supabase } from '../integrations/supabase/client';
 interface SessionContextType {
   session: Session | null;
   isLoading: boolean;
+  userId: string | null; // Adicionado: ID do usuário
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -14,7 +15,7 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  console.log(session)
+  
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -31,8 +32,10 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     return () => subscription.unsubscribe();
   }, []);
 
+  const userId = session?.user?.id || null; // Deriva o userId da sessão
+
   return (
-    <SessionContext.Provider value={{ session, isLoading }}>
+    <SessionContext.Provider value={{ session, isLoading, userId }}>
       {children}
     </SessionContext.Provider>
   );
@@ -43,5 +46,5 @@ export const useSession = () => {
   if (context === undefined) {
     throw new Error('useSession must be used within a SessionContextProvider');
   }
-  return context;
+  return context;
 };

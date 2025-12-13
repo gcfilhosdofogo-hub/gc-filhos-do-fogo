@@ -21,7 +21,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   onProfileComplete,
   onBack,
 }) => {
-  const { session, userId, isLoading: sessionLoading } = useSession();
+  const { session, userId, isLoading: sessionLoading } = useSession(); // userId agora vem do useSession
 
   const [loading, setLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -40,7 +40,10 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   });
 
   useEffect(() => {
-    if (sessionLoading || !userId) return;
+    if (sessionLoading || !userId) { // Usa userId diretamente
+        setLoading(true); // Mantém o estado de carregamento enquanto userId não está disponível
+        return;
+    }
 
     const fetchProfileAndProfessors = async () => {
       setLoading(true);
@@ -121,7 +124,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
     };
 
     fetchProfileAndProfessors();
-  }, [userId, sessionLoading, session]);
+  }, [userId, sessionLoading, session]); // Dependências atualizadas
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -132,7 +135,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return;
+    if (!session || !userId) return; // Garante que userId esteja disponível
 
     setLoading(true);
 
