@@ -116,12 +116,22 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
             }}
             // Custom data attributes for sign-up to populate the profiles table
             // These fields will appear in the sign-up form
-            // Note: Supabase Auth UI doesn't directly support custom fields in the UI without extending it.
-            // For simplicity, we'll rely on the `handle_new_user` trigger to populate basic profile data
-            // from `raw_user_meta_data` if you were to add these fields to the sign-up form manually.
-            // For now, the trigger will use `first_name`, `last_name`, `nickname`, `birth_date` if provided
-            // during sign-up via `user_metadata` in a custom sign-up flow, or they can be updated post-signup.
-            // The default Auth UI only asks for email and password.
+            extra_fields={[
+              {
+                name: 'first_name',
+                label: 'Primeiro Nome',
+                type: 'text',
+                placeholder: 'Seu primeiro nome',
+                required: true,
+              },
+              {
+                name: 'last_name',
+                label: 'Sobrenome',
+                type: 'text',
+                placeholder: 'Seu sobrenome',
+                required: false, // Optional
+              },
+            ]}
           />
         </div>
       </div>
