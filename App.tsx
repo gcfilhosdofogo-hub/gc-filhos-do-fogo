@@ -141,7 +141,8 @@ function AppContent() {
       if (session) {
         const profileData = await fetchUserProfile(session.user.id);
 
-        if (profileData && profileData.first_name) {
+        // MODIFICADO: Verifica se first_name existe e não é uma string vazia
+        if (profileData && profileData.first_name && profileData.first_name.trim() !== '') {
           // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
           const userRole: UserRole = profileData.role as UserRole;
           const fetchedUser: User = {
@@ -162,7 +163,7 @@ function AppContent() {
           setUser(fetchedUser);
           setCurrentView('dashboard');
         } else {
-          // Perfil não existe ou está incompleto (primeiro nome ausente)
+          // Perfil não existe ou está incompleto (primeiro nome ausente ou vazio)
           setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
           setCurrentView('profile_setup');
         }
