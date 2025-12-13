@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css'; // Adicionado: Importa os estilos globais
+import './src/index.css'; // Corrigido: Caminho para o index.css
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
