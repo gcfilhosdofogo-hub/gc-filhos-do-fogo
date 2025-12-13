@@ -23,7 +23,7 @@ interface Props {
   eventRegistrations: EventRegistration[]; // NEW: Event Registrations
   onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>; // NEW: Event Registrations
   allUsersProfiles: User[]; // NEW: All user profiles to find professor ID
-  monthlyPayments: PaymentRecord[]; // NEW: Pass monthly payments to student dashboard
+  monthlyPayments?: PaymentRecord[]; // NEW: Pass monthly payments to student dashboard
   onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>; // NEW: For updating payment proof
 }
 
@@ -54,7 +54,7 @@ export const DashboardAluno: React.FC<Props> = ({
   eventRegistrations, // NEW: Event Registrations
   onAddEventRegistration, // NEW: Event Registrations
   allUsersProfiles, // NEW: All user profiles
-  monthlyPayments, // NEW: Use prop for monthly payments
+  monthlyPayments = [], // NEW: Use prop for monthly payments, with default empty array
   onUpdatePaymentRecord, // NEW: Use prop for updating payment record
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
@@ -93,7 +93,7 @@ export const DashboardAluno: React.FC<Props> = ({
   const myHomeTrainings = homeTrainings.filter(ht => ht.user_id === user.id);
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
-  const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user.id); // Filter payments for the current user
+  const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user?.id); // Filter payments for the current user
 
   // NEW: Determine the professor's ID based on the student's professorName
   const studentProfessor = allUsersProfiles.find(
