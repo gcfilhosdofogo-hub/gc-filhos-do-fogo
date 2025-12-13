@@ -110,8 +110,11 @@ export const DashboardAluno: React.FC<Props> = ({
   const myClasses = classSessions.filter(
     (session) => studentProfessorId && session.professor_id === studentProfessorId
   );
+  
+  // Filter group classes: not by my professor, and not by an admin
+  const adminIds = allUsersProfiles.filter(p => p.role === 'admin').map(p => p.id);
   const groupClasses = classSessions.filter(
-    (session) => studentProfessorId && session.professor_id !== studentProfessorId
+    (session) => session.professor_id !== studentProfessorId && !adminIds.includes(session.professor_id || '')
   );
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
@@ -426,7 +429,7 @@ export const DashboardAluno: React.FC<Props> = ({
       {/* MY COSTS MODAL (For All Students) */}
       {showMyCosts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative">
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
                   <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white"><X size={20}/></button>
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-green-500" />
@@ -513,40 +516,45 @@ export const DashboardAluno: React.FC<Props> = ({
                       <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Eventos Disponíveis</h4>
                       <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
                         {events.length > 0 ? (
-                            events.map(event => (
-                                <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-white text-sm">{event.title}</p>
-                                        <p className="text-stone-500 text-xs">{event.date}</p>
+                            events.map(event => {
+                                const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
+                                const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
+
+                                return (
+                                    <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold text-white text-sm">{event.title}</p>
+                                            <p className="text-stone-500 text-xs">{event.date}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {event.price ? (
+                                                <span className="text-green-400 text-xs font-bold border border-green-900/50 bg-green-900/20 px-2 py-1 rounded">R$ {event.price.toFixed(2).replace('.', ',')}</span>
+                                            ) : (
+                                                <span className="text-stone-400 text-xs">Grátis</span>
+                                            )}
+                                            {!isRegistered && (
+                                                <Button 
+                                                    variant="secondary" 
+                                                    className="text-xs h-auto px-2 py-1"
+                                                    onClick={() => handleOpenEventRegisterModal(event)}
+                                                >
+                                                    <Ticket size={14} className="mr-1"/> Inscrever
+                                                </Button>
+                                            )}
+                                            {isRegistered && registrationStatus === 'pending' && (
+                                                <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                                    <Clock size={12}/> Pendente
+                                                </span>
+                                            )}
+                                            {isRegistered && registrationStatus === 'paid' && (
+                                                <span className="text-green-400 text-xs flex items-center gap-1">
+                                                    <Check size={12}/> Inscrito
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {event.price ? (
-                                            <span className="text-green-400 text-xs font-bold border border-green-900/50 bg-green-900/20 px-2 py-1 rounded">R$ {event.price.toFixed(2).replace('.', ',')}</span>
-                                        ) : (
-                                            <span className="text-stone-400 text-xs">Grátis</span>
-                                        )}
-                                        {!myEventRegistrations.some(reg => reg.event_id === event.id) && (
-                                            <Button 
-                                                variant="secondary" 
-                                                className="text-xs h-auto px-2 py-1"
-                                                onClick={() => handleOpenEventRegisterModal(event)}
-                                            >
-                                                <Ticket size={14} className="mr-1"/> Inscrever
-                                            </Button>
-                                        )}
-                                        {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
-                                            <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                                <Clock size={12}/> Pendente
-                                            </span>
-                                        )}
-                                        {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
-                                            <span className="text-green-400 text-xs flex items-center gap-1">
-                                                <Check size={12}/> Inscrito
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             <p className="text-stone-500 text-sm italic">Nenhum evento.</p>
                         )}
@@ -790,43 +798,48 @@ export const DashboardAluno: React.FC<Props> = ({
             </h3>
              <div className="space-y-3">
                {events.length > 0 ? (
-                 events.map((event) => (
-                   <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-2 border-yellow-500 hover:bg-stone-700 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <h4 className="text-white font-bold text-lg">{event.title}</h4>
-                        <div className="flex flex-col items-end">
-                            <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
-                            {event.price && (
-                                <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                    <DollarSign size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
+                 events.map((event) => {
+                   const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
+                   const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
+
+                   return (
+                     <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-2 border-yellow-500 hover:bg-stone-700 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <h4 className="text-white font-bold text-lg">{event.title}</h4>
+                          <div className="flex flex-col items-end">
+                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
+                              {event.price && (
+                                  <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                      <DollarSign size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
+                                  </span>
+                              )}
+                          </div>
+                        </div>
+                        <p className="text-stone-400 text-sm mt-1">{event.description}</p>
+                        <div className="mt-3 flex justify-end">
+                            {!isRegistered && (
+                                <Button 
+                                    variant="primary" 
+                                    className="text-sm h-auto px-3 py-1.5"
+                                    onClick={() => handleOpenEventRegisterModal(event)}
+                                >
+                                    <Ticket size={16} className="mr-1"/> Inscrever-se
+                                </Button>
+                            )}
+                            {isRegistered && registrationStatus === 'pending' && (
+                                <span className="text-yellow-400 text-sm flex items-center gap-1">
+                                    <Clock size={14}/> Inscrição Pendente
+                                </span>
+                            )}
+                            {isRegistered && registrationStatus === 'paid' && (
+                                <span className="text-green-400 text-sm flex items-center gap-1">
+                                    <Check size={14}/> Já Inscrito
                                 </span>
                             )}
                         </div>
-                      </div>
-                      <p className="text-stone-400 text-sm mt-1">{event.description}</p>
-                      <div className="mt-3 flex justify-end">
-                          {!myEventRegistrations.some(reg => reg.event_id === event.id) && (
-                              <Button 
-                                  variant="primary" 
-                                  className="text-sm h-auto px-3 py-1.5"
-                                  onClick={() => handleOpenEventRegisterModal(event)}
-                              >
-                                  <Ticket size={16} className="mr-1"/> Inscrever-se
-                              </Button>
-                          )}
-                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'pending') && (
-                              <span className="text-yellow-400 text-sm flex items-center gap-1">
-                                  <Clock size={14}/> Inscrição Pendente
-                              </span>
-                          )}
-                          {myEventRegistrations.some(reg => reg.event_id === event.id && reg.status === 'paid') && (
-                              <span className="text-green-400 text-sm flex items-center gap-1">
-                                  <Check size={14}/> Já Inscrito
-                              </span>
-                          )}
-                      </div>
-                   </div>
-                 ))
+                     </div>
+                   );
+                 })
                ) : (
                  <p className="text-stone-500 italic">Nenhum evento programado.</p>
                )}

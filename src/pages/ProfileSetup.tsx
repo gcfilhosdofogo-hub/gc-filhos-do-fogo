@@ -21,7 +21,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
   onProfileComplete,
   onBack,
 }) => {
-  const { session, userId, isLoading: sessionLoading } = useSession(); // userId agora vem do useSession
+  const { session, userId, isLoading: sessionLoading } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -33,15 +33,15 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
     nickname: "",
     birth_date: "",
     phone: "",
-    belt: ALL_BELTS[0],
-    role: "aluno" as UserRole,
+    belt: ALL_BELTS[0], // Default to first belt
+    role: "aluno" as UserRole, // Default role for new users
     professor_name: "",
     graduation_cost: undefined as number | undefined,
   });
 
   useEffect(() => {
-    if (sessionLoading || !userId) { // Usa userId diretamente
-        setLoading(true); // Mantém o estado de carregamento enquanto userId não está disponível
+    if (sessionLoading || !userId) {
+        setLoading(true);
         return;
     }
 
@@ -98,10 +98,11 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
         }));
       }
 
-      /** 🔹 BUSCA PROFESSORES */
+      /** 🔹 BUSCA PROFESSORES (e Admins que podem atuar como professores) */
       const { data: profsData, error: profsError } = await supabase
-        .from("professor_admin_profiles")
-        .select("id, first_name, last_name, nickname, role");
+        .from("profiles") // Fetch from profiles table
+        .select("id, first_name, last_name, nickname, role")
+        .or('role.eq.professor,role.eq.admin'); // Filter for professors or admins
 
       if (!profsError && profsData) {
         setAvailableProfessors(
@@ -112,19 +113,21 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
               p.nickname ||
               "Usuário",
             nickname: p.nickname ?? undefined,
-            email: "",
+            email: "", // Not needed for this list
             role: p.role as UserRole,
             first_name: p.first_name ?? undefined,
             last_name: p.last_name ?? undefined,
           }))
         );
+      } else if (profsError) {
+        console.error("Error fetching available professors:", profsError);
       }
 
       setLoading(false);
     };
 
     fetchProfileAndProfessors();
-  }, [userId, sessionLoading, session]); // Dependências atualizadas
+  }, [userId, sessionLoading, session, fetchUserProfile]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -135,7 +138,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session || !userId) return; // Garante que userId esteja disponível
+    if (!session || !userId) return;
 
     setLoading(true);
 
@@ -226,7 +229,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             value={formData.first_name}
             onChange={handleChange}
             placeholder="Nome"
-            className="w-full p-2 rounded bg-stone-900 text-white"
+            className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
             required
           />
 
@@ -235,8 +238,78 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
             value={formData.last_name}
             onChange={handleChange}
             placeholder="Sobrenome"
-            className="w-full p-2 rounded bg-stone-900 text-white"
+            className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
           />
+
+          <input
+            name="nickname"
+            value={formData.nickname}
+            onChange={handleChange}
+            placeholder="Apelido (Capoeira)"
+            className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
+          />
+
+          <div>
+            <label htmlFor="birth_date" className="block text-sm text-stone-400 mb-1">Data de Nascimento</label>
+            <input
+              id="birth_date"
+              name="birth_date"
+              type="date"
+              value={formData.birth_date}
+              onChange={handleChange}
+              className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600 [color-scheme:dark]"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm text-stone-400 mb-1">WhatsApp (Ex: 5511999999999)</label>
+            <input
+              id="phone"
+              name="phone"
+              type="text"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="55DDDNUMERO"
+              className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="belt" className="block text-sm text-stone-400 mb-1">Cordel / Graduação</label>
+            <select
+              id="belt"
+              name="belt"
+              value={formData.belt}
+              onChange={handleChange}
+              className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
+            >
+              {ALL_BELTS.map((beltOption) => (
+                <option key={beltOption} value={beltOption}>
+                  {beltOption}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {formData.role === 'aluno' && (
+            <div>
+              <label htmlFor="professor_name" className="block text-sm text-stone-400 mb-1">Professor Responsável</label>
+              <select
+                id="professor_name"
+                name="professor_name"
+                value={formData.professor_name}
+                onChange={handleChange}
+                className="w-full p-2 rounded bg-stone-900 text-white border border-stone-600"
+              >
+                <option value="">Selecione seu professor</option>
+                {availableProfessors.map((prof) => (
+                  <option key={prof.id} value={prof.nickname || prof.name}>
+                    {prof.nickname ? `${prof.nickname} (${prof.name})` : prof.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <Button type="submit" fullWidth disabled={loading}>
             <Save size={16} /> Salvar
