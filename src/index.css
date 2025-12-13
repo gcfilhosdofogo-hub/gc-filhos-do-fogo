@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Adicione estilos globais personalizados aqui, se necessário */
+body {
+  @apply bg-stone-900 text-stone-200 font-sans;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown 0.5s ease-out forwards;
+}
+
+/* Estilo para o input de data no modo escuro */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Inverte as cores do ícone do calendário para ser visível em temas escuros */
+}
