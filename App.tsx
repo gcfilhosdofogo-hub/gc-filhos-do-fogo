@@ -38,7 +38,7 @@ function AppContent() {
     const userRole = user.role; // Use a role do usuário atual
 
     // Fetch ALL profiles to determine professor IDs for filtering
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, email');
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name'); // Removed 'email'
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
@@ -46,10 +46,11 @@ function AppContent() {
         id: p.id,
         name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
         nickname: p.nickname || undefined,
-        email: p.email || '',
+        email: '', // Email will be populated from session.user.email later
         role: p.role as UserRole,
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
+        professorName: p.professor_name || undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
@@ -102,7 +103,17 @@ function AppContent() {
     // Fetch Assignments (all for admin/professor, relevant for student)
     let assignmentQuery = supabase.from('assignments').select('*');
     if (userRole === 'aluno') {
-      assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},created_by.eq.${user?.professorName}`); // Students see their own or general assignments from their professor
+      // Find the professor's ID based on the student's professorName
+      const studentProfessorProfile = mappedProfiles.find(
+        (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
+      );
+      const professorId = studentProfessorProfile?.id;
+
+      if (professorId) {
+        assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},created_by.eq.${professorId}`);
+      } else {
+        assignmentQuery = assignmentQuery.eq('student_id', userId); // Fallback: only show assignments directly assigned to student
+      }
     }
     const { data: assignmentData, error: assignmentError } = await assignmentQuery;
     if (assignmentError) console.error('Error fetching assignments:', assignmentError);
@@ -137,7 +148,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email')
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role') // Removed 'email'
       .eq('id', userId)
       .single();
 
@@ -167,7 +178,7 @@ function AppContent() {
             id: session.user.id,
             name: profileData.first_name || session.user.email || 'User',
             nickname: profileData.nickname || undefined,
-            email: profileData.email || session.user.email || '',
+            email: session.user.email || '', // Populated from session.user.email
             role: userRole,
             belt: profileData.belt || undefined,
             beltColor: profileData.belt_color || undefined,
@@ -248,7 +259,7 @@ function AppContent() {
                     id: session.user.id,
                     name: updatedProfile.first_name || session.user.email || 'User',
                     nickname: updatedProfile.nickname || undefined,
-                    email: updatedProfile.email || session.user.email || '',
+                    email: session.user.email || '', // Populated from session.user.email
                     role: userRole,
                     belt: updatedProfile.belt || undefined,
                     beltColor: updatedProfile.belt_color || undefined,
@@ -445,7 +456,7 @@ function AppContent() {
               schoolReports={schoolReports.filter(sr => sr.user_id === user.id)} // Pass only student's school reports
               onAddSchoolReport={handleAddSchoolReport}
               classSessions={classSessions}
-              assignments={assignments.filter(a => a.student_id === user.id || a.student_id === null)} // Pass relevant assignments
+              assignments={assignments.filter(a => a.student_id === user.id || a.created_by === allUsersProfiles.find(p => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin'))?.id)} // Pass relevant assignments
               onUpdateAssignment={handleUpdateAssignment}
               eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
               onAddEventRegistration={handleAddEventRegistration}

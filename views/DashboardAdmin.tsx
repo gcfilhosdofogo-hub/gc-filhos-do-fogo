@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket } from 'lucide-react';
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp } from 'lucide-react'; // Import FileUp
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -167,7 +167,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
   // --- SUPABASE USER MANAGEMENT ---
   const fetchManagedUsers = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, email'); // Removed avatar_url from select
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role'); // Removed avatar_url and email from select
     if (error) {
       console.error('Error fetching managed users:', error);
       // Optionally show a toast notification
@@ -177,7 +177,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.nickname || 'Usuário',
           nickname: profile.nickname || undefined,
-          email: profile.email || '', // Use profile email if available
+          email: '', // Email will be populated from auth.users if needed
           role: profile.role as UserRole, // This is where the role is read
           belt: profile.belt || undefined,
           beltColor: profile.belt_color || undefined,
@@ -300,6 +300,18 @@ export const DashboardAdmin: React.FC<Props> = ({
     if (paymentToUpdate) {
         await onUpdatePaymentRecord({ ...paymentToUpdate, status: 'paid', paid_at: new Date().toISOString().split('T')[0] });
         onNotifyAdmin(`Marcar pagamento de ${paymentToUpdate.student_name} como pago`, user);
+    }
+  };
+
+  const handleViewPaymentProof = async (proofUrl: string, proofName: string) => {
+    try {
+        // Assuming 'payment_proofs' bucket is public or has RLS for admin access
+        // If private, you'd need to generate a signed URL
+        window.open(proofUrl, '_blank');
+        onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
+    } catch (error: any) {
+        console.error('Error viewing payment proof:', error);
+        alert('Erro ao visualizar o comprovante: ' + error.message);
     }
   };
 
@@ -565,7 +577,7 @@ export const DashboardAdmin: React.FC<Props> = ({
       try {
         const file = musicForm.file;
         const fileExt = file.name.split('.').pop();
-        const filePath = `${session.user.id}/${Date.now()}.${fileExt}`;
+        const filePath = `${session.user.id}/music_files/${Date.now()}.${fileExt}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('music_files')
@@ -1391,6 +1403,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                      <th className="p-4">Vencimento</th>
                      <th className="p-4">Valor</th>
                      <th className="p-4">Status</th>
+                     <th className="p-4">Comprovante</th> {/* New column for proof */}
                      <th className="p-4 text-right">Ação</th>
                    </tr>
                  </thead>
@@ -1417,6 +1430,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <AlertCircle size={12} /> Atrasado
                             </span>
                          )}
+                       </td>
+                       <td className="p-4"> {/* Proof Column */}
+                           {payment.proof_url ? (
+                               <button 
+                                   onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                                   className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                               >
+                                   <FileUp size={14} /> Ver Comprovante
+                               </button>
+                           ) : (
+                               <span className="text-stone-500 text-xs italic">Nenhum</span>
+                           )}
                        </td>
                        <td className="p-4 text-right">
                           {payment.status !== 'paid' && (
@@ -2049,7 +2074,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <label className="block text-sm text-stone-400 mb-1">Atribuir a Aluno</label>
                                 <select
                                     value={selectedStudentForAssignment}
-                                    onChange={(e) => setSelectedStudentForAssignment(e.target.value)}
+                                    onChange={(e) => setNewAssignment(prev => ({...prev, studentId: e.target.value}))} // Update newAssignment state
                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                     required
                                 >

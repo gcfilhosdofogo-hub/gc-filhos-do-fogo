@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign } from 'lucide-react';
+import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord } from '../types'; // Import PaymentRecord
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp } from 'lucide-react'; // Import FileUp
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -23,6 +23,8 @@ interface Props {
   eventRegistrations: EventRegistration[]; // NEW: Event Registrations
   onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>; // NEW: Event Registrations
   allUsersProfiles: User[]; // NEW: All user profiles to find professor ID
+  monthlyPayments: PaymentRecord[]; // NEW: Pass monthly payments to student dashboard
+  onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>; // NEW: For updating payment proof
 }
 
 type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'event_registration';
@@ -52,6 +54,8 @@ export const DashboardAluno: React.FC<Props> = ({
   eventRegistrations, // NEW: Event Registrations
   onAddEventRegistration, // NEW: Event Registrations
   allUsersProfiles, // NEW: All user profiles
+  monthlyPayments, // NEW: Use prop for monthly payments
+  onUpdatePaymentRecord, // NEW: Use prop for updating payment record
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
@@ -79,11 +83,17 @@ export const DashboardAluno: React.FC<Props> = ({
   const [selectedEventToRegister, setSelectedEventToRegister] = useState<GroupEvent | null>(null);
   const [eventRegistrationAmount, setEventRegistrationAmount] = useState('');
 
+  // Payment Proof Upload State
+  const [uploadingPaymentProof, setUploadingPaymentProof] = useState(false);
+  const [selectedPaymentToProof, setSelectedPaymentToProof] = useState<PaymentRecord | null>(null);
+
+
   // Filter my orders from global state
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
   const myHomeTrainings = homeTrainings.filter(ht => ht.user_id === user.id);
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
+  const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user.id); // Filter payments for the current user
 
   // NEW: Determine the professor's ID based on the student's professorName
   const studentProfessor = allUsersProfiles.find(
@@ -151,7 +161,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     try {
         const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`; // Unique path per user
+        const filePath = `${user.id}/home_trainings/${Date.now()}.${fileExt}`; // Unique path per user
         
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from('home_training_videos')
@@ -194,7 +204,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     try {
         const fileExt = file.name.split('.').pop();
-        const filePath = `${user.id}/${Date.now()}.${fileExt}`; // Unique path per user
+        const filePath = `${user.id}/school_reports/${Date.now()}.${fileExt}`; // Unique path per user
         
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from('school_reports_files')
@@ -339,6 +349,45 @@ export const DashboardAluno: React.FC<Props> = ({
     setEventRegistrationAmount('');
   };
 
+  const handleUploadPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) return;
+
+    const file = e.target.files[0];
+    setUploadingPaymentProof(true);
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/payment_proofs/${selectedPaymentToProof.id}-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('payment_proofs') // Assuming a bucket named 'payment_proofs' exists
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+            .from('payment_proofs')
+            .getPublicUrl(filePath);
+        
+        const updatedPayment: PaymentRecord = {
+            ...selectedPaymentToProof,
+            proof_url: publicUrlData.publicUrl,
+            proof_name: file.name,
+            status: 'pending', // Keep as pending until admin confirms
+        };
+        
+        await onUpdatePaymentRecord(updatedPayment);
+        setUploadingPaymentProof(false);
+        setSelectedPaymentToProof(null);
+        onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para ${selectedPaymentToProof.month}`, user);
+        alert("Comprovante enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
+    } catch (error: any) {
+        console.error('Error uploading payment proof:', error);
+        alert("Erro ao enviar comprovante: " + error.message);
+        setUploadingPaymentProof(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in relative">
 
@@ -390,6 +439,52 @@ export const DashboardAluno: React.FC<Props> = ({
                               <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
                           ) : (
                               <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Valor definido pela coordenação</span>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* Monthly Payments List */}
+                  <div className="mb-6">
+                      <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Minhas Mensalidades</h4>
+                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+                          {myMonthlyPayments.length > 0 ? (
+                              myMonthlyPayments.map(payment => (
+                                  <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex justify-between items-center`}>
+                                      <div>
+                                          <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                                          <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                          {payment.status === 'paid' && (
+                                              <span className="text-green-400 text-xs flex items-center gap-1">
+                                                  <Check size={12}/> Pago
+                                              </span>
+                                          )}
+                                          {payment.status === 'pending' && !payment.proof_url && (
+                                              <label className="cursor-pointer">
+                                                  <span className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium transition-colors inline-block">
+                                                      {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : 'Enviar Comprovante'}
+                                                  </span>
+                                                  <input 
+                                                      type="file" 
+                                                      accept="image/*, application/pdf" 
+                                                      className="hidden" 
+                                                      onChange={handleUploadPaymentProof}
+                                                      onClick={() => setSelectedPaymentToProof(payment)}
+                                                      disabled={uploadingPaymentProof}
+                                                  />
+                                              </label>
+                                          )}
+                                          {payment.status === 'pending' && payment.proof_url && (
+                                              <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                                  <Clock size={12}/> Comprovante Enviado
+                                              </span>
+                                          )}
+                                      </div>
+                                  </div>
+                              ))
+                          ) : (
+                              <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
                           )}
                       </div>
                   </div>
