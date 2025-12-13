@@ -105,7 +105,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
           profsData.map((p) => ({
             id: p.id,
             name:
-              ${p.first_name ?? ""} ${p.last_name ?? ""}.trim() ||
+              `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
               p.nickname ||
               "Usuário",
             nickname: p.nickname ?? undefined,
@@ -164,7 +164,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
     onProfileComplete({
       id: userId!,
-      name: ${formData.first_name} ${formData.last_name}.trim(),
+      name: `${formData.first_name} ${formData.last_name}`.trim(),
       nickname: formData.nickname || undefined,
       email: session.user.email || "",
       role: formData.role,
