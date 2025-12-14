@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Import useRef
+import React, { useState, useEffect, useRef } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord } from '../types';
 import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -102,6 +102,10 @@ export const DashboardAluno: React.FC<Props> = ({
   );
   const studentProfessorId = studentProfessor?.id;
 
+  console.log('DashboardAluno - User Professor Name:', user.professorName); // DEBUG
+  console.log('DashboardAluno - Student Professor ID:', studentProfessorId); // DEBUG
+  console.log('DashboardAluno - All Class Sessions:', classSessions); // DEBUG
+
   // NEW: Filter classes based on real data
   const myClasses = classSessions.filter(
     (session) => studentProfessorId && session.professor_id === studentProfessorId
@@ -111,6 +115,9 @@ export const DashboardAluno: React.FC<Props> = ({
   const groupClasses = classSessions.filter(
     (session) => session.professor_id !== studentProfessorId
   );
+
+  console.log('DashboardAluno - My Classes:', myClasses); // DEBUG
+  console.log('DashboardAluno - Group Classes:', groupClasses); // DEBUG
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
@@ -353,10 +360,10 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileChangeForPaymentProof called');
-    console.log('selectedPaymentToProof:', selectedPaymentToProof);
+    console.log('handleFileChangeForPaymentProof called'); // DEBUG
+    console.log('selectedPaymentToProof:', selectedPaymentToProof); // DEBUG
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
-      console.log('No file or no selectedPaymentToProof. Aborting upload.');
+      console.log('No file or no selectedPaymentToProof. Aborting upload.'); // DEBUG
       setUploadingPaymentProof(false); // Ensure loading state is reset
       return;
     }
@@ -434,7 +441,7 @@ export const DashboardAluno: React.FC<Props> = ({
       {/* MY COSTS MODAL (For All Students) */}
       {showMyCosts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-lg w-full p-6 relative flex flex-col max-h-[95vh]">
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-xl w-full p-6 relative flex flex-col max-h-[calc(100vh-4rem)]"> {/* Adjusted max-w-lg to max-w-xl and max-h */}
                   <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white z-10"><X size={20}/></button>
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-green-500" />
@@ -520,7 +527,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             className={costPixCopied ? "border-green-500 text-green-500" : ""}
                         >
                             {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
+                            {costCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
                         </Button>
                         <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
                     </div>
