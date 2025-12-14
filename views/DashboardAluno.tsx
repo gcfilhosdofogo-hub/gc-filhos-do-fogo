@@ -28,6 +28,7 @@ interface Props {
 }
 
 type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'event_registration';
+type MainTab = 'overview' | 'finance_resources'; // New type for main tabs
 
 const UNIFORM_PRICES = {
     shirt: 30,
@@ -58,9 +59,9 @@ export const DashboardAluno: React.FC<Props> = ({
   onUpdatePaymentRecord,
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>('overview'); // State for main tabs
   const [pixCopied, setPixCopied] = useState(false);
   const [costPixCopied, setCostPixCopied] = useState(false);
-  // const [showMyCosts, setShowMyCosts] = useState(false); // REMOVIDO
   
   // State for Video Pending Popup
   const [showPendingVideoPopup, setShowPendingVideoPopup] = useState(false);
@@ -568,263 +569,281 @@ export const DashboardAluno: React.FC<Props> = ({
               Siga @filhosdofogo2005
             </Button>
           </a>
-
-          {/* Action Buttons (Mensalidade) */}
-          <div className="space-y-3">
-            {/* Mensalidade Button - Only for > 18 */}
-            {isOver18 && (
-                <div className="bg-stone-800 rounded-xl p-4 border border-stone-700">
-                <p className="text-sm text-stone-400 mb-2 font-semibold">Mensalidade</p>
-                <Button 
-                    fullWidth 
-                    variant="outline" 
-                    onClick={handleCopyPix}
-                    className={pixCopied ? "border-green-500 text-green-500" : ""}
-                >
-                    {pixCopied ? <Check size={18} /> : <Copy size={18} />}
-                    {pixCopied ? 'Chave Copiada!' : 'PIX Mensalidade'}
-                </Button>
-                <p className="text-xs text-stone-500 mt-2 text-center">soufilhodofogo@gmail.com</p>
-                </div>
-            )}
-          </div>
         </div>
 
         {/* Schedule & Content */}
         <div className="w-full md:w-2/3 space-y-6">
-          
-          {/* Suas Próximas Aulas (Specific Professor) */}
-          <div className="bg-stone-800 rounded-xl p-6 border-2 border-orange-600/50 shadow-[0_0_15px_rgba(234,88,12,0.1)]">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Calendar className="text-orange-500" />
-              Suas Próximas Aulas
-            </h3>
-            <div className="space-y-3">
-              {myClasses.length > 0 ? (
-                  myClasses.map((session) => (
-                    <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/50 p-4 rounded-lg border-l-4 border-orange-500 relative overflow-hidden">
-                      <div>
-                        <p className="text-orange-400 font-bold text-lg">{session.date} • {session.time}</p>
-                        <p className="text-white font-medium">{session.level}</p>
-                        <p className="text-sm text-stone-400">{session.location} - {session.instructor}</p>
-                      </div>
-                      <div className="mt-3 sm:mt-0">
-                         <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
-                             <AlertCircle size={12}/> Obrigatório
-                         </span>
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                  <p className="text-stone-500 italic">Nenhuma aula específica do seu professor agendada.</p>
-              )}
-            </div>
+          {/* Tabs Navigation */}
+          <div className="flex flex-wrap gap-2 border-b border-stone-700 pb-1">
+            <button 
+              onClick={() => setActiveMainTab('overview')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeMainTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+            >
+              Visão Geral
+            </button>
+            <button 
+              onClick={() => setActiveMainTab('finance_resources')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeMainTab === 'finance_resources' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+            >
+              Financeiro & Recursos
+            </button>
           </div>
 
-          {/* Próximas Aulas do Grupo (Other Professors) */}
-          <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              <Calendar className="text-stone-500" />
-              Próximas Aulas do Grupo
-            </h3>
-            <p className="text-xs text-stone-400 mb-4 bg-stone-900/50 p-2 rounded border border-stone-600 inline-block">
-                * Aulas com outros professores. Participação opcional, mas recomendada.
-            </p>
-            <div className="space-y-3">
-              {groupClasses.length > 0 ? (
-                  groupClasses.map((session) => (
-                    <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/30 p-4 rounded-lg border-l-2 border-stone-600 opacity-80 hover:opacity-100 transition-opacity">
-                      <div>
-                        <p className="text-stone-300 font-semibold">{session.date} • {session.time}</p>
-                        <p className="text-stone-400 font-medium text-sm">{session.level}</p>
-                        <p className="text-xs text-stone-500">{session.location} - {session.instructor}</p>
-                      </div>
-                      <div className="mt-2 sm:mt-0">
-                         <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">
-                             Opcional
-                         </span>
-                      </div>
-                    </div>
-                  ))
-              ) : (
-                  <p className="text-stone-500 italic">Nenhuma outra aula do grupo agendada.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Mural de Eventos (Mantido aqui) */}
-          <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <MapPin className="text-orange-500" />
-              Mural de Eventos
-            </h3>
-             <div className="space-y-3">
-               {events.length > 0 ? (
-                 events.map((event) => {
-                   const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
-                   const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
-
-                   return (
-                     <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-2 border-yellow-500 hover:bg-stone-700 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <h4 className="text-white font-bold text-lg">{event.title}</h4>
-                          <div className="flex flex-col items-end">
-                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
-                              {event.price && (
-                                  <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                      <DollarSign size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
-                                  </span>
-                              )}
+          {/* --- TAB: OVERVIEW --- */}
+          {activeMainTab === 'overview' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Suas Próximas Aulas (Specific Professor) */}
+              <div className="bg-stone-800 rounded-xl p-6 border-2 border-orange-600/50 shadow-[0_0_15px_rgba(234,88,12,0.1)]">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Calendar className="text-orange-500" />
+                  Suas Próximas Aulas
+                </h3>
+                <div className="space-y-3">
+                  {myClasses.length > 0 ? (
+                      myClasses.map((session) => (
+                        <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/50 p-4 rounded-lg border-l-4 border-orange-500 relative overflow-hidden">
+                          <div>
+                            <p className="text-orange-400 font-bold text-lg">{session.date} • {session.time}</p>
+                            <p className="text-white font-medium">{session.level}</p>
+                            <p className="text-sm text-stone-400">{session.location} - {session.instructor}</p>
+                          </div>
+                          <div className="mt-3 sm:mt-0">
+                            <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                <AlertCircle size={12}/> Obrigatório
+                            </span>
                           </div>
                         </div>
-                        <p className="text-stone-400 text-sm mt-1">{event.description}</p>
-                        <div className="mt-3 flex justify-end">
-                            {!isRegistered && (
-                                <Button 
-                                    variant="primary" 
-                                    className="text-sm h-auto px-3 py-1.5"
-                                    onClick={() => handleOpenEventRegisterModal(event)}
-                                >
-                                    <Ticket size={16} className="mr-1"/> Inscrever-se
-                                </Button>
-                            )}
-                            {isRegistered && registrationStatus === 'pending' && (
-                                <span className="text-yellow-400 text-sm flex items-center gap-1">
-                                    <Clock size={14}/> Inscrição Pendente
-                                </span>
-                            )}
-                            {isRegistered && registrationStatus === 'paid' && (
-                                <span className="text-green-400 text-sm flex items-center gap-1">
-                                    <Check size={14}/> Já Inscrito
-                                </span>
-                            )}
-                        </div>
-                     </div>
-                   );
-                 })
-               ) : (
-                 <p className="text-stone-500 italic">Nenhum evento programado.</p>
-               )}
-             </div>
-          </div>
-
-          {/* NEW: Monthly Payments List (Movido para cá) */}
-          <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <Wallet className="text-green-500" />
-                  Minhas Mensalidades
-              </h3>
-              <div className="space-y-3">
-                  {myMonthlyPayments.length > 0 ? (
-                      myMonthlyPayments.map(payment => (
-                          <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
-                              <div>
-                                  <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
-                                  <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
-                              </div>
-                              <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                                  {payment.status === 'paid' && (
-                                      <span className="text-green-400 text-xs flex items-center gap-1">
-                                          <Check size={12}/> Pago
-                                      </span>
-                                  )}
-                                  {payment.status === 'pending' && !payment.proof_url && (
-                                      <>
-                                          <Button 
-                                              variant="secondary" 
-                                              className="text-xs h-auto px-2 py-1"
-                                              onClick={() => {
-                                                  setSelectedPaymentToProof(payment);
-                                                  fileInputRef.current?.click(); // Trigger hidden file input
-                                              }}
-                                              disabled={uploadingPaymentProof}
-                                          >
-                                              {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1"/> Enviar Comprovante</>}
-                                          </Button>
-                                          {/* Hidden file input */}
-                                          <input 
-                                              type="file" 
-                                              accept="image/*, application/pdf" 
-                                              className="hidden" 
-                                              ref={fileInputRef}
-                                              onChange={handleFileChangeForPaymentProof}
-                                              disabled={uploadingPaymentProof}
-                                          />
-                                      </>
-                                  )}
-                                  {payment.status === 'pending' && payment.proof_url && (
-                                      <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                          <Clock size={12}/> Comprovante Enviado
-                                      </span>
-                                  )}
-                              </div>
-                          </div>
                       ))
                   ) : (
-                      <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
+                      <p className="text-stone-500 italic">Nenhuma aula específica do seu professor agendada.</p>
                   )}
+                </div>
               </div>
-          </div>
 
-          {/* NEW: PIX Copy for Costs (Movido para cá) */}
-          <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <DollarSign className="text-green-500" />
-                  Pagar Custos e Eventos
-              </h3>
-              <Button 
-                  fullWidth 
-                  variant="outline" 
-                  onClick={handleCopyCostPix}
-                  className={costPixCopied ? "border-green-500 text-green-500" : ""}
-              >
-                  {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                  {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
-              </Button>
-              <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
-          </div>
+              {/* Próximas Aulas do Grupo (Other Professors) */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                  <Calendar className="text-stone-500" />
+                  Próximas Aulas do Grupo
+                </h3>
+                <p className="text-xs text-stone-400 mb-4 bg-stone-900/50 p-2 rounded border border-stone-600 inline-block">
+                    * Aulas com outros professores. Participação opcional, mas recomendada.
+                </p>
+                <div className="space-y-3">
+                  {groupClasses.length > 0 ? (
+                      groupClasses.map((session) => (
+                        <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/30 p-4 rounded-lg border-l-2 border-stone-600 opacity-80 hover:opacity-100 transition-opacity">
+                          <div>
+                            <p className="text-stone-300 font-semibold">{session.date} • {session.time}</p>
+                            <p className="text-stone-400 font-medium text-sm">{session.level}</p>
+                            <p className="text-xs text-stone-500">{session.location} - {session.instructor}</p>
+                          </div>
+                          <div className="mt-2 sm:mt-0">
+                            <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">
+                                Opcional
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                      <p className="text-stone-500 italic">Nenhuma outra aula do grupo agendada.</p>
+                  )}
+                </div>
+              </div>
 
-          {/* Resources & Training & Reports Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <button 
-                onClick={() => setActiveView('music')}
-                className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
-            >
-              <Music className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
-              <h4 className="text-lg font-bold text-white">Músicas</h4>
-              <p className="text-xs text-stone-400 mt-1">Letras enviadas</p>
-            </button>
-            <button 
-                onClick={() => setActiveView('home_training')}
-                className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group relative overflow-hidden flex flex-col items-start h-full"
-            >
-              <Video className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
-              <h4 className="text-lg font-bold text-white">Treino em Casa</h4>
-              <p className="text-xs text-stone-400 mt-1">Envie seu vídeo</p>
-              {!isClassDay && (
-                  <div className="absolute top-2 right-2 text-red-500 animate-pulse" title="Envio obrigatório hoje">
-                      <AlertTriangle size={20} />
+              {/* Mural de Eventos */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <MapPin className="text-orange-500" />
+                  Mural de Eventos
+                </h3>
+                <div className="space-y-3">
+                  {events.length > 0 ? (
+                    events.map((event) => {
+                      const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
+                      const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
+
+                      return (
+                        <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-2 border-yellow-500 hover:bg-stone-700 transition-colors">
+                            <div className="flex justify-between items-start">
+                              <h4 className="text-white font-bold text-lg">{event.title}</h4>
+                              <div className="flex flex-col items-end">
+                                  <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
+                                  {event.price && (
+                                      <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                          <DollarSign size={12}/> R$ {event.price.toFixed(2).replace('.', ',')}
+                                      </span>
+                                  )}
+                              </div>
+                            </div>
+                            <p className="text-stone-400 text-sm mt-1">{event.description}</p>
+                            <div className="mt-3 flex justify-end">
+                                {!isRegistered && (
+                                    <Button 
+                                        variant="primary" 
+                                        className="text-sm h-auto px-3 py-1.5"
+                                        onClick={() => handleOpenEventRegisterModal(event)}
+                                    >
+                                        <Ticket size={16} className="mr-1"/> Inscrever-se
+                                    </Button>
+                                )}
+                                {isRegistered && registrationStatus === 'pending' && (
+                                    <span className="text-yellow-400 text-sm flex items-center gap-1">
+                                        <Clock size={14}/> Inscrição Pendente
+                                    </span>
+                                )}
+                                {isRegistered && registrationStatus === 'paid' && (
+                                    <span className="text-green-400 text-sm flex items-center gap-1">
+                                        <Check size={14}/> Já Inscrito
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-stone-500 italic">Nenhum evento programado.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB: FINANCEIRO E RECURSOS --- */}
+          {activeMainTab === 'finance_resources' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Monthly Payments List */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      <Wallet className="text-green-500" />
+                      Minhas Mensalidades
+                  </h3>
+                  {isOver18 && ( // PIX Mensalidade button moved here
+                    <div className="mb-4">
+                        <Button 
+                            fullWidth 
+                            variant="outline" 
+                            onClick={handleCopyPix}
+                            className={pixCopied ? "border-green-500 text-green-500" : ""}
+                        >
+                            {pixCopied ? <Check size={18} /> : <Copy size={18} />}
+                            {pixCopied ? 'Chave Copiada!' : 'PIX Mensalidade'}
+                        </Button>
+                        <p className="text-xs text-stone-500 mt-2 text-center">soufilhodofogo@gmail.com</p>
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                      {myMonthlyPayments.length > 0 ? (
+                          myMonthlyPayments.map(payment => (
+                              <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                                  <div>
+                                      <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                                      <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                      {payment.status === 'paid' && (
+                                          <span className="text-green-400 text-xs flex items-center gap-1">
+                                              <Check size={12}/> Pago
+                                          </span>
+                                      )}
+                                      {payment.status === 'pending' && !payment.proof_url && (
+                                          <>
+                                              <Button 
+                                                  variant="secondary" 
+                                                  className="text-xs h-auto px-2 py-1"
+                                                  onClick={() => {
+                                                      setSelectedPaymentToProof(payment);
+                                                      fileInputRef.current?.click(); // Trigger hidden file input
+                                                  }}
+                                                  disabled={uploadingPaymentProof}
+                                              >
+                                                  {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1"/> Enviar Comprovante</>}
+                                              </Button>
+                                              {/* Hidden file input */}
+                                              <input 
+                                                  type="file" 
+                                                  accept="image/*, application/pdf" 
+                                                  className="hidden" 
+                                                  ref={fileInputRef}
+                                                  onChange={handleFileChangeForPaymentProof}
+                                                  disabled={uploadingPaymentProof}
+                                              />
+                                          </>
+                                      )}
+                                      {payment.status === 'pending' && payment.proof_url && (
+                                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                              <Clock size={12}/> Comprovante Enviado
+                                          </span>
+                                      )}
+                                  </div>
+                              </div>
+                          ))
+                      ) : (
+                          <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
+                      )}
                   </div>
-              )}
-            </button>
-            <button 
-                onClick={() => setActiveView('school_report')}
-                className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
-            >
-              <GraduationCap className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
-              <h4 className="text-lg font-bold text-white">Boletim</h4>
-              <p className="text-xs text-stone-400 mt-1">Notas escolares</p>
-            </button>
-            <button 
-                onClick={() => setActiveView('uniform')}
-                className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
-            >
-              <Shirt className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
-              <h4 className="text-lg font-bold text-white">Uniforme</h4>
-              <p className="text-xs text-stone-400 mt-1">Solicitar peças</p>
-            </button>
-          </div>
+              </div>
 
+              {/* PIX Copy for Costs */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      <DollarSign className="text-green-500" />
+                      Pagar Custos e Eventos
+                  </h3>
+                  <Button 
+                      fullWidth 
+                      variant="outline" 
+                      onClick={handleCopyCostPix}
+                      className={costPixCopied ? "border-green-500 text-green-500" : ""}
+                  >
+                      {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
+                      {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
+                  </Button>
+                  <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
+              </div>
+
+              {/* Resources & Training & Reports Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <button 
+                    onClick={() => setActiveView('music')}
+                    className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
+                >
+                  <Music className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
+                  <h4 className="text-lg font-bold text-white">Músicas</h4>
+                  <p className="text-xs text-stone-400 mt-1">Letras enviadas</p>
+                </button>
+                <button 
+                    onClick={() => setActiveView('home_training')}
+                    className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group relative overflow-hidden flex flex-col items-start h-full"
+                >
+                  <Video className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
+                  <h4 className="text-lg font-bold text-white">Treino em Casa</h4>
+                  <p className="text-xs text-stone-400 mt-1">Envie seu vídeo</p>
+                  {!isClassDay && (
+                      <div className="absolute top-2 right-2 text-red-500 animate-pulse" title="Envio obrigatório hoje">
+                          <AlertTriangle size={20} />
+                      </div>
+                  )}
+                </button>
+                <button 
+                    onClick={() => setActiveView('school_report')}
+                    className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
+                >
+                  <GraduationCap className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
+                  <h4 className="text-lg font-bold text-white">Boletim</h4>
+                  <p className="text-xs text-stone-400 mt-1">Notas escolares</p>
+                </button>
+                <button 
+                    onClick={() => setActiveView('uniform')}
+                    className="bg-stone-800 p-6 rounded-xl border border-stone-700 hover:border-orange-500 transition-all text-left group flex flex-col items-start h-full"
+                >
+                  <Shirt className="w-8 h-8 text-stone-400 group-hover:text-orange-500 mb-3 transition-colors" />
+                  <h4 className="text-lg font-bold text-white">Uniforme</h4>
+                  <p className="text-xs text-stone-400 mt-1">Solicitar peças</p>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       )}
