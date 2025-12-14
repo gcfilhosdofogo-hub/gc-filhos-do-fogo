@@ -112,9 +112,9 @@ export const DashboardAluno: React.FC<Props> = ({
   );
   
   // Filter group classes: not by my professor, and not by an admin
-  const adminIds = allUsersProfiles.filter(p => p.role === 'admin').map(p => p.id);
+  // MODIFIED: groupClasses now includes classes from other professors AND admins, but excludes student's own professor.
   const groupClasses = classSessions.filter(
-    (session) => session.professor_id !== studentProfessorId && !adminIds.includes(session.professor_id || '')
+    (session) => session.professor_id !== studentProfessorId
   );
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
@@ -429,137 +429,143 @@ export const DashboardAluno: React.FC<Props> = ({
       {/* MY COSTS MODAL (For All Students) */}
       {showMyCosts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
-                  <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white"><X size={20}/></button>
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-lg w-full p-6 relative flex flex-col max-h-[95vh]"> {/* Adjusted max-w-md to max-w-lg and max-h */}
+                  <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white z-10"><X size={20}/></button>
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-green-500" />
                       Meus Custos e Eventos
                   </h3>
                   
-                  {/* Graduation Cost */}
-                  <div className="bg-stone-900 rounded-lg p-4 mb-4 border border-stone-700">
-                      <h4 className="text-stone-400 text-xs uppercase font-bold mb-2">Minha Próxima Graduação</h4>
-                      {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
-                      <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold text-green-400">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</span>
-                          {(user.graduationCost ?? 0) === 0 ? (
-                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
-                          ) : (
-                              <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Valor definido pela coordenação</span>
-                          )}
-                      </div>
-                  </div>
+                  <div className="overflow-y-auto flex-1 pr-2"> {/* Added overflow-y-auto here */}
+                    {/* Graduation Cost */}
+                    <div className="bg-stone-900 rounded-lg p-4 mb-4 border border-stone-700">
+                        <h4 className="text-stone-400 text-xs uppercase font-bold mb-2">Minha Próxima Graduação</h4>
+                        {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-green-400">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</span>
+                            {(user.graduationCost ?? 0) === 0 ? (
+                                <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Gratuito (Definido pela Coordenação)</span>
+                            ) : (
+                                <span className="text-xs text-stone-500 bg-stone-800 px-2 py-1 rounded">Valor definido pela coordenação</span>
+                            )}
+                        </div>
+                    </div>
 
-                  {/* Monthly Payments List */}
-                  <div className="mb-6">
-                      <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Minhas Mensalidades</h4>
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                          {myMonthlyPayments.length > 0 ? (
-                              myMonthlyPayments.map(payment => (
-                                  <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex justify-between items-center`}>
-                                      <div>
-                                          <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
-                                          <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                          {payment.status === 'paid' && (
-                                              <span className="text-green-400 text-xs flex items-center gap-1">
-                                                  <Check size={12}/> Pago
-                                              </span>
-                                          )}
-                                          {payment.status === 'pending' && !payment.proof_url && (
-                                              <label className="cursor-pointer">
-                                                  <span className="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium transition-colors inline-block">
-                                                      {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : 'Enviar Comprovante'}
-                                                  </span>
-                                                  <input 
-                                                      type="file" 
-                                                      accept="image/*, application/pdf" 
-                                                      className="hidden" 
-                                                      onChange={handleUploadPaymentProof}
-                                                      onClick={() => setSelectedPaymentToProof(payment)}
-                                                      disabled={uploadingPaymentProof}
-                                                  />
-                                              </label>
-                                          )}
-                                          {payment.status === 'pending' && payment.proof_url && (
-                                              <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                                  <Clock size={12}/> Comprovante Enviado
-                                              </span>
-                                          )}
-                                      </div>
-                                  </div>
-                              ))
-                          ) : (
-                              <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
-                          )}
-                      </div>
-                  </div>
-
-                  {/* PIX Copy inside Modal */}
-                  <div className="mb-6 bg-stone-900 p-4 rounded-lg border border-stone-700">
-                      <h4 className="text-stone-400 text-xs uppercase font-bold mb-2">Pagar Custos</h4>
-                      <Button 
-                        fullWidth 
-                        variant="outline" 
-                        onClick={handleCopyCostPix}
-                        className={costPixCopied ? "border-green-500 text-green-500" : ""}
-                      >
-                        {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                        {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
-                      </Button>
-                      <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
-                  </div>
-
-                  {/* Events List */}
-                  <div>
-                      <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Eventos Disponíveis</h4>
-                      <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                        {events.length > 0 ? (
-                            events.map(event => {
-                                const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
-                                const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
-
-                                return (
-                                    <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500 flex justify-between items-center">
+                    {/* Monthly Payments List */}
+                    <div className="mb-6">
+                        <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Minhas Mensalidades</h4>
+                        <div className="space-y-3">
+                            {myMonthlyPayments.length > 0 ? (
+                                myMonthlyPayments.map(payment => (
+                                    <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
                                         <div>
-                                            <p className="font-bold text-white text-sm">{event.title}</p>
-                                            <p className="text-stone-500 text-xs">{event.date}</p>
+                                            <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                                            <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            {event.price ? (
-                                                <span className="text-green-400 text-xs font-bold border border-green-900/50 bg-green-900/20 px-2 py-1 rounded">R$ {event.price.toFixed(2).replace('.', ',')}</span>
-                                            ) : (
-                                                <span className="text-stone-400 text-xs">Grátis</span>
-                                            )}
-                                            {!isRegistered && (
-                                                <Button 
-                                                    variant="secondary" 
-                                                    className="text-xs h-auto px-2 py-1"
-                                                    onClick={() => handleOpenEventRegisterModal(event)}
-                                                >
-                                                    <Ticket size={14} className="mr-1"/> Inscrever
-                                                </Button>
-                                            )}
-                                            {isRegistered && registrationStatus === 'pending' && (
-                                                <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                                    <Clock size={12}/> Pendente
+                                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                            {payment.status === 'paid' && (
+                                                <span className="text-green-400 text-xs flex items-center gap-1">
+                                                    <Check size={12}/> Pago
                                                 </span>
                                             )}
-                                            {isRegistered && registrationStatus === 'paid' && (
-                                                <span className="text-green-400 text-xs flex items-center gap-1">
-                                                    <Check size={12}/> Inscrito
+                                            {payment.status === 'pending' && !payment.proof_url && (
+                                                <label className="cursor-pointer">
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        className="text-xs h-auto px-2 py-1"
+                                                        onClick={() => setSelectedPaymentToProof(payment)} // Set selected payment for upload
+                                                        disabled={uploadingPaymentProof}
+                                                    >
+                                                        {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1"/> Enviar Comprovante</>}
+                                                    </Button>
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*, application/pdf" 
+                                                        className="hidden" 
+                                                        onChange={handleUploadPaymentProof}
+                                                        disabled={uploadingPaymentProof}
+                                                    />
+                                                </label>
+                                            )}
+                                            {payment.status === 'pending' && payment.proof_url && (
+                                                <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                                    <Clock size={12}/> Comprovante Enviado
                                                 </span>
                                             )}
                                         </div>
                                     </div>
-                                );
-                            })
-                        ) : (
-                            <p className="text-stone-500 text-sm italic">Nenhum evento.</p>
-                        )}
-                      </div>
-                  </div>
+                                ))
+                            ) : (
+                                <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* PIX Copy inside Modal */}
+                    <div className="mb-6 bg-stone-900 p-4 rounded-lg border border-stone-700">
+                        <h4 className="text-stone-400 text-xs uppercase font-bold mb-2">Pagar Custos</h4>
+                        <Button 
+                            fullWidth 
+                            variant="outline" 
+                            onClick={handleCopyCostPix}
+                            className={costPixCopied ? "border-green-500 text-green-500" : ""}
+                        >
+                            {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
+                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
+                        </Button>
+                        <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
+                    </div>
+
+                    {/* Events List */}
+                    <div>
+                        <h4 className="text-stone-400 text-xs uppercase font-bold mb-3">Eventos Disponíveis</h4>
+                        <div className="space-y-3">
+                            {events.length > 0 ? (
+                                events.map(event => {
+                                    const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
+                                    const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
+
+                                    return (
+                                        <div key={event.id} className="bg-stone-900 p-3 rounded border-l-2 border-yellow-500 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                                            <div>
+                                                <p className="font-bold text-white text-sm">{event.title}</p>
+                                                <p className="text-stone-500 text-xs">{event.date}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                                {event.price ? (
+                                                    <span className="text-green-400 text-xs font-bold border border-green-900/50 bg-green-900/20 px-2 py-1 rounded">R$ {event.price.toFixed(2).replace('.', ',')}</span>
+                                                ) : (
+                                                    <span className="text-stone-400 text-xs">Grátis</span>
+                                                )}
+                                                {!isRegistered && (
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        className="text-xs h-auto px-2 py-1"
+                                                        onClick={() => handleOpenEventRegisterModal(event)}
+                                                    >
+                                                        <Ticket size={14} className="mr-1"/> Inscrever
+                                                    </Button>
+                                                )}
+                                                {isRegistered && registrationStatus === 'pending' && (
+                                                    <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                                        <Clock size={12}/> Pendente
+                                                    </span>
+                                                )}
+                                                {isRegistered && registrationStatus === 'paid' && (
+                                                    <span className="text-green-400 text-xs flex items-center gap-1">
+                                                        <Check size={12}/> Inscrito
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <p className="text-stone-500 text-sm italic">Nenhum evento.</p>
+                            )}
+                        </div>
+                    </div>
+                  </div> {/* End of overflow-y-auto div */}
               </div>
           </div>
       )}
@@ -644,7 +650,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative" >
                 <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: user.beltColor || '#fff' }}></div>
                 <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
-                <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                <p className className="text-lg font-bold text-white flex items-center justify-center gap-2">
                   <Award className="text-orange-500" />
                   {user.belt || 'Cordel Cinza'}
                 </p>
