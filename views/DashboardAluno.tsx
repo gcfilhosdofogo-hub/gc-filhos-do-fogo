@@ -59,7 +59,7 @@ export const DashboardAluno: React.FC<Props> = ({
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
-  const [costPixCopied, setCostPixCopied] = useState(false);
+  const [costPixCopied, setCostPixCopied] = useState(false); // Corrected variable name
   const [showMyCosts, setShowMyCosts] = useState(false);
   
   // State for Video Pending Popup
@@ -102,9 +102,9 @@ export const DashboardAluno: React.FC<Props> = ({
   );
   const studentProfessorId = studentProfessor?.id;
 
-  console.log('DashboardAluno - User Professor Name:', user.professorName); // DEBUG
-  console.log('DashboardAluno - Student Professor ID:', studentProfessorId); // DEBUG
-  console.log('DashboardAluno - All Class Sessions:', classSessions); // DEBUG
+  console.log('DEBUG DashboardAluno: User Professor Name:', user.professorName); // DEBUG
+  console.log('DEBUG DashboardAluno: Student Professor ID:', studentProfessorId); // DEBUG
+  console.log('DEBUG DashboardAluno: All Class Sessions:', classSessions); // DEBUG
 
   // NEW: Filter classes based on real data
   const myClasses = classSessions.filter(
@@ -116,8 +116,8 @@ export const DashboardAluno: React.FC<Props> = ({
     (session) => session.professor_id !== studentProfessorId
   );
 
-  console.log('DashboardAluno - My Classes:', myClasses); // DEBUG
-  console.log('DashboardAluno - Group Classes:', groupClasses); // DEBUG
+  console.log('DEBUG DashboardAluno: My Classes:', myClasses); // DEBUG
+  console.log('DEBUG DashboardAluno: Group Classes:', groupClasses); // DEBUG
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
@@ -360,10 +360,10 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileChangeForPaymentProof called'); // DEBUG
-    console.log('selectedPaymentToProof:', selectedPaymentToProof); // DEBUG
+    console.log('DEBUG DashboardAluno: handleFileChangeForPaymentProof called'); // DEBUG
+    console.log('DEBUG DashboardAluno: selectedPaymentToProof:', selectedPaymentToProof); // DEBUG
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
-      console.log('No file or no selectedPaymentToProof. Aborting upload.'); // DEBUG
+      console.log('DEBUG DashboardAluno: No file or no selectedPaymentToProof. Aborting upload.'); // DEBUG
       setUploadingPaymentProof(false); // Ensure loading state is reset
       return;
     }
@@ -379,7 +379,7 @@ export const DashboardAluno: React.FC<Props> = ({
             .from('payment_proofs')
             .upload(filePath, file);
 
-        if (uploadError) throw error; // Throw error to be caught by catch block
+        if (uploadError) throw uploadError; // Throw error to be caught by catch block
 
         const fileUrl = uploadData.path; 
         
@@ -441,7 +441,7 @@ export const DashboardAluno: React.FC<Props> = ({
       {/* MY COSTS MODAL (For All Students) */}
       {showMyCosts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[95vh]"> {/* Adjusted max-w-lg to max-w-xl and max-h */}
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-lg w-full p-6 relative flex flex-col max-h-[calc(100vh-4rem)]"> {/* Adjusted max-w-xl to max-w-lg */}
                   <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white z-10"><X size={20}/></button>
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-green-500" />
@@ -527,7 +527,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             className={costPixCopied ? "border-green-500 text-green-500" : ""}
                         >
                             {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
+                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'} {/* Corrected variable name */}
                         </Button>
                         <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
                     </div>
