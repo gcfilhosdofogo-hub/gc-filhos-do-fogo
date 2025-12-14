@@ -467,6 +467,7 @@ function AppContent() {
               onUpdateAssignment={handleUpdateAssignment}
               eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
               onAddEventRegistration={handleAddEventRegistration}
+              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof} {/* NEW PROP */}
               allUsersProfiles={allUsersProfiles} // NEW: Pass all user profiles
               monthlyPayments={monthlyPayments}
               onUpdatePaymentRecord={handleUpdatePaymentRecord}

@@ -22,6 +22,7 @@ interface Props {
   onUpdateAssignment: (assignment: any) => Promise<void>;
   eventRegistrations: EventRegistration[];
   onAddEventRegistration: (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => Promise<void>;
+  onUpdateEventRegistrationWithProof: (updatedRegistration: EventRegistration) => Promise<void>; // NEW PROP
   allUsersProfiles: User[];
   monthlyPayments?: PaymentRecord[];
   onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>;
@@ -54,6 +55,7 @@ export const DashboardAluno: React.FC<Props> = ({
   onUpdateAssignment,
   eventRegistrations,
   onAddEventRegistration,
+  onUpdateEventRegistrationWithProof, // NEW PROP
   allUsersProfiles,
   monthlyPayments = [],
   onUpdatePaymentRecord,
@@ -300,7 +302,7 @@ export const DashboardAluno: React.FC<Props> = ({
         price = UNIFORM_PRICES.combo;
         itemName = 'Combo (Blusa + Calça)';
         if (!orderForm.shirtSize || !orderForm.pantsSize) return alert('Digite os tamanhos');
-        details = `Blusa: ${orderForm.shirtSize}, Calça: ${orderForm.pantsSize}`;
+        details = `Blusa: ${orderForm.shirtSize}, Calça: ${order.pantsSize}`;
     }
 
     const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
@@ -438,12 +440,8 @@ export const DashboardAluno: React.FC<Props> = ({
             status: 'pending', // Mark as pending for admin review
         };
         
-        // You'll need to add a new prop to App.tsx to handle updating event registrations with proof
-        // For now, we'll just log it and update the local state
-        // await onUpdateEventRegistrationWithProof(updatedRegistration); // This prop needs to be created
-        console.log('DEBUG: Event registration with proof to update:', updatedRegistration);
-        // Temporarily update local state for immediate feedback
-        onAddEventRegistration(updatedRegistration); // Re-using add for now, but ideally a specific update
+        // Call the new prop to update the event registration with proof
+        await onUpdateEventRegistrationWithProof(updatedRegistration); 
         
         setUploadingEventProof(false);
         setSelectedEventRegToProof(null);
