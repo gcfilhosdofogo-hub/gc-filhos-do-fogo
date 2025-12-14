@@ -59,7 +59,7 @@ export const DashboardAluno: React.FC<Props> = ({
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [pixCopied, setPixCopied] = useState(false);
-  const [costPixCopied, setCostPixCopied] = useState(false); // Corrected variable name
+  const [costPixCopied, setCostPixCopied] = useState(false);
   const [showMyCosts, setShowMyCosts] = useState(false);
   
   // State for Video Pending Popup
@@ -441,7 +441,7 @@ export const DashboardAluno: React.FC<Props> = ({
       {/* MY COSTS MODAL (For All Students) */}
       {showMyCosts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-lg w-full p-6 relative flex flex-col max-h-[calc(100vh-4rem)]"> {/* Adjusted max-w-xl to max-w-lg */}
+              <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[calc(100vh-4rem)]"> {/* Changed max-w-lg to max-w-md */}
                   <button onClick={() => setShowMyCosts(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white z-10"><X size={20}/></button>
                   <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-green-500" />
@@ -527,7 +527,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             className={costPixCopied ? "border-green-500 text-green-500" : ""}
                         >
                             {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'} {/* Corrected variable name */}
+                            {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
                         </Button>
                         <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
                     </div>
