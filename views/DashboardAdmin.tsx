@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp } from 'lucide-react'; // Import FileUp
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye } from 'lucide-react'; // Import FileUp and Eye
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -317,6 +317,22 @@ export const DashboardAdmin: React.FC<Props> = ({
     } catch (error: any) {
         console.error('Error viewing payment proof:', error);
         alert('Erro ao visualizar o comprovante: ' + error.message);
+    }
+  };
+
+  const handleViewEventRegistrationProof = async (filePath: string, proofName: string) => {
+    try {
+        const { data, error } = await supabase.storage
+            .from('event_proofs')
+            .createSignedUrl(filePath, 60); // URL valid for 60 seconds
+
+        if (error) throw error;
+
+        window.open(data.signedUrl, '_blank');
+        onNotifyAdmin(`Visualizou comprovante de evento: ${proofName}`, user);
+    } catch (error: any) {
+        console.error('Error viewing event registration proof:', error);
+        alert('Erro ao visualizar o comprovante de evento: ' + error.message);
     }
   };
 
@@ -1298,6 +1314,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <th className="p-4">Evento</th>
                             <th className="p-4">Valor Pago</th>
                             <th className="p-4">Status</th>
+                            <th className="p-4">Comprovante</th> {/* NEW COLUMN */}
                             <th className="p-4 text-right">Ações</th>
                         </tr>
                     </thead>
@@ -1314,6 +1331,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     {reg.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente Pagamento</span>}
                                     {reg.status === 'paid' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Pago</span>}
                                     {reg.status === 'cancelled' && <span className="px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs border border-red-900/50">Cancelado</span>}
+                                </td>
+                                <td className="p-4"> {/* NEW: Comprovante Column */}
+                                    {reg.proof_url ? (
+                                        <button 
+                                            onClick={() => handleViewEventRegistrationProof(reg.proof_url!, reg.event_title + ' Comprovante')}
+                                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                                        >
+                                            <Eye size={14} /> Ver Comprovante
+                                        </button>
+                                    ) : (
+                                        <span className="text-stone-500 text-xs italic">Nenhum</span>
+                                    )}
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex justify-end gap-2">
@@ -1345,7 +1374,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         ))}
                         {eventRegistrations.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-stone-500 italic">Nenhum registro de evento.</td>
+                                <td colSpan={6} className="p-8 text-center text-stone-500 italic">Nenhum registro de evento.</td> {/* Updated colspan */}
                             </tr>
                         )}
                     </tbody>
@@ -1560,7 +1589,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               <div>
                                   <label className="block text-sm text-stone-400 mb-1">Cordel / Graduação</label>
                                   <select 
-                                      value={formData.belt}
+                                      value={userForm.belt}
                                       onChange={(e) => setUserForm({...userForm, belt: e.target.value})}
                                       className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                   >
@@ -1996,15 +2025,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </div>
                                   </td>
                                   <td className="py-3">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-16 h-2 bg-stone-700 rounded-full overflow-hidden">
-                                        <div 
-                                          className={`h-full ${student.attendanceRate > 85 ? 'bg-green-500' : student.attendanceRate > 70 ? 'bg-yellow-500' : 'bg-red-500'}`} 
-                                          style={{ width: `${student.attendanceRate}%` }}
-                                        ></div>
-                                      </div>
-                                      <span className="text-xs text-stone-400">{student.attendanceRate}%</span>
+                                    <div className="w-16 h-2 bg-stone-700 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full ${student.attendanceRate > 85 ? 'bg-green-500' : student.attendanceRate > 70 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                                        style={{ width: `${student.attendanceRate}%` }}
+                                      ></div>
                                     </div>
+                                    <span className="text-xs text-stone-400">{student.attendanceRate}%</span>
                                   </td>
                                   <td className="py-3 text-stone-300">{student.technicalGrade.toFixed(1)}</td>
                                   <td className="py-3 text-stone-400 text-xs italic">"{student.lastEvaluation}"</td>

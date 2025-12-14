@@ -459,13 +459,17 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
+    console.log('Attempting to view proof:', { filePath, proofName, bucket }); // Debug log
     try {
         const { data, error } = await supabase.storage
             .from(bucket)
             .createSignedUrl(filePath, 60); // URL valid for 60 seconds
 
-        if (error) throw error;
-
+        if (error) {
+            console.error('Error generating signed URL:', error); // Debug log
+            throw error;
+        }
+        console.log('Signed URL generated:', data.signedUrl); // Debug log
         window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
