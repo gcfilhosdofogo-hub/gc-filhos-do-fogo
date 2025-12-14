@@ -54,7 +54,6 @@ function AppContent() {
         professorName: p.professor_name || undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
-      console.log('DEBUG App.tsx: Fetched all profiles:', mappedProfiles); // DEBUG
     }
 
     // Fetch Group Events
@@ -193,18 +192,15 @@ function AppContent() {
           };
           setUser(fetchedUser);
           setCurrentView('dashboard');
-          console.log('DEBUG App.tsx: User profile loaded:', fetchedUser); // DEBUG
         } else {
           // Perfil não existe ou está incompleto (primeiro nome ausente ou vazio)
           setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
           setCurrentView('profile_setup');
-          console.log('DEBUG App.tsx: User profile incomplete or not found, redirecting to setup.'); // DEBUG
         }
       } else {
         // Não há sessão, volta para a tela inicial
         setUser(null);
         setCurrentView('home');
-        console.log('DEBUG App.tsx: No session, redirecting to home.'); // DEBUG
       }
       setIsProfileChecked(true); // Marca a verificação do perfil como completa
     };
@@ -216,7 +212,6 @@ function AppContent() {
   // Efeito para buscar dados do dashboard quando o usuário estiver definido
   useEffect(() => {
     if (session && user) {
-      console.log('DEBUG App.tsx: Fetching dashboard data for user:', user.id, user.role); // DEBUG
       fetchData();
     }
   }, [session, user, fetchData]);
@@ -403,6 +398,12 @@ function AppContent() {
     const { data, error } = await supabase.from('event_registrations').update({ status }).eq('id', registrationId).select().single();
     if (error) console.error('Error updating event registration status:', error);
     else setEventRegistrations(prev => prev.map(reg => reg.id === registrationId ? data : reg));
+  };
+
+  const handleUpdateEventRegistrationWithProof = async (updatedRegistration: EventRegistration) => {
+    const { data, error } = await supabase.from('event_registrations').update(updatedRegistration).eq('id', updatedRegistration.id).select().single();
+    if (error) console.error('Error updating event registration with proof:', error);
+    else setEventRegistrations(prev => prev.map(reg => reg.id === updatedRegistration.id ? data : reg));
   };
 
 

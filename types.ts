@@ -94,6 +94,8 @@ export interface EventRegistration {
   amount_paid: number;
   status: 'pending' | 'paid' | 'cancelled';
   registered_at: string; // ISO string
+  proof_url?: string; // NEW: URL do comprovante de pagamento
+  proof_name?: string; // NEW: Nome do arquivo do comprovante
 }
 
 // New Types for Admin Dashboard
@@ -109,6 +111,8 @@ export interface PaymentRecord {
   paid_at?: string;
   amount: number;
   created_at?: string;
+  proof_url?: string; // URL do comprovante de pagamento
+  proof_name?: string; // Nome do arquivo do comprovante
 }
 
 export interface StudentAcademicData {

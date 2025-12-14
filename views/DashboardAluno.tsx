@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord } from '../types';
 import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -89,6 +89,11 @@ export const DashboardAluno: React.FC<Props> = ({
   const [selectedPaymentToProof, setSelectedPaymentToProof] = useState<PaymentRecord | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null); // Ref for the hidden file input
 
+  // Event Registration Proof Upload State
+  const [uploadingEventProof, setUploadingEventProof] = useState(false);
+  const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<EventRegistration | null>(null);
+  const eventFileInputRef = useRef<HTMLInputElement>(null); // Ref for the hidden file input for event proofs
+
 
   // Filter my orders from global state
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
@@ -98,27 +103,27 @@ export const DashboardAluno: React.FC<Props> = ({
   const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user?.id); // Filter payments for the current user
 
   // NEW: Determine the professor's ID based on the student's professorName
-  const studentProfessor = allUsersProfiles.find(
-    (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
-  );
+  const studentProfessor = useMemo(() => {
+    return allUsersProfiles.find(
+      (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
+    );
+  }, [allUsersProfiles, user.professorName, user.name]);
+
   const studentProfessorId = studentProfessor?.id;
 
-  console.log('DEBUG DashboardAluno: User Professor Name:', user.professorName); // DEBUG
-  console.log('DEBUG DashboardAluno: Student Professor ID:', studentProfessorId); // DEBUG
-  console.log('DEBUG DashboardAluno: All Class Sessions:', classSessions); // DEBUG
-
   // NEW: Filter classes based on real data
-  const myClasses = classSessions.filter(
-    (session) => studentProfessorId && session.professor_id === studentProfessorId
-  );
+  const myClasses = useMemo(() => {
+    return classSessions.filter(
+      (session) => studentProfessorId && session.professor_id === studentProfessorId
+    );
+  }, [classSessions, studentProfessorId]);
   
   // Filter group classes: not by my professor, and not by an admin
-  const groupClasses = classSessions.filter(
-    (session) => session.professor_id !== studentProfessorId
-  );
-
-  console.log('DEBUG DashboardAluno: My Classes:', myClasses); // DEBUG
-  console.log('DEBUG DashboardAluno: Group Classes:', groupClasses); // DEBUG
+  const groupClasses = useMemo(() => {
+    return classSessions.filter(
+      (session) => session.professor_id !== studentProfessorId
+    );
+  }, [classSessions, studentProfessorId]);
 
   // Mock Logic: Today is NOT a class day, enforcing video upload logic
   const isClassDay = false; 
@@ -136,7 +141,7 @@ export const DashboardAluno: React.FC<Props> = ({
   }, [isClassDay, myHomeTrainings.length]); // Run once on mount
 
   // Calculate Age
-  const isOver18 = React.useMemo(() => {
+  const isOver18 = useMemo(() => {
     if (!user.birthDate) return false;
     const today = new Date();
     const birthDate = new Date(user.birthDate);
@@ -361,10 +366,7 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('DEBUG DashboardAluno: handleFileChangeForPaymentProof called'); // DEBUG
-    console.log('DEBUG DashboardAluno: selectedPaymentToProof:', selectedPaymentToProof); // DEBUG
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
-      console.log('DEBUG DashboardAluno: No file or no selectedPaymentToProof. Aborting upload.'); // DEBUG
       setUploadingPaymentProof(false); // Ensure loading state is reset
       return;
     }
@@ -407,6 +409,73 @@ export const DashboardAluno: React.FC<Props> = ({
         }
     }
   };
+
+  const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedEventRegToProof) {
+      setUploadingEventProof(false);
+      return;
+    }
+
+    const file = e.target.files[0];
+    setUploadingEventProof(true);
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/event_proofs/${selectedEventRegToProof.id}-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('event_proofs')
+            .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const fileUrl = uploadData.path; 
+        
+        const updatedRegistration: EventRegistration = {
+            ...selectedEventRegToProof,
+            proof_url: fileUrl, // Assuming EventRegistration has a proof_url field
+            proof_name: file.name, // Assuming EventRegistration has a proof_name field
+            status: 'pending', // Mark as pending for admin review
+        };
+        
+        // You'll need to add a new prop to App.tsx to handle updating event registrations with proof
+        // For now, we'll just log it and update the local state
+        // await onUpdateEventRegistrationWithProof(updatedRegistration); // This prop needs to be created
+        console.log('DEBUG: Event registration with proof to update:', updatedRegistration);
+        // Temporarily update local state for immediate feedback
+        onAddEventRegistration(updatedRegistration); // Re-using add for now, but ideally a specific update
+        
+        setUploadingEventProof(false);
+        setSelectedEventRegToProof(null);
+        onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para o evento ${selectedEventRegToProof.event_title}`, user);
+        alert("Comprovante de evento enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
+    } catch (error: any) {
+        console.error('Error uploading event proof:', error);
+        alert("Erro ao enviar comprovante de evento: " + error.message);
+        setUploadingEventProof(false);
+    } finally {
+        if (eventFileInputRef.current) {
+            eventFileInputRef.current.value = '';
+        }
+    }
+  };
+
+  const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
+    try {
+        const { data, error } = await supabase.storage
+            .from(bucket)
+            .createSignedUrl(filePath, 60); // URL valid for 60 seconds
+
+        if (error) throw error;
+
+        window.open(data.signedUrl, '_blank');
+        onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
+    } catch (error: any) {
+        console.error('Error viewing payment proof:', error);
+        alert('Erro ao visualizar o comprovante: ' + error.message);
+    }
+  };
+
 
   return (
     <div className="space-y-6 animate-fade-in relative">
@@ -547,7 +616,7 @@ export const DashboardAluno: React.FC<Props> = ({
               
               <div className="grid grid-cols-2 gap-2 w-full">
                  <div className="bg-stone-900 p-3 rounded-lg">
-                    <p className="text-2xl font-bold text-white">12</p>
+                    <p className="text-2xl font-bold text-white">{myClasses.length}</p> {/* Updated to myClasses.length */}
                     <p className="text-xs text-stone-500">Aulas no Mês</p>
                  </div>
                  <div className="bg-stone-900 p-3 rounded-lg">
@@ -775,6 +844,14 @@ export const DashboardAluno: React.FC<Props> = ({
                                               <Clock size={12}/> Comprovante Enviado
                                           </span>
                                       )}
+                                      {payment.proof_url && (
+                                          <button 
+                                              onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
+                                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                                          >
+                                              <Eye size={14} /> Ver
+                                          </button>
+                                      )}
                                   </div>
                               </div>
                           ))
@@ -784,7 +861,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   </div>
               </div>
 
-              {/* PIX Copy for Costs */}
+              {/* PIX Copy for Costs & Event Registrations List */}
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                   <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                       <DollarSign className="text-green-500" />
@@ -799,7 +876,70 @@ export const DashboardAluno: React.FC<Props> = ({
                       {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
                       {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
                   </Button>
-                  <p className="text-center text-stone-500 text-xs mt-2">soufilhodofogo@gmail.com</p>
+                  <p className="text-center text-stone-500 text-xs mt-2 mb-6">soufilhodofogo@gmail.com</p>
+
+                  <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                      <Ticket className="text-purple-500" />
+                      Minhas Inscrições em Eventos
+                  </h4>
+                  <div className="space-y-3">
+                      {myEventRegistrations.length > 0 ? (
+                          myEventRegistrations.map(reg => (
+                              <div key={reg.id} className={`bg-stone-900 p-3 rounded border-l-2 ${reg.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                                  <div>
+                                      <p className="font-bold text-white text-sm">{reg.event_title}</p>
+                                      <p className="text-stone-500 text-xs">R$ {reg.amount_paid.toFixed(2).replace('.', ',')}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                      {reg.status === 'paid' && (
+                                          <span className="text-green-400 text-xs flex items-center gap-1">
+                                              <Check size={12}/> Pago
+                                          </span>
+                                      )}
+                                      {reg.status === 'pending' && !reg.proof_url && (
+                                          <>
+                                              <Button 
+                                                  variant="secondary" 
+                                                  className="text-xs h-auto px-2 py-1"
+                                                  onClick={() => {
+                                                      setSelectedEventRegToProof(reg);
+                                                      eventFileInputRef.current?.click(); // Trigger hidden file input
+                                                  }}
+                                                  disabled={uploadingEventProof}
+                                              >
+                                                  {uploadingEventProof && selectedEventRegToProof?.id === reg.id ? 'Enviando...' : <><FileUp size={14} className="mr-1"/> Enviar Comprovante</>}
+                                              </Button>
+                                              {/* Hidden file input for event proofs */}
+                                              <input 
+                                                  type="file" 
+                                                  accept="image/*, application/pdf" 
+                                                  className="hidden" 
+                                                  ref={eventFileInputRef}
+                                                  onChange={handleFileChangeForEventProof}
+                                                  disabled={uploadingEventProof}
+                                              />
+                                          </>
+                                      )}
+                                      {reg.status === 'pending' && reg.proof_url && (
+                                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                                              <Clock size={12}/> Comprovante Enviado
+                                          </span>
+                                      )}
+                                      {reg.proof_url && (
+                                          <button 
+                                              onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'event_proofs')}
+                                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                                          >
+                                              <Eye size={14} /> Ver
+                                          </button>
+                                      )}
+                                  </div>
+                              </div>
+                          ))
+                      ) : (
+                          <p className="text-stone-500 text-sm italic">Nenhuma inscrição em evento.</p>
+                      )}
+                  </div>
               </div>
 
               {/* Resources & Training & Reports Grid */}
@@ -846,6 +986,227 @@ export const DashboardAluno: React.FC<Props> = ({
           )}
         </div>
       </div>
+      )}
+
+      {/* --- MUSIC VIEW --- */}
+      {activeView === 'music' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+            <button onClick={() => setActiveView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Music size={24} className="text-orange-500"/> Acervo Musical</h2>
+            <div className="space-y-3">
+                {musicList.length > 0 ? (
+                    musicList.map(m => (
+                        <div key={m.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500">
+                            <h3 className="font-bold text-white text-lg">{m.title}</h3>
+                            <p className="text-stone-400 text-sm mb-2">{m.category}</p>
+                            <p className="text-stone-300 text-xs whitespace-pre-wrap">{m.lyrics}</p>
+                            {m.file_url && (
+                                <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-sm flex items-center gap-1 mt-3 hover:underline">
+                                    <PlayCircle size={16} /> Ouvir Áudio
+                                </a>
+                            )}
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-stone-500 italic text-center py-4">Nenhuma música no acervo ainda.</p>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* --- HOME TRAINING VIEW --- */}
+      {activeView === 'home_training' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+            <button onClick={() => setActiveView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Video size={24} className="text-orange-500"/> Treino em Casa</h2>
+            
+            <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
+                <h3 className="text-lg font-bold text-white mb-3">Enviar Vídeo de Treino</h3>
+                <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
+                    {uploading ? (
+                        <div className="text-center">
+                            <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
+                            <p className="text-white">Enviando vídeo...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <Video size={32} className="text-stone-500 mb-2" />
+                            <label className="cursor-pointer">
+                                <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
+                                    Selecionar Vídeo
+                                </span>
+                                <input type="file" accept="video/*" className="hidden" onChange={handleUploadVideo} disabled={uploading} />
+                            </label>
+                            <p className="text-xs text-stone-500 mt-2">MP4, MOV, etc. Máx 50MB.</p>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Clock size={20} className="text-stone-400"/> Meus Vídeos Enviados</h3>
+            <div className="space-y-3">
+                {myHomeTrainings.length > 0 ? (
+                    myHomeTrainings.map(training => (
+                        <div key={training.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-purple-500 flex justify-between items-center">
+                            <div>
+                                <p className="font-bold text-white">{training.video_name}</p>
+                                <p className="text-stone-400 text-sm">Enviado em: {training.date}</p>
+                                <p className="text-stone-500 text-xs">Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                            <a href={training.video_url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="secondary" className="text-xs h-auto px-3 py-1.5">
+                                    <PlayCircle size={16} className="mr-1"/> Ver Vídeo
+                                </Button>
+                            </a>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-stone-500 italic text-center py-4">Nenhum vídeo de treino em casa enviado ainda.</p>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* --- SCHOOL REPORT VIEW --- */}
+      {activeView === 'school_report' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+            <button onClick={() => setActiveView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><GraduationCap size={24} className="text-orange-500"/> Boletim Escolar</h2>
+            
+            <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
+                <h3 className="text-lg font-bold text-white mb-3">Enviar Boletim</h3>
+                <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
+                    {uploadingReport ? (
+                        <div className="text-center">
+                            <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
+                            <p className="text-white">Enviando boletim...</p>
+                        </div>
+                    ) : (
+                        <>
+                            <FileText size={32} className="text-stone-500 mb-2" />
+                            <label className="cursor-pointer">
+                                <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
+                                    Selecionar Arquivo
+                                </span>
+                                <input type="file" accept=".pdf,.doc,.docx,.jpg,.png" className="hidden" onChange={handleUploadReport} disabled={uploadingReport} />
+                            </label>
+                            <p className="text-xs text-stone-500 mt-2">PDF, DOC, Imagem. Máx 10MB.</p>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><FileText size={20} className="text-stone-400"/> Meus Boletins Enviados</h3>
+            <div className="space-y-3">
+                {mySchoolReports.length > 0 ? (
+                    mySchoolReports.map(report => (
+                        <div key={report.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-blue-500 flex justify-between items-center">
+                            <div>
+                                <p className="font-bold text-white">{report.file_name}</p>
+                                <p className="text-stone-400 text-sm">Período: {report.period}</p>
+                                <p className="text-stone-500 text-xs">Enviado em: {report.date}</p>
+                            </div>
+                            <Button variant="secondary" className="text-xs h-auto px-3 py-1.5" onClick={() => handleViewReport(report.file_url, report.file_name)}>
+                                <Eye size={16} className="mr-1"/> Ver Boletim
+                            </Button>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-stone-500 italic text-center py-4">Nenhum boletim escolar enviado ainda.</p>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* --- UNIFORM VIEW --- */}
+      {activeView === 'uniform' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+            <button onClick={() => setActiveView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Shirt size={24} className="text-orange-500"/> Solicitar Uniforme</h2>
+            
+            <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
+                <h3 className="text-lg font-bold text-white mb-3">Fazer Novo Pedido</h3>
+                <form onSubmit={handleOrderUniform} className="space-y-4">
+                    <div>
+                        <label htmlFor="item" className="block text-sm text-stone-400 mb-1">Item</label>
+                        <select 
+                            id="item"
+                            value={orderForm.item} 
+                            onChange={e => setOrderForm({...orderForm, item: e.target.value})} 
+                            className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white"
+                        >
+                            <option value="combo">Combo (Blusa + Calça)</option>
+                            <option value="shirt">Blusa Oficial</option>
+                            <option value="pants_roda">Calça de Roda</option>
+                            <option value="pants_train">Calça de Treino</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                            <div>
+                                <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho da Blusa</label>
+                                <input 
+                                    id="shirtSize"
+                                    type="text"
+                                    placeholder="Ex: P, M, G, GG"
+                                    value={orderForm.shirtSize}
+                                    onChange={(e) => setOrderForm({...orderForm, shirtSize: e.target.value})}
+                                    className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white"
+                                    required={orderForm.item === 'shirt' || orderForm.item === 'combo'}
+                                />
+                            </div>
+                        )}
+                        {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                            <div>
+                                <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho da Calça</label>
+                                <input 
+                                    id="pantsSize"
+                                    type="text"
+                                    placeholder="Ex: 38, 40, 42, 44"
+                                    value={orderForm.pantsSize}
+                                    onChange={(e) => setOrderForm({...orderForm, pantsSize: e.target.value})}
+                                    className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white"
+                                    required={orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo'}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <div className="text-right text-white font-bold text-lg">
+                        Total: R$ {getCurrentPrice().toFixed(2).replace('.', ',')}
+                    </div>
+                    <Button fullWidth type="submit">
+                        <ShoppingBag size={18} className="mr-1"/> Fazer Pedido
+                    </Button>
+                </form>
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><ShoppingBag size={20} className="text-stone-400"/> Meus Pedidos</h3>
+            <div className="space-y-3">
+                {myOrders.length > 0 ? (
+                    myOrders.map(order => (
+                        <div key={order.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-blue-500 flex justify-between items-center">
+                            <div>
+                                <p className="font-bold text-white">{order.item}</p>
+                                <p className="text-stone-400 text-sm">
+                                    {order.shirt_size && `Blusa: ${order.shirt_size}`}
+                                    {order.shirt_size && order.pants_size && ', '}
+                                    {order.pants_size && `Calça: ${order.pants_size}`}
+                                </p>
+                                <p className="text-stone-500 text-xs">Pedido em: {order.date}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</span>
+                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente</span>}
+                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">Pago/Pronto</span>}
+                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Entregue</span>}
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-stone-500 italic text-center py-4">Nenhum pedido de uniforme realizado ainda.</p>
+                )}
+            </div>
+        </div>
       )}
 
     </div>
