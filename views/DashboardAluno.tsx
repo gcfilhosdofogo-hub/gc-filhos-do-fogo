@@ -459,21 +459,25 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
-    console.log('Attempting to view proof:', { filePath, proofName, bucket }); // Debug log
+    console.log('handleViewPaymentProof called in DashboardAluno');
+    console.log('  filePath:', filePath);
+    console.log('  proofName:', proofName);
+    console.log('  bucket:', bucket);
     try {
         const { data, error } = await supabase.storage
             .from(bucket)
             .createSignedUrl(filePath, 60); // URL valid for 60 seconds
 
         if (error) {
-            console.error('Error generating signed URL:', error); // Debug log
-            throw error;
+            console.error('Error generating signed URL in DashboardAluno:', error);
+            alert('Erro ao visualizar o comprovante: ' + error.message);
+            return;
         }
-        console.log('Signed URL generated:', data.signedUrl); // Debug log
+        console.log('  Signed URL generated in DashboardAluno:', data.signedUrl);
         window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
-        console.error('Error viewing payment proof:', error);
+        console.error('Caught error in handleViewPaymentProof (DashboardAluno):', error);
         alert('Erro ao visualizar o comprovante: ' + error.message);
     }
   };
@@ -702,20 +706,26 @@ export const DashboardAluno: React.FC<Props> = ({
                 </p>
                 <div className="space-y-3">
                   {groupClasses.length > 0 ? (
-                      groupClasses.map((session) => (
-                        <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/30 p-4 rounded-lg border-l-2 border-stone-600 opacity-80 hover:opacity-100 transition-opacity">
-                          <div>
-                            <p className="text-stone-300 font-semibold">{session.date} • {session.time}</p>
-                            <p className="text-stone-400 font-medium text-sm">{session.level}</p>
-                            <p className="text-xs text-stone-500">{session.location} - {session.instructor}</p>
+                      groupClasses.map((session) => {
+                        // Find the professor's profile to get their nickname/name
+                        const sessionProfessor = allUsersProfiles.find(p => p.id === session.professor_id);
+                        const professorDisplayName = sessionProfessor?.nickname || sessionProfessor?.name || session.instructor;
+
+                        return (
+                          <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/30 p-4 rounded-lg border-l-2 border-stone-600 opacity-80 hover:opacity-100 transition-opacity">
+                            <div>
+                              <p className="text-stone-300 font-semibold">{session.date} • {session.time}</p>
+                              <p className="text-stone-400 font-medium text-sm">{session.level}</p>
+                              <p className="text-xs text-stone-500">{session.location} - {professorDisplayName}</p> {/* Display professor name */}
+                            </div>
+                            <div className="mt-2 sm:mt-0">
+                              <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">
+                                  Opcional
+                              </span>
+                            </div>
                           </div>
-                          <div className="mt-2 sm:mt-0">
-                            <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">
-                                Opcional
-                            </span>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                   ) : (
                       <p className="text-stone-500 italic">Nenhuma outra aula do grupo agendada.</p>
                   )}

@@ -304,34 +304,52 @@ export const DashboardAdmin: React.FC<Props> = ({
   };
 
   const handleViewPaymentProof = async (filePath: string, proofName: string) => {
+    console.log('handleViewPaymentProof called in DashboardAdmin');
+    console.log('  filePath:', filePath);
+    console.log('  proofName:', proofName);
+    const bucket = 'payment_proofs'; // Explicitly define bucket here
+    console.log('  bucket:', bucket);
     try {
         // Generate a signed URL for private buckets
         const { data, error } = await supabase.storage
-            .from('payment_proofs')
+            .from(bucket)
             .createSignedUrl(filePath, 60); // URL valid for 60 seconds
 
-        if (error) throw error;
-
+        if (error) {
+            console.error('Error generating signed URL in DashboardAdmin (Payment Proof):', error);
+            alert('Erro ao visualizar o comprovante: ' + error.message);
+            return;
+        }
+        console.log('  Signed URL generated in DashboardAdmin (Payment Proof):', data.signedUrl);
         window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
-        console.error('Error viewing payment proof:', error);
+        console.error('Caught error in handleViewPaymentProof (DashboardAdmin):', error);
         alert('Erro ao visualizar o comprovante: ' + error.message);
     }
   };
 
   const handleViewEventRegistrationProof = async (filePath: string, proofName: string) => {
+    console.log('handleViewEventRegistrationProof called in DashboardAdmin');
+    console.log('  filePath:', filePath);
+    console.log('  proofName:', proofName);
+    const bucket = 'event_proofs'; // Explicitly define bucket here
+    console.log('  bucket:', bucket);
     try {
         const { data, error } = await supabase.storage
-            .from('event_proofs')
+            .from(bucket)
             .createSignedUrl(filePath, 60); // URL valid for 60 seconds
 
-        if (error) throw error;
-
+        if (error) {
+            console.error('Error generating signed URL in DashboardAdmin (Event Proof):', error);
+            alert('Erro ao visualizar o comprovante de evento: ' + error.message);
+            return;
+        }
+        console.log('  Signed URL generated in DashboardAdmin (Event Proof):', data.signedUrl);
         window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de evento: ${proofName}`, user);
     } catch (error: any) {
-        console.error('Error viewing event registration proof:', error);
+        console.error('Caught error in handleViewEventRegistrationProof (DashboardAdmin):', error);
         alert('Erro ao visualizar o comprovante de evento: ' + error.message);
     }
   };
