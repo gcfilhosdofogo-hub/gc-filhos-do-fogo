@@ -107,16 +107,6 @@ export const DashboardAluno: React.FC<Props> = ({
   console.log('DEBUG DashboardAluno: Student Professor ID:', studentProfessorId); // DEBUG
   console.log('DEBUG DashboardAluno: All Class Sessions:', classSessions); // DEBUG
 
-// Dentro do componente DashboardAluno, após definir studentProfessor e studentProfessorId
-useEffect(() => {
-    console.log("DEBUG: User Professor Name (from aluno profile):", user.professorName);
-    console.log("DEBUG: Found Professor Profile:", studentProfessor);
-    console.log("DEBUG: Found Professor ID:", studentProfessorId);
-    console.log("DEBUG: All Class Sessions:", classSessions);
-    console.log("DEBUG: My Classes (filtered):", myClasses);
-    console.log("DEBUG: Group Classes (filtered):", groupClasses);
-}, [user.professorName, studentProfessor, studentProfessorId, classSessions, myClasses, groupClasses]);
-
   // NEW: Filter classes based on real data
   const myClasses = classSessions.filter(
     (session) => studentProfessorId && session.professor_id === studentProfessorId
