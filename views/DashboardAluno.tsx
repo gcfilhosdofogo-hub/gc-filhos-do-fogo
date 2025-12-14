@@ -302,7 +302,7 @@ export const DashboardAluno: React.FC<Props> = ({
         price = UNIFORM_PRICES.combo;
         itemName = 'Combo (Blusa + Calça)';
         if (!orderForm.shirtSize || !orderForm.pantsSize) return alert('Digite os tamanhos');
-        details = `Blusa: ${orderForm.shirtSize}, Calça: ${order.pantsSize}`;
+        details = `Blusa: ${orderForm.shirtSize}, Calça: ${orderForm.pantsSize}`;
     }
 
     const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
