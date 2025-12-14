@@ -458,8 +458,8 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
-  const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
-    console.log('handleViewPaymentProof called in DashboardAluno');
+  const handleViewProof = async (filePath: string, proofName: string, bucket: string) => {
+    console.log('handleViewProof called in DashboardAluno');
     console.log('  filePath:', filePath);
     console.log('  proofName:', proofName);
     console.log('  bucket:', bucket);
@@ -477,7 +477,7 @@ export const DashboardAluno: React.FC<Props> = ({
         window.open(data.signedUrl, '_blank');
         onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
-        console.error('Caught error in handleViewPaymentProof (DashboardAluno):', error);
+        console.error('Caught error in handleViewProof (DashboardAluno):', error);
         alert('Erro ao visualizar o comprovante: ' + error.message);
     }
   };
@@ -858,7 +858,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                       )}
                                       {payment.proof_url && (
                                           <button 
-                                              onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
+                                              onClick={() => handleViewProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
                                               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                                           >
                                               <Eye size={14} /> Ver
@@ -939,7 +939,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                       )}
                                       {reg.proof_url && (
                                           <button 
-                                              onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'event_proofs')}
+                                              onClick={() => handleViewProof(reg.proof_url!, reg.event_title + ' Comprovante', 'event_proofs')}
                                               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                                           >
                                               <Eye size={14} /> Ver
