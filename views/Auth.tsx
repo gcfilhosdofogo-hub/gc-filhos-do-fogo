@@ -114,24 +114,6 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                 },
               },
             }}
-            // Custom data attributes for sign-up to populate the profiles table
-            // These fields will appear in the sign-up form
-            extra_fields={[
-              {
-                name: 'first_name',
-                label: 'Primeiro Nome',
-                type: 'text',
-                placeholder: 'Seu primeiro nome',
-                required: true,
-              },
-              {
-                name: 'last_name',
-                label: 'Sobrenome',
-                type: 'text',
-                placeholder: 'Seu sobrenome',
-                required: false, // Optional
-              },
-            ]}
           />
         </div>
       </div>

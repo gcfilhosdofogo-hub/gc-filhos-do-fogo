@@ -156,6 +156,21 @@ export interface UniformOrder {
   created_at?: string;
 }
 
+export type GradeCategory = 'theory' | 'movement' | 'musicality';
+
+export interface StudentGrade {
+  id: string;
+  student_id: string;
+  student_name: string;
+  professor_id: string;
+  professor_name: string;
+  category: GradeCategory;
+  written: string;
+  numeric: number;
+  created_at: string;
+  updated_at?: string;
+}
+
 // All Belts List for Configuration
 export const ALL_BELTS = [
   "Cordel Cinza",

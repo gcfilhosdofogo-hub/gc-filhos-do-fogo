@@ -127,7 +127,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({
     };
 
     fetchProfileAndProfessors();
-  }, [userId, sessionLoading, session, fetchUserProfile]);
+  }, [userId, sessionLoading, session]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>

@@ -20,6 +20,8 @@ export const Landing: React.FC<Props> = ({ onLoginClick }) => {
             src="https://images.unsplash.com/photo-1542408375-9279769db387?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
             alt="Roda de Capoeira" 
             className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
           />
         </div>
 

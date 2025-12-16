@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye } from 'lucide-react'; // Import FileUp and Eye
+import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade } from '../types';
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award } from 'lucide-react'; // Import FileUp, Eye and Award
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -20,10 +20,13 @@ interface Props {
   onUpdateProfile: (data: Partial<User>) => void;
   // Uniforms props
   uniformOrders: UniformOrder[];
+  onAddOrder: (newOrder: Omit<UniformOrder, 'id' | 'created_at'>) => Promise<void>;
   onUpdateOrderStatus: (orderId: string, status: 'pending' | 'ready' | 'delivered') => void;
   // New props for student details
   schoolReports: SchoolReport[];
   assignments: Assignment[];
+  onAddAssignment: (newAssignment: Omit<Assignment, 'id' | 'created_at'>) => Promise<void>;
+  onUpdateAssignment: (updatedAssignment: Assignment) => Promise<void>;
   homeTrainings: HomeTraining[];
   monthlyPayments: PaymentRecord[]; // Now receiving from App.tsx
   onAddPaymentRecord: (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => Promise<void>;
@@ -36,6 +39,7 @@ interface Props {
   classSessions: ClassSession[]; // Pass class sessions to admin dashboard
   onAddClassSession: (newSession: Omit<ClassSession, 'id' | 'created_at'>) => Promise<void>;
   onUpdateClassSession: (updatedSession: ClassSession) => Promise<void>;
+  studentGrades: StudentGrade[];
 }
 
 const UNIFORM_PRICES = {
@@ -45,7 +49,7 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
 
 export const DashboardAdmin: React.FC<Props> = ({ 
@@ -60,9 +64,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     onNotifyAdmin = (_action: string, _user: User) => {},
     onUpdateProfile,
     uniformOrders,
+    onAddOrder,
     onUpdateOrderStatus,
     schoolReports, // New prop
     assignments, // New prop
+    onAddAssignment,
+    onUpdateAssignment,
     homeTrainings, // New prop
     monthlyPayments, // Use prop for payments
     onAddPaymentRecord,
@@ -74,6 +81,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     classSessions, // Use prop for class sessions
     onAddClassSession,
     onUpdateClassSession,
+    studentGrades,
 }) => {
   const { session } = useSession(); // Get session from context
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -854,6 +862,12 @@ export const DashboardAdmin: React.FC<Props> = ({
           Pedagógico
         </button>
         <button 
+          onClick={() => setActiveTab('grades')}
+          className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'grades' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+        >
+          <Award size={16}/> Notas
+        </button>
+        <button 
           onClick={() => setActiveTab('my_classes')}
           className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'my_classes' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
         >
@@ -952,6 +966,64 @@ export const DashboardAdmin: React.FC<Props> = ({
         </div>
       )}
 
+      {/* --- TAB: GRADES --- */}
+      {activeTab === 'grades' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2"><Award className="text-green-500" /> Notas de Alunos</h2>
+                <p className="text-stone-400 text-sm">Visualize avaliações escritas e notas numéricas por aluno.</p>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-2.5 text-stone-500" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar aluno por nome/apelido..."
+                  value={studentDetailsSearch}
+                  onChange={(e) => setStudentDetailsSearch(e.target.value)}
+                  className="w-full bg-stone-900 border border-stone-600 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:border-green-500 outline-none"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              {(studentGrades || [])
+                .filter(g => {
+                  if (!studentDetailsSearch.trim()) return true;
+                  const st = managedUsers.find(u => u.id === g.student_id);
+                  const name = st?.nickname || st?.name || g.student_name || '';
+                  return name.toLowerCase().includes(studentDetailsSearch.toLowerCase());
+                })
+                .map(g => {
+                  const st = managedUsers.find(u => u.id === g.student_id);
+                  const name = st?.nickname || st?.name || g.student_name;
+                  const categoryLabel = g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade';
+                  const numericVal = typeof g.numeric === 'number' ? g.numeric : Number(g.numeric);
+                  return (
+                    <div key={g.id} className="bg-stone-900 p-3 rounded border-l-2 border-green-500">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-white font-semibold">{name}</p>
+                          <p className="text-stone-400 text-xs">{categoryLabel}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-bold">{Number.isFinite(numericVal) ? numericVal.toFixed(1) : '-'}</p>
+                          <p className="text-stone-500 text-[10px]">{new Date(g.created_at).toLocaleString('pt-BR')}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-stone-300 text-sm">
+                        {g.written || <span className="text-stone-500 italic">Sem avaliação escrita.</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              {(studentGrades || []).length === 0 && (
+                <p className="text-stone-500 italic">Nenhuma nota registrada.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* --- TAB: EVENTS --- */}
       {activeTab === 'events' && (
         <div className="space-y-6 animate-fade-in">
@@ -2051,7 +2123,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </div>
                                     <span className="text-xs text-stone-400">{student.attendanceRate}%</span>
                                   </td>
-                                  <td className="py-3 text-stone-300">{student.technicalGrade.toFixed(1)}</td>
+                                  <td className="py-3 text-stone-300">
+                                      {Number.isFinite(typeof student.technicalGrade === 'number' ? student.technicalGrade : Number(student.technicalGrade))
+                                        ? (typeof student.technicalGrade === 'number' ? student.technicalGrade : Number(student.technicalGrade)).toFixed(1)
+                                        : '-'}
+                                  </td>
                                   <td className="py-3 text-stone-400 text-xs italic">"{student.lastEvaluation}"</td>
                                   <td className="py-3">
                                       {/* This section is now handled in the 'Gerenciar Usuários' tab */}
@@ -2541,6 +2617,51 @@ export const DashboardAdmin: React.FC<Props> = ({
                 </div>
               </>
            )}
+        </div>
+      )}
+
+      {activeTab === 'grades' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+            <h3 className="text-xl font-bold text-white mb-4">Notas dos Alunos</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-stone-700 text-xs text-stone-500">
+                    <th className="pb-2">Aluno</th>
+                    <th className="pb-2">Categoria</th>
+                    <th className="pb-2">Nota</th>
+                    <th className="pb-2">Avaliação Escrita</th>
+                    <th className="pb-2">Professor</th>
+                    <th className="pb-2">Data</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {(studentGrades || []).length > 0 ? (
+                    (studentGrades || []).map(g => {
+                      const numericVal = typeof g.numeric === 'number' ? g.numeric : Number(g.numeric);
+                      return (
+                      <tr key={g.id} className="border-b border-stone-800">
+                        <td className="py-2 text-white">{g.student_name}</td>
+                        <td className="py-2 text-stone-300">
+                          {g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}
+                        </td>
+                        <td className="py-2 text-white font-bold">{Number.isFinite(numericVal) ? numericVal.toFixed(1) : '-'}</td>
+                        <td className="py-2 text-stone-400">{g.written}</td>
+                        <td className="py-2 text-stone-300">{g.professor_name}</td>
+                        <td className="py-2 text-stone-500">{g.created_at?.split('T')[0] || ''}</td>
+                      </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td className="py-4 text-stone-500" colSpan={6}>Nenhuma nota registrada.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

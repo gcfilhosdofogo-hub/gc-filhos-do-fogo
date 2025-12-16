@@ -8,7 +8,7 @@ import { DashboardAdmin } from './views/DashboardAdmin';
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory } from './types';
 
 
 function AppContent() {
@@ -29,6 +29,10 @@ function AppContent() {
   const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
   const [allUsersProfiles, setAllUsersProfiles] = useState<User[]>([]); // NEW: State to hold all user profiles
+  const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
+  const [studentNotesNumericField, setStudentNotesNumericField] = useState<string>('numeric');
+  const [studentNotesWrittenField, setStudentNotesWrittenField] = useState<string>('written');
+  const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
@@ -143,6 +147,40 @@ function AppContent() {
     if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
     else setEventRegistrations(eventRegData || []);
 
+    // Fetch Student Grades
+    let gradesQuery = supabase.from('student_notes').select('*');
+    if (userRole === 'aluno') {
+      gradesQuery = gradesQuery.eq('student_id', userId);
+    }
+    const { data: gradesData, error: gradesError } = await gradesQuery;
+    if (gradesError) console.error('Error fetching student grades:', gradesError);
+    else {
+      const allCols = Array.from(new Set((gradesData || []).flatMap((row: any) => Object.keys(row || {}))));
+      setStudentNotesAvailableColumns(allCols);
+      const numericCandidates = ['numeric', 'nota', 'score', 'grade', 'value'];
+      const detectedNumeric = numericCandidates.find(k => allCols.includes(k));
+      const numericKey = detectedNumeric || 'numeric';
+      const writtenCandidates = ['written', 'avaliacao', 'avaliacao_escrita', 'comment', 'texto', 'descricao'];
+      const detectedWritten = writtenCandidates.find(k => allCols.includes(k));
+      const writtenKey = detectedWritten || 'written';
+      const normalized = (gradesData || []).map((g: any) => ({
+        ...g,
+        written:
+          typeof g[writtenKey] === 'string'
+            ? g[writtenKey]
+            : g[writtenKey] !== null && g[writtenKey] !== undefined
+              ? String(g[writtenKey])
+              : '',
+        numeric:
+          typeof g[numericKey] === 'number'
+            ? g[numericKey]
+            : Number(g[numericKey]),
+      }));
+      setStudentGrades(normalized);
+      if (detectedNumeric) setStudentNotesNumericField(detectedNumeric);
+      if (detectedWritten) setStudentNotesWrittenField(detectedWritten);
+    }
+
   }, [session, user]); // Re-fetch if session or user changes
 
   // Função para buscar o perfil do usuário
@@ -223,7 +261,16 @@ function AppContent() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e: any) {
+      const msg = e?.message || '';
+      if (!/ERR_ABORTED/i.test(msg)) {
+        try {
+          await supabase.auth.signOut({ scope: 'global' });
+        } catch (_) {}
+      }
+    }
     setUser(null);
     setCurrentView('home');
     setIsProfileChecked(false); // Reseta a verificação do perfil ao deslogar
@@ -300,6 +347,9 @@ function AppContent() {
   };
 
   const handleNotifyAdmin = async (action: string, actor: User) => {
+    if (actor.role !== 'admin') {
+      return;
+    }
     const newNotification: Omit<AdminNotification, 'id' | 'created_at'> = {
       user_id: actor.id,
       user_name: actor.nickname || actor.name,
@@ -307,8 +357,15 @@ function AppContent() {
       timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     };
     const { data, error } = await supabase.from('admin_notifications').insert(newNotification).select().single();
-    if (error) console.error('Error adding notification:', error);
-    else setAdminNotifications(prev => [data, ...prev]);
+    if (error) {
+      if ((error as any).code === '42501') {
+        console.info('Admin notifications blocked by RLS policy.');
+      } else {
+        console.error('Error adding notification:', error);
+      }
+    } else {
+      setAdminNotifications(prev => [data, ...prev]);
+    }
   };
 
   const handleAddMusic = async (newMusic: Omit<MusicItem, 'id' | 'created_at'>) => {
@@ -406,6 +463,41 @@ function AppContent() {
     else setEventRegistrations(prev => prev.map(reg => reg.id === updatedRegistration.id ? data : reg));
   };
 
+  const handleAddStudentGrade = async (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => {
+    const numericCandidates = [studentNotesNumericField, 'numeric', 'nota', 'score', 'grade', 'value'];
+    const writtenCandidates = [studentNotesWrittenField, 'written', 'avaliacao', 'avaliacao_escrita', 'comment', 'texto', 'descricao'];
+    const base: any = { student_id: payload.student_id };
+    ['student_name', 'professor_id', 'professor_name', 'category'].forEach((col) => {
+      if (studentNotesAvailableColumns.includes(col)) {
+        base[col] = (payload as any)[col];
+      }
+    });
+    for (const nKey of numericCandidates) {
+      for (const wKey of writtenCandidates) {
+        const attempt = { ...base, [nKey]: payload.numeric, [wKey]: payload.written };
+        const { data, error } = await supabase.from('student_notes').insert(attempt).select().single();
+        if (!error && data) {
+          setStudentNotesNumericField(nKey);
+          setStudentNotesWrittenField(wKey);
+          const numericVal = typeof (data as any)[nKey] === 'number' ? (data as any)[nKey] : Number((data as any)[nKey]);
+          const writtenVal = String((data as any)[wKey] ?? '');
+          const normalized: StudentGrade = {
+            ...(data as any),
+            numeric: numericVal,
+            written: writtenVal,
+          };
+          setStudentGrades(prev => [normalized, ...prev]);
+          return;
+        }
+        if (error && (error as any).code !== 'PGRST204') {
+          console.error('Error adding student grade:', error);
+          return;
+        }
+      }
+    }
+    console.error('Error adding student grade: Columns not found in table.');
+  };
+
 
   const navigate = (view: string) => {
     if (view === 'login' && user) {
@@ -471,6 +563,7 @@ function AppContent() {
               allUsersProfiles={allUsersProfiles} // NEW: Pass all user profiles
               monthlyPayments={monthlyPayments}
               onUpdatePaymentRecord={handleUpdatePaymentRecord}
+              studentGrades={studentGrades.filter(g => g.student_id === user.id)}
             />
           )}
           {user.role === 'professor' && (
@@ -491,6 +584,8 @@ function AppContent() {
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings} // Professor can see all home trainings
               eventRegistrations={eventRegistrations} // Professor can see all event registrations
+              onAddStudentGrade={handleAddStudentGrade}
+              studentGrades={studentGrades}
             />
           )}
           {user.role === 'admin' && (
@@ -503,6 +598,7 @@ function AppContent() {
               notifications={adminNotifications}
               musicList={musicList}
               uniformOrders={uniformOrders}
+              onAddOrder={handleAddOrder}
               onUpdateOrderStatus={handleUpdateOrderStatus}
               onAddMusic={handleAddMusic}
               onNotifyAdmin={handleNotifyAdmin}
@@ -522,6 +618,7 @@ function AppContent() {
               onAddEventRegistration={handleAddEventRegistration}
               onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
               onNavigate={navigate} // Pass navigate function
+              studentGrades={studentGrades}
             />
           )}
         </div>

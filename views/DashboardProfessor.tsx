@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield } from 'lucide-react'; // Adicionado Shield
+import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award } from 'lucide-react'; // Adicionado Shield
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -22,6 +22,8 @@ interface Props {
   onUpdateAssignment: (updatedAssignment: AssignmentType) => Promise<void>;
   homeTrainings: any[];
   eventRegistrations: any[]; // Added for consistency, though not directly used in this component's logic
+  onAddStudentGrade: (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  studentGrades: StudentGrade[];
 }
 
 interface AssignmentFormState {
@@ -38,7 +40,7 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
+type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades';
 
 export const DashboardProfessor: React.FC<Props> = ({ 
   user, 
@@ -56,6 +58,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   onAddAssignment,
   onUpdateAssignment,
   homeTrainings,
+  onAddStudentGrade,
+  studentGrades,
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Use real class sessions
@@ -90,6 +94,13 @@ export const DashboardProfessor: React.FC<Props> = ({
   // Evaluation
   const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
   const [evalData, setEvalData] = useState({ positive: '', negative: '' });
+  const [selectedStudentForGrades, setSelectedStudentForGrades] = useState<string | null>(null);
+  const [gradesForm, setGradesForm] = useState({
+    theory: { written: '', numeric: '' },
+    movement: { written: '', numeric: '' },
+    musicality: { written: '', numeric: '' },
+  });
+  const [savingGrades, setSavingGrades] = useState(false);
 
   // State for students managed by this professor
   const [myStudents, setMyStudents] = useState<User[]>([]);
@@ -333,6 +344,9 @@ export const DashboardProfessor: React.FC<Props> = ({
              <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
                 <Shirt size={18} className="text-orange-400" /> Uniforme
             </Button>
+            <Button variant="secondary" onClick={() => setProfView('grades')} className="border border-stone-600">
+                <Award size={18} className="text-green-400" /> Notas
+            </Button>
             {profView === 'dashboard' && (
             <Button onClick={() => setProfView('new_class')}>
                 <PlusCircle size={18} /> Nova Aula
@@ -427,6 +441,105 @@ export const DashboardProfessor: React.FC<Props> = ({
                       <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({...musicForm, lyrics: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" required />
                       <Button fullWidth type="submit">Salvar no Acervo</Button>
                  </form>
+            </div>
+        )}
+
+        {/* --- GRADES VIEW --- */}
+        {profView === 'grades' && (
+            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+                <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Award className="text-green-500" /> Notas dos Alunos</h2>
+                {!selectedStudentForGrades && (
+                  <div className="space-y-3">
+                    {myStudents.map(s => (
+                        <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
+                            <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
+                              {s.nickname?.charAt(0) || s.name.charAt(0)}
+                            </div>
+                            <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
+                            <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setSelectedStudentForGrades(s.id)}>Avaliar</Button>
+                        </div>
+                    ))}
+                  </div>
+                )}
+                {selectedStudentForGrades && (
+                  <div className="space-y-4 bg-stone-900 p-4 rounded">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-bold">{myStudents.find(u => u.id === selectedStudentForGrades)?.nickname || myStudents.find(u => u.id === selectedStudentForGrades)?.name}</p>
+                      <button onClick={() => setSelectedStudentForGrades(null)} className="text-stone-400 flex items-center gap-1 text-sm"><ArrowLeft size={14}/> Voltar</button>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-stone-300 text-sm font-semibold">Teórica</p>
+                        <textarea className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white h-24" placeholder="Avaliação escrita" value={gradesForm.theory.written} onChange={e => setGradesForm({...gradesForm, theory: {...gradesForm.theory, written: e.target.value}})} />
+                        <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" placeholder="Nota (0-10)" value={gradesForm.theory.numeric} onChange={e => setGradesForm({...gradesForm, theory: {...gradesForm.theory, numeric: e.target.value}})} disabled={!gradesForm.theory.written.trim()} />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-stone-300 text-sm font-semibold">Movimentação</p>
+                        <textarea className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white h-24" placeholder="Avaliação escrita" value={gradesForm.movement.written} onChange={e => setGradesForm({...gradesForm, movement: {...gradesForm.movement, written: e.target.value}})} />
+                        <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" placeholder="Nota (0-10)" value={gradesForm.movement.numeric} onChange={e => setGradesForm({...gradesForm, movement: {...gradesForm.movement, numeric: e.target.value}})} disabled={!gradesForm.movement.written.trim()} />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-stone-300 text-sm font-semibold">Musicalidade</p>
+                        <textarea className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white h-24" placeholder="Avaliação escrita" value={gradesForm.musicality.written} onChange={e => setGradesForm({...gradesForm, musicality: {...gradesForm.musicality, written: e.target.value}})} />
+                        <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" placeholder="Nota (0-10)" value={gradesForm.musicality.numeric} onChange={e => setGradesForm({...gradesForm, musicality: {...gradesForm.musicality, numeric: e.target.value}})} disabled={!gradesForm.musicality.written.trim()} />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setGradesForm({ theory: { written: '', numeric: '' }, movement: { written: '', numeric: '' }, musicality: { written: '', numeric: '' } })}>Limpar</Button>
+                      <Button onClick={async () => {
+                        const entries: { cat: GradeCategory; w: string; n: string }[] = [
+                          { cat: 'theory', w: gradesForm.theory.written.trim(), n: gradesForm.theory.numeric },
+                          { cat: 'movement', w: gradesForm.movement.written.trim(), n: gradesForm.movement.numeric },
+                          { cat: 'musicality', w: gradesForm.musicality.written.trim(), n: gradesForm.musicality.numeric },
+                        ];
+                        const toSave = entries.filter(e => e.w.length > 0);
+                        if (toSave.length === 0) { alert('Preencha ao menos uma avaliação escrita.'); return; }
+                        if (toSave.some(e => !e.n || e.n.toString().trim() === '')) { alert('Para cada avaliação escrita, informe a nota numérica.'); return; }
+                        setSavingGrades(true);
+                        try {
+                          await Promise.all(toSave.map(e => onAddStudentGrade({
+                            student_id: selectedStudentForGrades!,
+                            student_name: myStudents.find(u => u.id === selectedStudentForGrades!)?.nickname || myStudents.find(u => u.id === selectedStudentForGrades!)?.name || 'Aluno',
+                            professor_id: user.id,
+                            professor_name: user.nickname || user.name,
+                            category: e.cat,
+                            written: e.w,
+                            numeric: parseFloat(e.n),
+                          })));
+                          onNotifyAdmin(`Avaliou notas do aluno: ${myStudents.find(u => u.id === selectedStudentForGrades!)?.nickname || 'Aluno'}`, user);
+                          alert('Notas salvas com sucesso!');
+                          setGradesForm({ theory: { written: '', numeric: '' }, movement: { written: '', numeric: '' }, musicality: { written: '', numeric: '' } });
+                          setSelectedStudentForGrades(null);
+                        } catch (err) {
+                          console.error(err);
+                          alert('Erro ao salvar notas.');
+                        } finally {
+                          setSavingGrades(false);
+                        }
+                      }} disabled={savingGrades}>{savingGrades ? 'Salvando...' : 'Salvar Notas'}</Button>
+                    </div>
+                    <div className="mt-6">
+                      <h3 className="text-white font-bold mb-2">Histórico de Notas</h3>
+                      <div className="space-y-2">
+                        {(studentGrades || []).filter(g => g.student_id === selectedStudentForGrades).map(g => (
+                          <div key={g.id} className="bg-stone-800 p-3 rounded border border-stone-700 text-sm flex justify-between">
+                            <span className="text-stone-300">{g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</span>
+                            <span className="text-white font-semibold">
+                              {Number.isFinite(typeof g.numeric === 'number' ? g.numeric : Number(g.numeric))
+                                ? (typeof g.numeric === 'number' ? g.numeric : Number(g.numeric)).toFixed(1)
+                                : '-'}
+                            </span>
+                            <span className="text-stone-400 truncate max-w-[50%]">{g.written}</span>
+                          </div>
+                        ))}
+                        {(studentGrades || []).filter(g => g.student_id === selectedStudentForGrades).length === 0 && (
+                          <p className="text-stone-500 text-sm">Sem notas registradas.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
         )}
 

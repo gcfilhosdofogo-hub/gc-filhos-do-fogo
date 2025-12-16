@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord } from '../types';
+import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade } from '../types';
 import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
@@ -26,10 +26,11 @@ interface Props {
   allUsersProfiles: User[];
   monthlyPayments?: PaymentRecord[];
   onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>;
+  studentGrades: StudentGrade[];
 }
 
 type ViewMode = 'dashboard' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'event_registration';
-type MainTab = 'overview' | 'finance_resources'; // New type for main tabs
+type MainTab = 'overview' | 'finance_resources' | 'grades'; // New type for main tabs
 
 const UNIFORM_PRICES = {
     shirt: 30,
@@ -59,6 +60,7 @@ export const DashboardAluno: React.FC<Props> = ({
   allUsersProfiles,
   monthlyPayments = [],
   onUpdatePaymentRecord,
+  studentGrades,
 }) => {
   const [activeView, setActiveView] = useState<ViewMode>('dashboard');
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('overview'); // State for main tabs
@@ -103,6 +105,22 @@ export const DashboardAluno: React.FC<Props> = ({
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
   const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user?.id); // Filter payments for the current user
+  const evalPayment = useMemo(() => myMonthlyPayments.find(p => p.month.toLowerCase().includes('avalia')), [myMonthlyPayments]);
+  const beltBarStyle = useMemo(() => {
+    const b = (user.belt || '').toLowerCase();
+    if (b.includes('verde, amarelo, azul e branco')) return 'linear-gradient(135deg,#22c55e,#f59e0b,#3b82f6,#ffffff)';
+    if (b.includes('amarelo e azul')) return 'linear-gradient(135deg,#f59e0b,#3b82f6)';
+    if (b.includes('verde e amarelo')) return 'linear-gradient(135deg,#22c55e,#f59e0b)';
+    if (b.includes('verde e branco')) return 'linear-gradient(135deg,#22c55e,#ffffff)';
+    if (b.includes('amarelo e branco')) return 'linear-gradient(135deg,#f59e0b,#ffffff)';
+    if (b.includes('azul e branco')) return 'linear-gradient(135deg,#3b82f6,#ffffff)';
+    if (b.includes('cinza')) return '#9ca3af';
+    if (b.includes('verde')) return '#22c55e';
+    if (b.includes('amarelo')) return '#f59e0b';
+    if (b.includes('azul')) return '#3b82f6';
+    if (b.includes('branco')) return '#ffffff';
+    return user.beltColor || '#fff';
+  }, [user.belt, user.beltColor]);
 
   // NEW: Determine the professor's ID based on the student's professorName
   const studentProfessor = useMemo(() => {
@@ -592,7 +610,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <p className="text-stone-500 text-xs mb-4">{user.email}</p>
               
               <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative" >
-                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: user.beltColor || '#fff' }}></div>
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: beltBarStyle }}></div>
                 <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
                 <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
                   <Award className="text-orange-500" />
@@ -603,7 +621,7 @@ export const DashboardAluno: React.FC<Props> = ({
               {/* Graduation Cost Alert (Mantido aqui, pois é informação do perfil) */}
               <div className="w-full bg-green-900/30 border border-green-800 rounded-lg p-4 mb-4 animate-pulse">
                   <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-                      <GraduationCap size={12}/> Próxima Graduação
+                      <GraduationCap size={12}/> Próxima Avaliação
                   </p>
                   <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
                   {(user.graduationCost ?? 0) === 0 ? (
@@ -661,6 +679,12 @@ export const DashboardAluno: React.FC<Props> = ({
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeMainTab === 'finance_resources' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
               Financeiro & Recursos
+            </button>
+            <button 
+              onClick={() => setActiveMainTab('grades')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeMainTab === 'grades' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+            >
+              Notas
             </button>
           </div>
 
@@ -889,6 +913,53 @@ export const DashboardAluno: React.FC<Props> = ({
                       {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX'}
                   </Button>
                   <p className="text-center text-stone-500 text-xs mt-2 mb-6">soufilhodofogo@gmail.com</p>
+                  <div className="bg-stone-900 p-3 rounded mb-6 border border-stone-700">
+                    <div className="flex items-center justify-between">
+                      <p className="text-stone-300 text-sm font-semibold">Avaliação</p>
+                      <p className="text-white font-bold">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                    </div>
+                    <div className="mt-3">
+                      <Button 
+                        fullWidth 
+                        variant="secondary" 
+                        onClick={async () => {
+                          if (!evalPayment) {
+                            const { data, error } = await supabase.from('monthly_payments').insert({
+                              student_id: user.id,
+                              student_name: user.nickname || user.name,
+                              month: 'Avaliação',
+                              due_date: new Date().toISOString().split('T')[0],
+                              status: 'pending',
+                              amount: Number(user.graduationCost ?? 0),
+                            }).select().single();
+                            if (!error && data) {
+                              setSelectedPaymentToProof(data);
+                              fileInputRef.current?.click();
+                            } else {
+                              alert('Erro ao registrar pagamento de avaliação.');
+                            }
+                          } else {
+                            setSelectedPaymentToProof(evalPayment);
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        disabled={uploadingPaymentProof}
+                      >
+                        {uploadingPaymentProof ? 'Enviando...' : 'Enviar Comprovante da Avaliação'}
+                      </Button>
+                      <input 
+                        type="file" 
+                        accept="image/*, application/pdf" 
+                        className="hidden" 
+                        ref={fileInputRef}
+                        onChange={handleFileChangeForPaymentProof}
+                        disabled={uploadingPaymentProof}
+                      />
+                      {evalPayment?.proof_url && (
+                        <p className="text-xs text-stone-500 mt-2">Comprovante enviado, aguardando confirmação.</p>
+                      )}
+                    </div>
+                  </div>
 
                   <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                       <Ticket className="text-purple-500" />
@@ -993,6 +1064,42 @@ export const DashboardAluno: React.FC<Props> = ({
                   <h4 className="text-lg font-bold text-white">Uniforme</h4>
                   <p className="text-xs text-stone-400 mt-1">Solicitar peças</p>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB: NOTAS --- */}
+          {activeMainTab === 'grades' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Award className="text-blue-500" />
+                  Minhas Notas
+                </h3>
+                <div className="space-y-3">
+                  {(studentGrades || []).length > 0 ? (
+                    (studentGrades || []).map(g => (
+                      <div key={g.id} className="flex items-center justify-between bg-stone-900 p-3 rounded border-l-2 border-blue-500">
+                        <div className="flex items-center gap-3">
+                          <span className="text-stone-300 text-sm">
+                            {g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-white font-bold">
+                            {Number.isFinite(typeof g.numeric === 'number' ? g.numeric : Number(g.numeric))
+                              ? (typeof g.numeric === 'number' ? g.numeric : Number(g.numeric)).toFixed(1)
+                              : '-'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-stone-500 italic">Nenhuma nota registrada.</p>
+                  )}
+                </div>
+                <p className="text-xs text-stone-500 mt-3">
+                </p>
               </div>
             </div>
           )}
