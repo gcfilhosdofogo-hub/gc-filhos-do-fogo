@@ -1,6 +1,8 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from 'tailwindcss'; // Importa o plugin tailwindcss
+import autoprefixer from 'autoprefixer'; // Importa o plugin autoprefixer
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -14,7 +16,14 @@ export default defineConfig(({ mode }) => {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
-      // Vite will automatically pick up postcss.config.js for CSS processing
+      css: { // Configuração explícita do PostCSS
+        postcss: {
+          plugins: [
+            tailwindcss(), // Usa o plugin tailwindcss
+            autoprefixer(),
+          ],
+        },
+      },
       build: {
         rollupOptions: {
           output: {
