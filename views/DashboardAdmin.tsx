@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade } from '../types';
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award } from 'lucide-react'; // Import FileUp, Eye and Award
 import { Button } from '../components/Button';
@@ -145,7 +145,7 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [classPhoto, setClassPhoto] = useState<string | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
   const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
-  const beltBarStyle = React.useMemo(() => {
+  const beltBarStyle = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
     if (b.includes('verde, amarelo, azul e branco')) return 'linear-gradient(135deg,#22c55e,#f59e0b,#3b82f6,#ffffff)';
     if (b.includes('amarelo e azul')) return 'linear-gradient(135deg,#f59e0b,#3b82f6)';
@@ -859,6 +859,18 @@ export const DashboardAdmin: React.FC<Props> = ({
            </div>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
+      </div>
+
+      {/* Graduation Cost Alert for Admin (Moved here) */}
+      <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+        <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
+          <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
+          <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
+          <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
+            <Award className="text-orange-500" />
+            {user.belt || 'Cordel Cinza'}
+          </p>
+        </div>
       </div>
 
       {/* Tabs Navigation */}
@@ -2242,7 +2254,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <div>
                                 <label className="block text-sm text-stone-400 mb-1">Atribuir a Aluno</label>
                                 <select
-                                    value={selectedStudentForAssignment}
+                                    value={newAssignment.studentId} // Use newAssignment.studentId here
                                     onChange={(e) => setNewAssignment(prev => ({...prev, studentId: e.target.value}))} // Update newAssignment state
                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                     required
@@ -2402,9 +2414,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                       <p className="text-xs text-stone-400 mb-3">{assign.description}</p>
                                       <div className="flex justify-between items-center text-xs text-stone-500 mb-3">
                                           <span className="flex items-center gap-1">
-                                              <Calendar size={12}/> Entrega: {assign.dueDate}
+                                              <Calendar size={12}/> Entrega: {assign.due_date}
                                           </span>
-                                          {assign.dueDate === today && (
+                                          {assign.due_date === today && (
                                               <span className="text-red-500 font-bold flex items-center gap-1 animate-pulse">
                                                   <AlertCircle size={12}/> Vence Hoje!
                                               </span>
@@ -2471,7 +2483,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                               {profModeAssignments.filter(a => a.status === 'completed').map(assign => (
                                   <div key={assign.id} className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 opacity-80">
                                       <h4 className="font-bold text-stone-300 line-through decoration-stone-500">{assign.title}</h4>
-                                      <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.dueDate}</p>
+                                      <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.due_date}</p>
                                       {assign.attachment_url && (
                                           <div className="flex items-center gap-2 text-xs text-green-500 bg-green-900/10 p-2 rounded">
                                               <Paperclip size={12} /> Arquivo Anexado
@@ -2527,7 +2539,7 @@ export const DashboardAdmin: React.FC<Props> = ({
            {profView === 'music_manager' && (
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
                   <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16}/> Voltar</button>
-                  <h2 className="text-2xl font-bold text-white mb-6">Acervo Musical</h2>
+                  <h2 className="2xl font-bold text-white mb-6">Acervo Musical</h2>
                   <div className="grid md:grid-cols-2 gap-6">
                       <form onSubmit={handleSubmitMusic} className="space-y-4">
                           <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({...musicForm, title: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
@@ -2614,17 +2626,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                         )}
                     </div>
                 </div>
-                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
-                    <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
-                        <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
-                        <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
-                          <Award className="text-orange-500" />
-                          {user.belt || 'Cordel Cinza'}
-                        </p>
-                    </div>
-                </div>
-
                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                     <h3 className="text-xl font-bold text-white mb-4">Registros de Aula Recebidos</h3>
                     <div className="space-y-2">
