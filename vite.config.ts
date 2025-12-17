@@ -1,7 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-// Tailwind Vite plugin removed to avoid runtime error when dependency is missing.
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -11,7 +11,46 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         allowedHosts: true,
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        VitePWA({
+          registerType: 'autoUpdate',
+          devOptions: {
+            enabled: true,
+          },
+          manifest: {
+            name: 'Filhos do Fogo - Capoeira',
+            short_name: 'Filhos do Fogo',
+            description: 'Humildade, Disciplina e União - Grupo de Capoeira',
+            theme_color: '#1c1917',
+            background_color: '#1c1917',
+            display: 'standalone',
+            orientation: 'portrait',
+            start_url: '/',
+            icons: [
+              {
+                src: '/pwa-192.svg',
+                sizes: '192x192',
+                type: 'image/svg+xml',
+              },
+              {
+                src: '/pwa-512.svg',
+                sizes: '512x512',
+                type: 'image/svg+xml',
+              },
+              {
+                src: '/pwa-512.svg',
+                sizes: '512x512',
+                type: 'image/svg+xml',
+                purpose: 'any maskable',
+              },
+            ],
+          },
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          },
+        }),
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
