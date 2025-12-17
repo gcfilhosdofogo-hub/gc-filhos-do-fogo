@@ -2,7 +2,7 @@
 module.exports = {
   plugins: {
     'tailwindcss/nesting': {},
-    '@tailwindcss/postcss': {}, // Corrigido para usar o plugin oficial do PostCSS para Tailwind CSS
+    '@tailwindcss/postcss': {}, // Esta linha é a correção crucial
     autoprefixer: {},
   },
 };
