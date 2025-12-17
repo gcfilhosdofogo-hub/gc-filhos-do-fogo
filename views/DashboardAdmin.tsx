@@ -145,20 +145,55 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [classPhoto, setClassPhoto] = useState<string | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
   const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
-  const beltBarStyle = useMemo(() => {
+  const beltColors = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
-    if (b.includes('verde, amarelo, azul e branco')) return 'linear-gradient(135deg,#22c55e,#f59e0b,#3b82f6,#ffffff)';
-    if (b.includes('amarelo e azul')) return 'linear-gradient(135deg,#f59e0b,#3b82f6)';
-    if (b.includes('verde e amarelo')) return 'linear-gradient(135deg,#22c55e,#f59e0b)';
-    if (b.includes('verde e branco')) return 'linear-gradient(135deg,#22c55e,#ffffff)';
-    if (b.includes('amarelo e branco')) return 'linear-gradient(135deg,#f59e0b,#ffffff)';
-    if (b.includes('azul e branco')) return 'linear-gradient(135deg,#3b82f6,#ffffff)';
-    if (b.includes('cinza')) return '#9ca3af';
-    if (b.includes('verde')) return '#22c55e';
-    if (b.includes('amarelo')) return '#f59e0b';
-    if (b.includes('azul')) return '#3b82f6';
-    if (b.includes('branco')) return '#ffffff';
-    return user.beltColor || '#fff';
+    const colorMap: Record<string, string> = {
+      'verde': '#22c55e',
+      'amarelo': '#f59e0b',
+      'azul': '#3b82f6',
+      'branco': '#ffffff',
+      'cinza': '#9ca3af',
+    };
+    
+    let mainColor = user.beltColor || '#fff';
+    let pontaColor: string | null = null;
+    
+    if (b.includes('verde, amarelo, azul e branco')) {
+      mainColor = 'linear-gradient(to bottom,#22c55e,#f59e0b,#3b82f6,#ffffff)';
+    } else if (b.includes('amarelo e azul')) {
+      mainColor = 'linear-gradient(to bottom,#f59e0b,#3b82f6)';
+    } else if (b.includes('verde e amarelo')) {
+      mainColor = 'linear-gradient(to bottom,#22c55e,#f59e0b)';
+    } else if (b.includes('verde e branco')) {
+      mainColor = 'linear-gradient(to bottom,#22c55e,#ffffff)';
+    } else if (b.includes('amarelo e branco')) {
+      mainColor = 'linear-gradient(to bottom,#f59e0b,#ffffff)';
+    } else if (b.includes('azul e branco')) {
+      mainColor = 'linear-gradient(to bottom,#3b82f6,#ffffff)';
+    } else if (b.includes('cinza')) {
+      mainColor = '#9ca3af';
+    } else if (b.includes('verde')) {
+      mainColor = '#22c55e';
+    } else if (b.includes('amarelo')) {
+      mainColor = '#f59e0b';
+    } else if (b.includes('azul')) {
+      mainColor = '#3b82f6';
+    } else if (b.includes('branco')) {
+      mainColor = '#ffffff';
+    }
+    
+    if (b.includes('ponta')) {
+      const pontaMatch = b.match(/ponta\s+(\w+)/);
+      if (pontaMatch) {
+        const pontaName = pontaMatch[1];
+        if (pontaName.includes('verde')) pontaColor = colorMap['verde'];
+        else if (pontaName.includes('amarelo')) pontaColor = colorMap['amarelo'];
+        else if (pontaName.includes('azul')) pontaColor = colorMap['azul'];
+        else if (pontaName.includes('branco')) pontaColor = colorMap['branco'];
+      }
+    }
+    
+    return { mainColor, pontaColor };
   }, [user.belt, user.beltColor]);
   
   // Evaluation State
@@ -864,7 +899,10 @@ export const DashboardAdmin: React.FC<Props> = ({
       {/* Graduation Cost Alert for Admin (Moved here) */}
       <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
         <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
-          <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
+          <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
+          {beltColors.pontaColor && (
+            <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
+          )}
           <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
           <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
             <Award className="text-orange-500" />
