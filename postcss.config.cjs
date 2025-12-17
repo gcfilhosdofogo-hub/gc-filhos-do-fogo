@@ -1,8 +1,8 @@
 // postcss.config.cjs
 module.exports = {
   plugins: {
-    'tailwindcss/nesting': {},
-    '@tailwindcss/postcss': {}, // Esta linha é a correção crucial
+    // 'tailwindcss/nesting': {}, // Removido: esta entrada não é mais válida
+    '@tailwindcss/postcss': {},
     autoprefixer: {},
   },
 };
