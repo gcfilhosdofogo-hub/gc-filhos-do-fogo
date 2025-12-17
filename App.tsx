@@ -147,24 +147,71 @@ function AppContent() {
     if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
     else setEventRegistrations(eventRegData || []);
 
-    // Fetch Student Grades
-    let gradesQuery = supabase.from('student_notes').select('*');
+    let gradesData: any[] | null = null;
+    let gradesError: any = null;
     if (userRole === 'aluno') {
-      gradesQuery = gradesQuery.eq('student_id', userId);
+      const idCandidates = ['student_id', 'user_id', 'aluno_id'];
+      for (const col of idCandidates) {
+        const { data, error } = await supabase.from('student_notes').select('*').eq(col, userId);
+        if (!error) {
+          const rows = data || [];
+          if (rows.length > 0) {
+            gradesData = rows;
+            break;
+          } else {
+            continue;
+          }
+        }
+        const code = String((error as any)?.code || '');
+        if (error && code !== '42703' && code !== 'PGRST204') { gradesError = error; break; }
+      }
+      if (!gradesData && !gradesError) {
+        const { data, error } = await supabase.from('student_notes').select('*');
+        if (!error) gradesData = (data || []).filter((g: any) => g.student_id === userId || g.user_id === userId || g.aluno_id === userId);
+        else gradesError = error;
+      }
+    } else {
+      const { data, error } = await supabase.from('student_notes').select('*');
+      gradesData = data || [];
+      gradesError = error || null;
     }
-    const { data: gradesData, error: gradesError } = await gradesQuery;
     if (gradesError) console.error('Error fetching student grades:', gradesError);
     else {
       const allCols = Array.from(new Set((gradesData || []).flatMap((row: any) => Object.keys(row || {}))));
       setStudentNotesAvailableColumns(allCols);
-      const numericCandidates = ['numeric', 'nota', 'score', 'grade', 'value'];
+      const idCandidates = ['student_id', 'user_id', 'aluno_id'];
+      const detectedIdKey = idCandidates.find(k => allCols.includes(k)) || 'student_id';
+      const numericCandidates = [
+        'numeric',
+        'nota',
+        'score',
+        'grade',
+        'value',
+        'nota_numerica',
+        'nota_numero',
+        'pontuacao',
+        'pontuacao_numerica',
+      ];
       const detectedNumeric = numericCandidates.find(k => allCols.includes(k));
       const numericKey = detectedNumeric || 'numeric';
-      const writtenCandidates = ['written', 'avaliacao', 'avaliacao_escrita', 'comment', 'texto', 'descricao'];
+      const writtenCandidates = [
+        'written',
+        'avaliacao',
+        'avaliacao_escrita',
+        'avaliacao_texto',
+        'comment',
+        'comentario',
+        'comentarios',
+        'texto',
+        'descricao',
+        'observacao',
+        'observacoes',
+      ];
       const detectedWritten = writtenCandidates.find(k => allCols.includes(k));
       const writtenKey = detectedWritten || 'written';
       const normalized = (gradesData || []).map((g: any) => ({
         ...g,
+        student_id: g[detectedIdKey] ?? g.student_id ?? g.user_id ?? g.aluno_id ?? '',
         written:
           typeof g[writtenKey] === 'string'
             ? g[writtenKey]
@@ -263,13 +310,10 @@ function AppContent() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut({ scope: 'local' });
-    } catch (e: any) {
-      const msg = e?.message || '';
-      if (!/ERR_ABORTED/i.test(msg)) {
-        try {
-          await supabase.auth.signOut({ scope: 'global' });
-        } catch (_) {}
-      }
+    } catch (_e: any) {
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (_) {}
     }
     setUser(null);
     setCurrentView('home');
@@ -288,9 +332,7 @@ function AppContent() {
                 belt_color: updatedData.beltColor,
                 professor_name: updatedData.professorName,
                 birth_date: updatedData.birthDate,
-                graduation_cost: updatedData.graduationCost,
                 phone: updatedData.phone,
-                role: updatedData.role, // Allow admin to update role
                 updated_at: new Date().toISOString(),
             })
             .eq('id', session.user.id);
@@ -347,9 +389,6 @@ function AppContent() {
   };
 
   const handleNotifyAdmin = async (action: string, actor: User) => {
-    if (actor.role !== 'admin') {
-      return;
-    }
     const newNotification: Omit<AdminNotification, 'id' | 'created_at'> = {
       user_id: actor.id,
       user_name: actor.nickname || actor.name,
@@ -464,34 +503,76 @@ function AppContent() {
   };
 
   const handleAddStudentGrade = async (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => {
-    const numericCandidates = [studentNotesNumericField, 'numeric', 'nota', 'score', 'grade', 'value'];
-    const writtenCandidates = [studentNotesWrittenField, 'written', 'avaliacao', 'avaliacao_escrita', 'comment', 'texto', 'descricao'];
-    const base: any = { student_id: payload.student_id };
-    ['student_name', 'professor_id', 'professor_name', 'category'].forEach((col) => {
-      if (studentNotesAvailableColumns.includes(col)) {
-        base[col] = (payload as any)[col];
-      }
-    });
-    for (const nKey of numericCandidates) {
-      for (const wKey of writtenCandidates) {
-        const attempt = { ...base, [nKey]: payload.numeric, [wKey]: payload.written };
-        const { data, error } = await supabase.from('student_notes').insert(attempt).select().single();
-        if (!error && data) {
-          setStudentNotesNumericField(nKey);
-          setStudentNotesWrittenField(wKey);
-          const numericVal = typeof (data as any)[nKey] === 'number' ? (data as any)[nKey] : Number((data as any)[nKey]);
-          const writtenVal = String((data as any)[wKey] ?? '');
-          const normalized: StudentGrade = {
-            ...(data as any),
-            numeric: numericVal,
-            written: writtenVal,
-          };
-          setStudentGrades(prev => [normalized, ...prev]);
-          return;
+    const idCandidates = ['student_id', 'user_id', 'aluno_id'];
+    const numericCandidates = [
+      studentNotesNumericField,
+      'numeric',
+      'nota',
+      'score',
+      'grade',
+      'value',
+      'nota_numerica',
+      'nota_numero',
+      'pontuacao',
+      'pontuacao_numerica',
+    ];
+    const writtenCandidates = [
+      studentNotesWrittenField,
+      'written',
+      'avaliacao',
+      'avaliacao_escrita',
+      'avaliacao_texto',
+      'comment',
+      'comentario',
+      'comentarios',
+      'texto',
+      'descricao',
+      'observacao',
+      'observacoes',
+    ];
+    let existingCols = studentNotesAvailableColumns;
+    if (existingCols.length === 0) {
+      try {
+        const { data } = await supabase.from('student_notes').select('*').limit(1);
+        existingCols = Array.from(new Set((data || []).flatMap((row: any) => Object.keys(row || {}))));
+        setStudentNotesAvailableColumns(existingCols);
+      } catch (_) {}
+    }
+    const idKeysToUse = idCandidates.filter(k => existingCols.includes(k));
+    const numericKeysToUse = numericCandidates.filter(k => existingCols.includes(k));
+    const writtenKeysToUse = writtenCandidates.filter(k => existingCols.includes(k));
+    const finalIdKeys = idKeysToUse.length > 0 ? idKeysToUse : idCandidates;
+    const finalNumericKeys = numericKeysToUse.length > 0 ? numericKeysToUse : numericCandidates;
+    const finalWrittenKeys = writtenKeysToUse.length > 0 ? writtenKeysToUse : writtenCandidates;
+    for (const idKey of finalIdKeys) {
+      const base: any = { [idKey]: payload.student_id };
+      ['student_name', 'professor_id', 'professor_name', 'category'].forEach((col) => {
+        if (studentNotesAvailableColumns.includes(col)) {
+          base[col] = (payload as any)[col];
         }
-        if (error && (error as any).code !== 'PGRST204') {
-          console.error('Error adding student grade:', error);
-          return;
+      });
+      for (const nKey of finalNumericKeys) {
+        for (const wKey of finalWrittenKeys) {
+          const attempt = { ...base, [nKey]: payload.numeric, [wKey]: payload.written };
+          const { data, error } = await supabase.from('student_notes').insert(attempt).select().single();
+          if (!error && data) {
+            setStudentNotesNumericField(nKey);
+            setStudentNotesWrittenField(wKey);
+            const numericVal = typeof (data as any)[nKey] === 'number' ? (data as any)[nKey] : Number((data as any)[nKey]);
+            const writtenVal = String((data as any)[wKey] ?? '');
+            const normalized: StudentGrade = {
+              ...(data as any),
+              student_id: (data as any)[idKey] ?? payload.student_id,
+              numeric: numericVal,
+              written: writtenVal,
+            };
+            setStudentGrades(prev => [normalized, ...prev]);
+            return;
+          }
+          if (error && (error as any).code !== 'PGRST204' && (error as any).code !== '42703') {
+            console.error('Error adding student grade:', error);
+            return;
+          }
         }
       }
     }

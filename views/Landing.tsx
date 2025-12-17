@@ -18,7 +18,7 @@ export const Landing: React.FC<Props> = ({ onLoginClick }) => {
           <div className="absolute inset-0 bg-gradient-to-b from-stone-900/90 via-stone-900/80 to-stone-900 z-10"></div>
           <img 
             src="https://images.unsplash.com/photo-1542408375-9279769db387?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
-            alt="Roda de Capoeira" 
+            alt="" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
             crossOrigin="anonymous"
@@ -77,7 +77,7 @@ export const Landing: React.FC<Props> = ({ onLoginClick }) => {
                 <Calendar className="w-10 h-10 text-stone-500 group-hover:text-orange-500 transition-colors" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">Aulas Diárias</h3>
-              <p className="text-stone-400 leading-relaxed">Treinos técnicos, físicos e musicais. Horários flexíveis para todos os níveis de graduação, do iniciante ao avançado.</p>
+              <p className="text-stone-400 leading-relaxed">Treinos técnicos, físicos, teórico e musicais. Horários flexíveis para todos os níveis de graduação, do iniciante ao avançado.</p>
             </div>
             
             <div className="bg-stone-800 p-8 rounded-2xl border border-stone-700 hover:border-orange-500 transition-colors group flex flex-col items-center text-center hover:-translate-y-2 duration-300 shadow-xl">
@@ -85,7 +85,7 @@ export const Landing: React.FC<Props> = ({ onLoginClick }) => {
                 <MapPin className="w-10 h-10 text-stone-500 group-hover:text-orange-500 transition-colors" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">Eventos</h3>
-              <p className="text-stone-400 leading-relaxed">Participação em batizados, rodas de rua e intercâmbios constantes com outros grupos da região e do Brasil.</p>
+              <p className="text-stone-400 leading-relaxed">Participação em batizados, eventos e intercâmbios constantes com outros grupos do Brasil e do Mundo.</p>
             </div>
           </div>
         </div>

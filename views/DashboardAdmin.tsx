@@ -144,6 +144,22 @@ export const DashboardAdmin: React.FC<Props> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [classPhoto, setClassPhoto] = useState<string | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
+  const beltBarStyle = React.useMemo(() => {
+    const b = (user.belt || '').toLowerCase();
+    if (b.includes('verde, amarelo, azul e branco')) return 'linear-gradient(135deg,#22c55e,#f59e0b,#3b82f6,#ffffff)';
+    if (b.includes('amarelo e azul')) return 'linear-gradient(135deg,#f59e0b,#3b82f6)';
+    if (b.includes('verde e amarelo')) return 'linear-gradient(135deg,#22c55e,#f59e0b)';
+    if (b.includes('verde e branco')) return 'linear-gradient(135deg,#22c55e,#ffffff)';
+    if (b.includes('amarelo e branco')) return 'linear-gradient(135deg,#f59e0b,#ffffff)';
+    if (b.includes('azul e branco')) return 'linear-gradient(135deg,#3b82f6,#ffffff)';
+    if (b.includes('cinza')) return '#9ca3af';
+    if (b.includes('verde')) return '#22c55e';
+    if (b.includes('amarelo')) return '#f59e0b';
+    if (b.includes('azul')) return '#3b82f6';
+    if (b.includes('branco')) return '#ffffff';
+    return user.beltColor || '#fff';
+  }, [user.belt, user.beltColor]);
   
   // Evaluation State
   const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
@@ -743,14 +759,41 @@ export const DashboardAdmin: React.FC<Props> = ({
     setOrderForm({ item: 'combo', shirtSize: '', pantsSize: '' });
   };
   
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (ev) => { if (ev.target?.result) setClassPhoto(ev.target.result as string); };
-        reader.readAsDataURL(e.target.files[0]);
-        onNotifyAdmin('Enviou foto da aula', user); // Added notification
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/class_records/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: pub } = supabase.storage.from('class_records').getPublicUrl(filePath);
+      setClassPhoto(null);
+      onNotifyAdmin(`Registro de aula enviado: ${pub.publicUrl}`, user);
+      alert('Registro de aula enviado ao Admin.');
+    } catch (err: any) {
+      console.error('Error uploading class record:', err);
+      alert('Erro ao enviar registro de aula.');
     }
   };
+
+  useEffect(() => {
+    const fetchClassRecords = async () => {
+      try {
+        const { data, error } = await supabase.storage.from('class_records').list('', { limit: 20 });
+        if (error) throw error;
+        const items = data || [];
+        const withUrls = items.map((it: any) => {
+          const { data: pub } = supabase.storage.from('class_records').getPublicUrl(it.name);
+          return { name: it.name, url: pub.publicUrl, created_at: it.created_at };
+        });
+        setClassRecords(withUrls);
+      } catch (err) {
+        console.error('Error listing class records:', err);
+      }
+    };
+    fetchClassRecords();
+  }, []);
 
   // --- Student Details Handlers ---
   const handleViewReport = async (fileUrl: string, fileName: string) => {
@@ -2568,6 +2611,30 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <div className="relative w-full h-32 rounded overflow-hidden"><img src={classPhoto} className="w-full h-full object-cover" /><button onClick={() => setClassPhoto(null)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"><X size={12}/></button></div>
                         ) : (
                             <label className="cursor-pointer flex flex-col items-center"><Camera size={32} className="text-stone-500 mb-2"/><span className="text-purple-400 font-bold">Enviar Foto</span><input type="file" className="hidden" onChange={handlePhotoUpload} /></label>
+                        )}
+                    </div>
+                </div>
+                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
+                    <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
+                        <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
+                        <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
+                        <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                          <Award className="text-orange-500" />
+                          {user.belt || 'Cordel Cinza'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                    <h3 className="text-xl font-bold text-white mb-4">Registros de Aula Recebidos</h3>
+                    <div className="space-y-2">
+                        {classRecords.length > 0 ? classRecords.map(rec => (
+                            <div key={rec.name} className="flex justify-between items-center bg-stone-900 p-3 rounded border-l-2 border-purple-500">
+                                <span className="text-stone-300 text-sm truncate max-w-[60%]">{rec.name}</span>
+                                <a href={rec.url} target="_blank" rel="noopener noreferrer" className="text-purple-400 text-xs hover:underline">Abrir</a>
+                            </div>
+                        )) : (
+                            <p className="text-stone-500 text-sm">Nenhum registro enviado ainda.</p>
                         )}
                     </div>
                 </div>

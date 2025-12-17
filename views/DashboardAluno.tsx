@@ -610,7 +610,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <p className="text-stone-500 text-xs mb-4">{user.email}</p>
               
               <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative" >
-                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: beltBarStyle }}></div>
+                <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
                 <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
                 <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
                   <Award className="text-orange-500" />
@@ -1091,6 +1091,7 @@ export const DashboardAluno: React.FC<Props> = ({
                               ? (typeof g.numeric === 'number' ? g.numeric : Number(g.numeric)).toFixed(1)
                               : '-'}
                           </span>
+                          <span className="text-stone-400 text-xs max-w-[60%] truncate">{g.written}</span>
                         </div>
                       </div>
                     ))

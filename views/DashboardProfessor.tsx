@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award } from 'lucide-react'; // Adicionado Shield
 import { Button } from '../components/Button';
@@ -140,6 +140,23 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   // Filter my orders
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
+
+  // Belt Bar Style (Copied from DashboardAluno for consistency)
+  const beltBarStyle = useMemo(() => {
+    const b = (user.belt || '').toLowerCase();
+    if (b.includes('verde, amarelo, azul e branco')) return 'linear-gradient(135deg,#22c55e,#f59e0b,#3b82f6,#ffffff)';
+    if (b.includes('amarelo e azul')) return 'linear-gradient(135deg,#f59e0b,#3b82f6)';
+    if (b.includes('verde e amarelo')) return 'linear-gradient(135deg,#22c55e,#f59e0b)';
+    if (b.includes('verde e branco')) return 'linear-gradient(135deg,#22c55e,#ffffff)';
+    if (b.includes('amarelo e branco')) return 'linear-gradient(135deg,#f59e0b,#ffffff)';
+    if (b.includes('azul e branco')) return 'linear-gradient(135deg,#3b82f6,#ffffff)';
+    if (b.includes('cinza')) return '#9ca3af';
+    if (b.includes('verde')) return '#22c55e';
+    if (b.includes('amarelo')) return '#f59e0b';
+    if (b.includes('azul')) return '#3b82f6';
+    if (b.includes('branco')) return '#ffffff';
+    return user.beltColor || '#fff';
+  }, [user.belt, user.beltColor]);
 
   // Handlers
   const handleCopyPix = () => {
@@ -290,12 +307,21 @@ export const DashboardProfessor: React.FC<Props> = ({
     setOrderForm({ item: 'combo', shirtSize: '', pantsSize: '' });
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if(e.target.files && e.target.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (ev) => { if(ev.target?.result) setClassPhoto(ev.target.result as string); }
-        reader.readAsDataURL(e.target.files[0]);
-        onNotifyAdmin('Enviou foto da aula', user);
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/class_records/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: pub } = supabase.storage.from('class_records').getPublicUrl(filePath);
+      setClassPhoto(null);
+      onNotifyAdmin(`Registro de aula enviado: ${pub.publicUrl}`, user);
+      alert('Registro de aula enviado ao Admin.');
+    } catch (err: any) {
+      console.error('Error uploading class record:', err);
+      alert('Erro ao enviar registro de aula.');
     }
   }
 
@@ -356,6 +382,17 @@ export const DashboardProfessor: React.FC<Props> = ({
                 {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />} 
                 {pixCopied ? 'Copiado!' : 'Mensalidade'}
             </Button>
+        </div>
+        
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+          <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
+            <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltBarStyle }}></div>
+            <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
+            <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
+              <Award className="text-orange-500" />
+              {user.belt || 'Cordel Cinza'}
+            </p>
+          </div>
         </div>
 
         {/* --- UNIFORM VIEW --- */}
@@ -438,7 +475,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                  <form onSubmit={handleSubmitMusic} className="space-y-4">
                       <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({...musicForm, title: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                       <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({...musicForm, category: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-                      <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({...musicForm, lyrics: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" required />
+                      <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({...musicForm, lyrics: e.target.value})} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
                       <Button fullWidth type="submit">Salvar no Acervo</Button>
                  </form>
             </div>
