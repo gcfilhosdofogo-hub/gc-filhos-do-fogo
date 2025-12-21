@@ -29,19 +29,19 @@ export default defineConfig(({ mode }) => {
             start_url: '/',
             icons: [
               {
-                src: '/pwa-192.png',
+                src: '/logo.svg',
                 sizes: '192x192',
-                type: 'image/png',
+                type: 'image/svg+xml',
               },
               {
-                src: '/pwa-512.png',
+                src: '/logo.svg',
                 sizes: '512x512',
-                type: 'image/png',
+                type: 'image/svg+xml',
               },
               {
-                src: '/pwa-512.png',
+                src: '/logo.svg',
                 sizes: '512x512',
-                type: 'image/png',
+                type: 'image/svg+xml',
                 purpose: 'any maskable',
               },
             ],
