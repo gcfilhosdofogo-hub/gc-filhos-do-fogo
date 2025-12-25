@@ -1063,6 +1063,51 @@ export const DashboardAluno: React.FC<Props> = ({
                   </div>
               </div>
 
+              {/* Assignments Section */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                      <FileText className="text-cyan-500" />
+                      Trabalhos do Professor
+                  </h3>
+                  <div className="space-y-3">
+                      {assignments && assignments.length > 0 ? (
+                          assignments.map(assignment => (
+                              <div key={assignment.id} className="bg-stone-900 p-4 rounded border-l-2 border-cyan-500">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                      <div className="flex-1">
+                                          <h4 className="font-bold text-white text-sm mb-1">{assignment.title}</h4>
+                                          <p className="text-stone-400 text-xs mb-2">{assignment.description}</p>
+                                          <p className="text-stone-500 text-xs">Vencimento: {assignment.due_date}</p>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                          {assignment.status === 'completed' ? (
+                                              <span className="text-green-400 text-xs flex items-center gap-1 whitespace-nowrap">
+                                                  <Check size={12} /> Entregue
+                                              </span>
+                                          ) : (
+                                              <span className="text-yellow-400 text-xs flex items-center gap-1 whitespace-nowrap">
+                                                  <Clock size={12} /> Pendente
+                                              </span>
+                                          )}
+                                      </div>
+                                  </div>
+                                  {assignment.attachment_url && assignment.status !== 'completed' && (
+                                      <Button 
+                                          variant="secondary" 
+                                          className="text-xs h-auto px-2 py-1 mt-2 w-full"
+                                          onClick={() => window.open(assignment.attachment_url, '_blank')}
+                                      >
+                                          <Eye size={14} className="mr-1" /> Ver Material
+                                      </Button>
+                                  )}
+                              </div>
+                          ))
+                      ) : (
+                          <p className="text-stone-500 text-sm italic">Nenhum trabalho atribuído.</p>
+                      )}
+                  </div>
+              </div>
+
               {/* Resources & Training & Reports Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <button 
