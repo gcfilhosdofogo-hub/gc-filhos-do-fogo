@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '../components/Button';
-import { Users, Calendar, MapPin, Instagram, MessageCircle } from 'lucide-react';
+import { Users, Calendar, MapPin, Instagram } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 interface Props {
@@ -49,18 +49,6 @@ export const Landing: React.FC<Props> = ({ onLoginClick }) => {
               <Button variant="outline" className="text-lg px-8 py-4 w-full flex items-center justify-center gap-2 hover:text-white hover:border-pink-600 hover:bg-gradient-to-r hover:from-purple-600 hover:to-pink-600 transition-all duration-300">
                 <Instagram size={24} />
                 Siga no Instagram
-              </Button>
-            </a>
-
-            <a 
-              href="https://discord.gg/AY2kk9Ubk" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="w-full sm:w-auto"
-            >
-              <Button variant="outline" className="text-lg px-8 py-4 w-full flex items-center justify-center gap-2 hover:text-white hover:border-blue-600 hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 transition-all duration-300">
-                <MessageCircle size={24} />
-                Discord
               </Button>
             </a>
           </div>

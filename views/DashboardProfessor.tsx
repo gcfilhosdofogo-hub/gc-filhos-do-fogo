@@ -417,6 +417,11 @@ export const DashboardProfessor: React.FC<Props> = ({
                 {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />} 
                 {pixCopied ? 'Copiado!' : 'Mensalidade'}
             </Button>
+            <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="border-blue-600 text-blue-400 hover:border-blue-400">
+                    <MessageCircle size={18} /> Discord
+                </Button>
+            </a>
         </div>
         
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">

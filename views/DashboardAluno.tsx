@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade } from '../types';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp } from 'lucide-react';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp, MessageCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { Logo } from '../components/Logo';
@@ -698,6 +698,18 @@ export const DashboardAluno: React.FC<Props> = ({
             <Button fullWidth className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none mb-4">
               <Instagram size={20} />
               Siga @filhosdofogo2005
+            </Button>
+          </a>
+
+          <a 
+            href="https://discord.gg/AY2kk9Ubk" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Button fullWidth variant="outline" className="hover:border-blue-600 hover:text-blue-400 mb-4">
+              <MessageCircle size={20} />
+              Discord
             </Button>
           </a>
         </div>
