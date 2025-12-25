@@ -707,7 +707,7 @@ export const DashboardAluno: React.FC<Props> = ({
             rel="noopener noreferrer"
             className="block"
           >
-            <Button fullWidth variant="outline" className="hover:border-blue-600 hover:text-blue-400 mb-4">
+            <Button fullWidth className="mb-4 text-white border-none" style={{ backgroundColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
               <MessageCircle size={20} />
               Discord
             </Button>

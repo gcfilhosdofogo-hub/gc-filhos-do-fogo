@@ -967,7 +967,7 @@ export const DashboardAdmin: React.FC<Props> = ({
           <Users size={16}/> Minhas Aulas
         </button>
         <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer" className="ml-auto">
-          <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-stone-400 hover:text-blue-400 hover:border-blue-500 border-b-2 border-stone-700 hover:border-blue-500">
+          <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2" style={{ backgroundColor: '#5865F2', borderColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
             <MessageCircle size={16}/> Discord
           </button>
         </a>
