@@ -418,7 +418,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                 {pixCopied ? 'Copiado!' : 'Mensalidade'}
             </Button>
             <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
-                <Button className="text-white border-none" style={{ backgroundColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
+                <Button className="text-white border-none !bg-[#5865F2] hover:!bg-[#4752C4]" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
                     <MessageCircle size={18} /> Discord
                 </Button>
             </a>

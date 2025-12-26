@@ -289,6 +289,14 @@ export const DashboardAdmin: React.FC<Props> = ({
     setMyOrders(uniformOrders.filter(o => o.user_id === user.id)); // Update myOrders when uniformOrders change
   }, [fetchManagedUsers, assignments, user.id, classSessions, uniformOrders]);
 
+  // --- CUSTOM ADMIN DISPLAY NAME ---
+  const getAdminDisplayName = () => {
+    if (user.nickname === 'Aquiles') return 'Administração Filhos do Fogo Argentina';
+    if (user.nickname === 'Wolverine') return 'Administração Filhos do Fogo Brasil';
+    if (user.nickname === 'Anjo de Fogo') return 'Administração Filhos do Fogo Geral';
+    return user.nickname || user.first_name || user.name || 'Admin';
+  };
+
   // --- ADMIN HANDLERS ---
   const totalMonthlyPayments = monthlyPayments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
   const pendingMonthlyPayments = monthlyPayments.filter(p => p.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
@@ -888,9 +896,9 @@ export const DashboardAdmin: React.FC<Props> = ({
            <div className="text-center md:text-left">
               <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
                 <Shield className="text-red-500" />
-                Administração Filhos do Fogo
+                {getAdminDisplayName()}
               </h1>
-              <p className="text-red-200 mt-2">Painel de Controle Geral</p>
+              <p className="text-red-200 mt-2">Painel de Controle</p>
            </div>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
