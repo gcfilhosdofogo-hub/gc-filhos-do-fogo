@@ -149,7 +149,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const b = (user.belt || '').toLowerCase();
     const colorMap: Record<string, string> = {
       'verde': '#22c55e',
-      'amarelo': '#f59e0b',
+      'amarelo': '#D4A574',
       'azul': '#3b82f6',
       'branco': '#ffffff',
       'cinza': '#9ca3af',
@@ -159,15 +159,15 @@ export const DashboardAdmin: React.FC<Props> = ({
     let pontaColor: string | null = null;
     
     if (b.includes('verde, amarelo, azul e branco')) {
-      mainColor = 'linear-gradient(to bottom,#22c55e,#f59e0b,#3b82f6,#ffffff)';
+      mainColor = 'linear-gradient(to bottom,#22c55e,#D4A574,#3b82f6,#ffffff)';
     } else if (b.includes('amarelo e azul')) {
-      mainColor = 'linear-gradient(to bottom,#f59e0b,#3b82f6)';
+      mainColor = 'linear-gradient(to bottom,#D4A574,#3b82f6)';
     } else if (b.includes('verde e amarelo')) {
-      mainColor = 'linear-gradient(to bottom,#22c55e,#f59e0b)';
+      mainColor = 'linear-gradient(to bottom,#22c55e,#D4A574)';
     } else if (b.includes('verde e branco')) {
       mainColor = 'linear-gradient(to bottom,#22c55e,#ffffff)';
     } else if (b.includes('amarelo e branco')) {
-      mainColor = 'linear-gradient(to bottom,#f59e0b,#ffffff)';
+      mainColor = 'linear-gradient(to bottom,#D4A574,#ffffff)';
     } else if (b.includes('azul e branco')) {
       mainColor = 'linear-gradient(to bottom,#3b82f6,#ffffff)';
     } else if (b.includes('cinza')) {
@@ -175,7 +175,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     } else if (b.includes('verde')) {
       mainColor = '#22c55e';
     } else if (b.includes('amarelo')) {
-      mainColor = '#f59e0b';
+      mainColor = '#D4A574';
     } else if (b.includes('azul')) {
       mainColor = '#3b82f6';
     } else if (b.includes('branco')) {
