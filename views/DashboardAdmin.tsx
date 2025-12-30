@@ -288,8 +288,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     setMyClasses(classSessions.filter(cs => cs.professor_id === user.id)); // Update myClasses when classSessions change
     setMyOrders(uniformOrders.filter(o => o.user_id === user.id)); // Update myOrders when uniformOrders change
   }, [fetchManagedUsers, assignments, user.id, classSessions, uniformOrders]);
-
-  // --- CUSTOM ADMIN DISPLAY NAME ---
+    
+    // --- CUSTOM ADMIN DISPLAY NAME ---
   const getAdminDisplayName = () => {
     if (user.nickname === 'Aquiles') return 'Administração Filhos do Fogo Argentina';
     if (user.nickname === 'Wolverine') return 'Administração Filhos do Fogo Brasil';
