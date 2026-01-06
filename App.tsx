@@ -16,7 +16,7 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
   const [isProfileChecked, setIsProfileChecked] = useState(false); // Novo estado para controlar a verificação do perfil
-  
+
   // Supabase Data States
   const [events, setEvents] = useState<GroupEvent[]>([]);
   const [musicList, setMusicList] = useState<MusicItem[]>([]);
@@ -33,6 +33,7 @@ function AppContent() {
   const [studentNotesNumericField, setStudentNotesNumericField] = useState<string>('numeric');
   const [studentNotesWrittenField, setStudentNotesWrittenField] = useState<string>('written');
   const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
+  const [isGeneratingPayments, setIsGeneratingPayments] = useState(false);
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
@@ -225,10 +226,76 @@ function AppContent() {
       }));
       setStudentGrades(normalized);
       if (detectedNumeric) setStudentNotesNumericField(detectedNumeric);
-      if (detectedWritten) setStudentNotesWrittenField(detectedWritten);
+      if (detectedWritten) setStudentNotesWrittenField(writtenKey);
     }
 
   }, [session, user]); // Re-fetch if session or user changes
+
+  const generateMonthlyPayments = useCallback(async () => {
+    if (!session || user?.role !== 'admin' || isGeneratingPayments) return;
+
+    const today = new Date();
+    // Only generate between day 5 and 15 to avoid unnecessary checks outside the window, 
+    // but the requirement is "every day 5". We'll check if a record for "current month" exists.
+    if (today.getDate() < 5) return;
+
+    const currentMonth = today.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+    setIsGeneratingPayments(true);
+    try {
+      const { data: existing, error: checkError } = await supabase
+        .from('monthly_payments')
+        .select('id')
+        .eq('month', currentMonth)
+        .eq('type', 'monthly_fee')
+        .limit(1);
+
+      if (checkError) throw checkError;
+      if (existing && existing.length > 0) {
+        setIsGeneratingPayments(false);
+        return;
+      }
+
+      const { data: students, error: studentError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, nickname')
+        .eq('role', 'aluno');
+
+      if (studentError) throw studentError;
+      if (!students || students.length === 0) {
+        setIsGeneratingPayments(false);
+        return;
+      }
+
+      const dueDate = new Date(today.getFullYear(), today.getMonth(), 10).toISOString().split('T')[0];
+
+      const newPayments = students.map(s => ({
+        student_id: s.id,
+        student_name: s.nickname || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Aluno',
+        month: currentMonth,
+        due_date: dueDate,
+        amount: 50,
+        status: 'pending',
+        type: 'monthly_fee'
+      }));
+
+      const { error: insertError } = await supabase.from('monthly_payments').insert(newPayments);
+      if (insertError) throw insertError;
+
+      console.log(`Mensalidades de ${currentMonth} geradas automaticamente.`);
+      await fetchData();
+    } catch (err) {
+      console.error('Erro ao gerar mensalidades automáticas:', err);
+    } finally {
+      setIsGeneratingPayments(false);
+    }
+  }, [session, user, isGeneratingPayments, fetchData]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      generateMonthlyPayments();
+    }
+  }, [user, generateMonthlyPayments]);
 
   // Função para buscar o perfil do usuário
   const fetchUserProfile = useCallback(async (userId: string) => {
@@ -313,7 +380,7 @@ function AppContent() {
     } catch (_e: any) {
       try {
         await supabase.auth.signOut({ scope: 'global' });
-      } catch (_) {}
+      } catch (_) { }
     }
     setUser(null);
     setCurrentView('home');
@@ -322,49 +389,49 @@ function AppContent() {
 
   const handleUpdateProfile = async (updatedData: Partial<User>) => {
     if (user && session) {
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                first_name: updatedData.first_name,
-                last_name: updatedData.last_name,
-                nickname: updatedData.nickname,
-                belt: updatedData.belt,
-                belt_color: updatedData.beltColor,
-                professor_name: updatedData.professorName,
-                birth_date: updatedData.birthDate,
-                phone: updatedData.phone,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', session.user.id);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: updatedData.first_name,
+          last_name: updatedData.last_name,
+          nickname: updatedData.nickname,
+          belt: updatedData.belt,
+          belt_color: updatedData.beltColor,
+          professor_name: updatedData.professorName,
+          birth_date: updatedData.birthDate,
+          phone: updatedData.phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', session.user.id);
 
-        if (error) {
-            console.error('Error updating profile:', error);
-            alert('Failed to update profile.');
-        } else {
-            // Após a atualização, re-fetch o perfil para garantir que o estado do App esteja sincronizado
-            const updatedProfile = await fetchUserProfile(session.user.id);
-            if (updatedProfile) {
-                const userRole: UserRole = updatedProfile.role as UserRole;
-                const fetchedUser: User = {
-                    id: session.user.id,
-                    name: updatedProfile.first_name || session.user.email || 'User',
-                    nickname: updatedProfile.nickname || undefined,
-                    email: session.user.email || '', // Populated from session.user.email
-                    role: userRole,
-                    belt: updatedProfile.belt || undefined,
-                    beltColor: updatedProfile.belt_color || undefined,
-                    professorName: updatedProfile.professor_name || undefined,
-                    birthDate: updatedProfile.birth_date || undefined,
-                    graduationCost: updatedProfile.graduation_cost !== null ? Number(updatedProfile.graduation_cost) : 0,
-                    phone: updatedProfile.phone || undefined,
-                    first_name: updatedProfile.first_name || undefined,
-                    last_name: updatedProfile.last_name || undefined,
-                };
-                setUser(fetchedUser);
-                alert('Profile updated successfully!');
-                fetchData(); // Re-fetch all data after profile update
-            }
+      if (error) {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile.');
+      } else {
+        // Após a atualização, re-fetch o perfil para garantir que o estado do App esteja sincronizado
+        const updatedProfile = await fetchUserProfile(session.user.id);
+        if (updatedProfile) {
+          const userRole: UserRole = updatedProfile.role as UserRole;
+          const fetchedUser: User = {
+            id: session.user.id,
+            name: updatedProfile.first_name || session.user.email || 'User',
+            nickname: updatedProfile.nickname || undefined,
+            email: session.user.email || '', // Populated from session.user.email
+            role: userRole,
+            belt: updatedProfile.belt || undefined,
+            beltColor: updatedProfile.belt_color || undefined,
+            professorName: updatedProfile.professor_name || undefined,
+            birthDate: updatedProfile.birth_date || undefined,
+            graduationCost: updatedProfile.graduation_cost !== null ? Number(updatedProfile.graduation_cost) : 0,
+            phone: updatedProfile.phone || undefined,
+            first_name: updatedProfile.first_name || undefined,
+            last_name: updatedProfile.last_name || undefined,
+          };
+          setUser(fetchedUser);
+          alert('Profile updated successfully!');
+          fetchData(); // Re-fetch all data after profile update
         }
+      }
     }
   };
 
@@ -389,6 +456,7 @@ function AppContent() {
   };
 
   const handleNotifyAdmin = async (action: string, actor: User) => {
+    if (!session) return;
     const newNotification: Omit<AdminNotification, 'id' | 'created_at'> = {
       user_id: actor.id,
       user_name: actor.nickname || actor.name,
@@ -397,14 +465,17 @@ function AppContent() {
     };
     const { data, error } = await supabase.from('admin_notifications').insert(newNotification).select().single();
     if (error) {
-      if ((error as any).code === '42501') {
-        console.info('Admin notifications blocked by RLS policy.');
-      } else {
-        console.error('Error adding notification:', error);
-      }
+      console.error('Error adding notification:', error);
     } else {
       setAdminNotifications(prev => [data, ...prev]);
     }
+  };
+
+  const handleClearNotifications = async () => {
+    if (!session) return;
+    const { error } = await supabase.from('admin_notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+    if (error) console.error('Error clearing notifications:', error);
+    else setAdminNotifications([]);
   };
 
   const handleAddMusic = async (newMusic: Omit<MusicItem, 'id' | 'created_at'>) => {
@@ -429,6 +500,12 @@ function AppContent() {
   const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'ready' | 'delivered') => {
     const { data, error } = await supabase.from('uniform_orders').update({ status }).eq('id', orderId).select().single();
     if (error) console.error('Error updating order status:', error);
+    else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
+  };
+
+  const handleUpdateOrderWithProof = async (orderId: string, proofUrl: string, proofName: string) => {
+    const { data, error } = await supabase.from('uniform_orders').update({ proof_url: proofUrl, proof_name: proofName }).eq('id', orderId).select().single();
+    if (error) console.error('Error updating order with proof:', error);
     else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
   };
 
@@ -502,6 +579,15 @@ function AppContent() {
     else setEventRegistrations(prev => prev.map(reg => reg.id === updatedRegistration.id ? data : reg));
   };
 
+  const handleAddAttendance = async (attendanceRecords: any[]) => {
+    if (!session) return;
+    const { error } = await supabase.from('attendance').insert(attendanceRecords);
+    if (error) {
+      console.error('Error adding attendance:', error);
+      throw error;
+    }
+  };
+
   const handleAddStudentGrade = async (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => {
     const idCandidates = ['student_id', 'user_id', 'aluno_id'];
     const numericCandidates = [
@@ -536,7 +622,7 @@ function AppContent() {
         const { data } = await supabase.from('student_notes').select('*').limit(1);
         existingCols = Array.from(new Set((data || []).flatMap((row: any) => Object.keys(row || {}))));
         setStudentNotesAvailableColumns(existingCols);
-      } catch (_) {}
+      } catch (_) { }
     }
     const idKeysToUse = idCandidates.filter(k => existingCols.includes(k));
     const numericKeysToUse = numericCandidates.filter(k => existingCols.includes(k));
@@ -545,38 +631,31 @@ function AppContent() {
     const finalNumericKeys = numericKeysToUse.length > 0 ? numericKeysToUse : numericCandidates;
     const finalWrittenKeys = writtenKeysToUse.length > 0 ? writtenKeysToUse : writtenCandidates;
     for (const idKey of finalIdKeys) {
-      const base: any = { [idKey]: payload.student_id };
-      ['student_name', 'professor_id', 'professor_name', 'category'].forEach((col) => {
-        if (studentNotesAvailableColumns.includes(col)) {
-          base[col] = (payload as any)[col];
-        }
-      });
-      for (const nKey of finalNumericKeys) {
-        for (const wKey of finalWrittenKeys) {
-          const attempt = { ...base, [nKey]: payload.numeric, [wKey]: payload.written };
-          const { data, error } = await supabase.from('student_notes').insert(attempt).select().single();
-          if (!error && data) {
-            setStudentNotesNumericField(nKey);
-            setStudentNotesWrittenField(wKey);
-            const numericVal = typeof (data as any)[nKey] === 'number' ? (data as any)[nKey] : Number((data as any)[nKey]);
-            const writtenVal = String((data as any)[wKey] ?? '');
-            const normalized: StudentGrade = {
-              ...(data as any),
-              student_id: (data as any)[idKey] ?? payload.student_id,
-              numeric: numericVal,
-              written: writtenVal,
-            };
-            setStudentGrades(prev => [normalized, ...prev]);
-            return;
-          }
-          if (error && (error as any).code !== 'PGRST204' && (error as any).code !== '42703') {
-            console.error('Error adding student grade:', error);
-            return;
-          }
-        }
+      const base: any = { [idKey]: payload.student_id, professor_id: payload.professor_id };
+      // Always use the standard names since we fixed the database columns
+      const attempt = {
+        ...base,
+        numeric: payload.numeric,
+        written: payload.written,
+        category: payload.category
+      };
+
+      const { data, error } = await supabase.from('student_notes').insert(attempt).select().single();
+      if (!error && data) {
+        const normalized: StudentGrade = {
+          ...data,
+          student_id: data.student_id || payload.student_id,
+          numeric: typeof data.numeric === 'number' ? data.numeric : Number(data.numeric),
+          written: String(data.written ?? ''),
+        };
+        setStudentGrades(prev => [normalized, ...prev]);
+        return;
+      }
+      if (error) {
+        console.error('Error adding student grade:', error);
+        return;
       }
     }
-    console.error('Error adding student grade: Columns not found in table.');
   };
 
 
@@ -623,9 +702,9 @@ function AppContent() {
       return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {user.role === 'aluno' && (
-            <DashboardAluno 
-              user={user} 
-              events={events} 
+            <DashboardAluno
+              user={user}
+              events={events}
               musicList={musicList}
               uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only student's orders
               onAddOrder={handleAddOrder}
@@ -645,12 +724,13 @@ function AppContent() {
               monthlyPayments={monthlyPayments}
               onUpdatePaymentRecord={handleUpdatePaymentRecord}
               studentGrades={studentGrades.filter(g => g.student_id === user.id)}
+              onUpdateOrderWithProof={handleUpdateOrderWithProof}
             />
           )}
           {user.role === 'professor' && (
-            <DashboardProfessor 
-              user={user} 
-              events={events} 
+            <DashboardProfessor
+              user={user}
+              events={events}
               musicList={musicList}
               uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only professor's orders
               onAddOrder={handleAddOrder}
@@ -667,16 +747,18 @@ function AppContent() {
               eventRegistrations={eventRegistrations} // Professor can see all event registrations
               onAddStudentGrade={handleAddStudentGrade}
               studentGrades={studentGrades}
+              onAddAttendance={handleAddAttendance}
             />
           )}
           {user.role === 'admin' && (
-            <DashboardAdmin 
-              user={user} 
-              onAddEvent={handleAddEvent} 
+            <DashboardAdmin
+              user={user}
+              onAddEvent={handleAddEvent}
               onEditEvent={handleEditEvent}
               onCancelEvent={handleCancelEvent}
-              events={events} 
+              events={events}
               notifications={adminNotifications}
+              onClearNotifications={handleClearNotifications}
               musicList={musicList}
               uniformOrders={uniformOrders}
               onAddOrder={handleAddOrder}
@@ -694,7 +776,7 @@ function AppContent() {
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings}
-              schoolReports={schoolReports} 
+              schoolReports={schoolReports}
               eventRegistrations={eventRegistrations} // Pass event registrations to admin
               onAddEventRegistration={handleAddEventRegistration}
               onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
@@ -711,9 +793,9 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-stone-900 text-stone-200 font-sans selection:bg-orange-500 selection:text-white">
-      <Navbar 
-        user={user} 
-        onLogout={handleLogout} 
+      <Navbar
+        user={user}
+        onLogout={handleLogout}
         onNavigate={navigate}
       />
       <main>

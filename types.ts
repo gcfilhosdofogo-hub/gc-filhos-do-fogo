@@ -154,6 +154,8 @@ export interface UniformOrder {
   total: number;
   status: 'pending' | 'ready' | 'delivered'; // ready = pago/aprovado
   created_at?: string;
+  proof_url?: string; // URL do comprovante de pagamento
+  proof_name?: string; // Nome do arquivo do comprovante
 }
 
 export type GradeCategory = 'theory' | 'movement' | 'musicality';
