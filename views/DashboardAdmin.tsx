@@ -136,6 +136,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [editingGradCostId, setEditingGradCostId] = useState<string | null>(null);
     const [editingGradCostValue, setEditingGradCostValue] = useState<string>('');
 
+    // State for evaluation modal
+    const [showEvalModal, setShowEvalModal] = useState(false);
+    const [evalModalStudent, setEvalModalStudent] = useState<User | null>(null);
+    const [evalModalAmount, setEvalModalAmount] = useState<string>('');
+    const [evalModalDueDate, setEvalModalDueDate] = useState<string>('');
+
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
@@ -1707,7 +1713,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
                                         <th className="p-4">Aluno</th>
                                         <th className="p-4">Graduação Atual</th>
-                                        <th className="p-4">Custo Avaliação</th>
+                                        <th className="p-4">Custo Padrão</th>
                                         <th className="p-4 text-right">Ação</th>
                                     </tr>
                                 </thead>
@@ -1721,22 +1727,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <Button
                                                     className="text-xs h-8"
                                                     variant="secondary"
-                                                    onClick={async () => {
-                                                        const confirmGen = window.confirm(`Gerar boleto de avaliação (R$ ${(student.graduationCost ?? 0).toFixed(2)}) para ${student.nickname || student.name}?`);
-                                                        if (!confirmGen) return;
-
-                                                        await onAddPaymentRecord({
-                                                            student_id: student.id,
-                                                            student_name: student.nickname || student.name,
-                                                            month: `Avaliação - ${new Date().getFullYear()}`,
-                                                            due_date: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().split('T')[0],
-                                                            amount: student.graduationCost || 0,
-                                                            status: 'pending',
-                                                            type: 'evaluation'
-                                                        });
-                                                        alert('Boleto de avaliação gerado com sucesso!');
+                                                    onClick={() => {
+                                                        setEvalModalStudent(student);
+                                                        setEvalModalAmount((student.graduationCost ?? 0).toString());
+                                                        // Default due date: 15 days from now
+                                                        const dueDate = new Date();
+                                                        dueDate.setDate(dueDate.getDate() + 15);
+                                                        setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
+                                                        setShowEvalModal(true);
                                                     }}
-                                                    disabled={!student.graduationCost || student.graduationCost <= 0}
                                                 >
                                                     Gerar Boleto
                                                 </Button>
@@ -1747,6 +1746,110 @@ export const DashboardAdmin: React.FC<Props> = ({
                             </table>
                         </div>
                     </div>
+
+                    {/* EVALUATION MODAL */}
+                    {showEvalModal && evalModalStudent && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative">
+                                <button
+                                    onClick={() => {
+                                        setShowEvalModal(false);
+                                        setEvalModalStudent(null);
+                                        setEvalModalAmount('');
+                                        setEvalModalDueDate('');
+                                    }}
+                                    className="absolute top-4 right-4 text-stone-400 hover:text-white"
+                                >
+                                    <X size={24} />
+                                </button>
+
+                                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                    <GraduationCap size={20} className="text-purple-500" />
+                                    Gerar Boleto de Avaliação
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                        <p className="text-stone-400 text-sm">Aluno</p>
+                                        <p className="text-white font-bold text-lg">{evalModalStudent.nickname || evalModalStudent.name}</p>
+                                        <p className="text-stone-500 text-xs mt-1">Graduação: {evalModalStudent.belt || 'Sem Cordel'}</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm text-stone-400 mb-2">Valor do Boleto (R$)</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={evalModalAmount}
+                                            onChange={(e) => setEvalModalAmount(e.target.value)}
+                                            className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white text-lg font-mono focus:border-purple-500 outline-none"
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm text-stone-400 mb-2">Data de Vencimento</label>
+                                        <input
+                                            type="date"
+                                            value={evalModalDueDate}
+                                            onChange={(e) => setEvalModalDueDate(e.target.value)}
+                                            className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4">
+                                        <Button
+                                            variant="outline"
+                                            className="flex-1"
+                                            onClick={() => {
+                                                setShowEvalModal(false);
+                                                setEvalModalStudent(null);
+                                                setEvalModalAmount('');
+                                                setEvalModalDueDate('');
+                                            }}
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            className="flex-1 bg-purple-600 hover:bg-purple-500"
+                                            onClick={async () => {
+                                                const amount = parseFloat(evalModalAmount);
+                                                if (isNaN(amount) || amount <= 0) {
+                                                    alert('Por favor, insira um valor válido.');
+                                                    return;
+                                                }
+                                                if (!evalModalDueDate) {
+                                                    alert('Por favor, selecione a data de vencimento.');
+                                                    return;
+                                                }
+
+                                                await onAddPaymentRecord({
+                                                    student_id: evalModalStudent.id,
+                                                    student_name: evalModalStudent.nickname || evalModalStudent.name,
+                                                    month: `Avaliação - ${new Date().getFullYear()}`,
+                                                    due_date: evalModalDueDate,
+                                                    amount: amount,
+                                                    status: 'pending',
+                                                    type: 'evaluation'
+                                                });
+
+                                                alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado com sucesso para ${evalModalStudent.nickname || evalModalStudent.name}!`);
+
+                                                setShowEvalModal(false);
+                                                setEvalModalStudent(null);
+                                                setEvalModalAmount('');
+                                                setEvalModalDueDate('');
+                                            }}
+                                            disabled={!evalModalAmount || parseFloat(evalModalAmount) <= 0}
+                                        >
+                                            Confirmar
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

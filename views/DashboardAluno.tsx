@@ -854,54 +854,36 @@ export const DashboardAluno: React.FC<Props> = ({
 
                 {/* Mural de Eventos */}
                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                     <MapPin className="text-orange-500" />
                     Mural de Eventos
                   </h3>
+                  <p className="text-xs text-red-400 mb-4 bg-red-900/20 p-2 rounded border border-red-900/50 inline-flex items-center gap-1">
+                    <AlertCircle size={12} /> Todos os eventos são de participação obrigatória.
+                  </p>
                   <div className="space-y-3">
                     {events.length > 0 ? (
-                      events.map((event) => {
-                        const isRegistered = myEventRegistrations.some(reg => reg.event_id === event.id);
-                        const registrationStatus = myEventRegistrations.find(reg => reg.event_id === event.id)?.status;
-
-                        return (
-                          <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-2 border-yellow-500 hover:bg-stone-700 transition-colors">
-                            <div className="flex justify-between items-start">
+                      events.map((event) => (
+                        <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-4 border-red-500">
+                          <div className="flex justify-between items-start">
+                            <div>
                               <h4 className="text-white font-bold text-lg">{event.title}</h4>
-                              <div className="flex flex-col items-end">
-                                <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold mb-1">{event.date}</span>
-                                {event.price && (
-                                  <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                    <DollarSign size={12} /> R$ {event.price.toFixed(2).replace('.', ',')}
-                                  </span>
-                                )}
-                              </div>
+                              <p className="text-stone-400 text-sm mt-1">{event.description}</p>
                             </div>
-                            <p className="text-stone-400 text-sm mt-1">{event.description}</p>
-                            <div className="mt-3 flex justify-end">
-                              {!isRegistered && (
-                                <Button
-                                  variant="primary"
-                                  className="text-sm h-auto px-3 py-1.5"
-                                  onClick={() => handleOpenEventRegisterModal(event)}
-                                >
-                                  <Ticket size={16} className="mr-1" /> Inscrever-se
-                                </Button>
-                              )}
-                              {isRegistered && registrationStatus === 'pending' && (
-                                <span className="text-yellow-400 text-sm flex items-center gap-1">
-                                  <Clock size={14} /> Inscrição Pendente
+                            <div className="flex flex-col items-end gap-2">
+                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold">{event.date}</span>
+                              {event.price && event.price > 0 && (
+                                <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                  <DollarSign size={12} /> R$ {event.price.toFixed(2).replace('.', ',')}
                                 </span>
                               )}
-                              {isRegistered && registrationStatus === 'paid' && (
-                                <span className="text-green-400 text-sm flex items-center gap-1">
-                                  <Check size={14} /> Já Inscrito
-                                </span>
-                              )}
+                              <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                <AlertCircle size={12} /> Obrigatório
+                              </span>
                             </div>
                           </div>
-                        );
-                      })
+                        </div>
+                      ))
                     ) : (
                       <p className="text-stone-500 italic">Nenhum evento programado.</p>
                     )}
