@@ -44,7 +44,7 @@ function AppContent() {
 
     // Fetch ALL profiles to determine professor IDs for filtering
     let mappedProfiles: User[] = []; // Declarar e inicializar aqui
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name'); // Removed 'email'
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url');
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
@@ -57,6 +57,7 @@ function AppContent() {
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
+        photo_url: p.avatar_url || undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
@@ -301,7 +302,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url') // Added avatar_url
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url')
       .eq('id', userId)
       .single();
 
@@ -320,43 +321,50 @@ function AppContent() {
         return;
       }
 
-      if (session) {
-        const profileData = await fetchUserProfile(session.user.id);
+      try {
+        if (session) {
+          const profileData = await fetchUserProfile(session.user.id);
 
-        // MODIFICADO: Verifica se first_name existe e não é uma string vazia
-        if (profileData && profileData.first_name && profileData.first_name.trim() !== '') {
-          // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
-          const userRole: UserRole = profileData.role as UserRole;
-          const fetchedUser: User = {
-            id: session.user.id,
-            name: profileData.first_name || session.user.email || 'User',
-            nickname: profileData.nickname || undefined,
-            email: session.user.email || '', // Populated from session.user.email
-            role: userRole,
-            belt: profileData.belt || undefined,
-            beltColor: profileData.belt_color || undefined,
-            professorName: profileData.professor_name || undefined,
-            birthDate: profileData.birth_date || undefined,
-            graduationCost: profileData.graduation_cost !== null ? parseFloat(profileData.graduation_cost.toString()) : 0,
-            phone: profileData.phone || undefined,
-            first_name: profileData.first_name || undefined,
-            last_name: profileData.last_name || undefined,
-            nextEvaluationDate: profileData.next_evaluation_date || undefined,
-            photo_url: profileData.avatar_url || undefined,
-          };
-          setUser(fetchedUser);
-          setCurrentView('dashboard');
+          // MODIFICADO: Verifica se first_name existe e não é uma string vazia
+          if (profileData && profileData.first_name && profileData.first_name.trim() !== '') {
+            // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
+            const userRole: UserRole = profileData.role as UserRole;
+            const fetchedUser: User = {
+              id: session.user.id,
+              name: profileData.first_name || session.user.email || 'User',
+              nickname: profileData.nickname || undefined,
+              email: session.user.email || '', // Populated from session.user.email
+              role: userRole,
+              belt: profileData.belt || undefined,
+              beltColor: profileData.belt_color || undefined,
+              professorName: profileData.professor_name || undefined,
+              birthDate: profileData.birth_date || undefined,
+              graduationCost: profileData.graduation_cost !== null ? parseFloat(profileData.graduation_cost.toString()) : 0,
+              phone: profileData.phone || undefined,
+              first_name: profileData.first_name || undefined,
+              last_name: profileData.last_name || undefined,
+              nextEvaluationDate: profileData.next_evaluation_date || undefined,
+              photo_url: profileData.avatar_url || undefined,
+            };
+            setUser(fetchedUser);
+            setCurrentView('dashboard');
+          } else {
+            // Perfil não existe ou está incompleto (primeiro nome ausente ou vazio)
+            setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
+            setCurrentView('profile_setup');
+          }
         } else {
-          // Perfil não existe ou está incompleto (primeiro nome ausente ou vazio)
-          setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
-          setCurrentView('profile_setup');
+          // Não há sessão, volta para a tela inicial
+          setUser(null);
+          setCurrentView('home');
         }
-      } else {
-        // Não há sessão, volta para a tela inicial
+      } catch (err) {
+        console.error("Critical error in setupUserAndProfile:", err);
         setUser(null);
         setCurrentView('home');
+      } finally {
+        setIsProfileChecked(true); // Marca a verificação do perfil como completa
       }
-      setIsProfileChecked(true); // Marca a verificação do perfil como completa
     };
 
     setIsProfileChecked(false); // Reseta o status de verificação ao mudar a sessão/carregamento

@@ -111,7 +111,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     const fetchMyStudents = async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, nickname, belt, phone, graduation_cost, next_evaluation_date')
+        .select('id, first_name, last_name, nickname, belt, phone, graduation_cost, next_evaluation_date, avatar_url')
         .eq('professor_name', user.nickname || user.first_name || user.name);
 
       if (error) {
@@ -126,7 +126,8 @@ export const DashboardProfessor: React.FC<Props> = ({
           belt: p.belt || undefined,
           phone: p.phone || undefined,
           graduationCost: p.graduation_cost !== null ? parseFloat(p.graduation_cost.toString()) : 0,
-          nextEvaluationDate: p.next_evaluation_date || undefined
+          nextEvaluationDate: p.next_evaluation_date || undefined,
+          photo_url: p.avatar_url || undefined
         }));
         setMyStudents(students);
       }
@@ -423,7 +424,7 @@ export const DashboardProfessor: React.FC<Props> = ({
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
       await supabase.auth.updateUser({ data: { avatar_url: publicUrl } }); // Changed photo_url to avatar_url
-      const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id); // Changed photo_url to avatar_url
+      const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
 
       if (dbError) throw dbError;
 

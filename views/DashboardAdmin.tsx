@@ -250,7 +250,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // --- SUPABASE USER MANAGEMENT ---
     const fetchManagedUsers = useCallback(async () => {
-        const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date'); // Removed avatar_url and email from select
+        const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url');
         if (error) {
             console.error('Error fetching managed users:', error);
             // Optionally show a toast notification
@@ -271,7 +271,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                     phone: profile.phone || undefined,
                     first_name: profile.first_name || undefined,
                     last_name: profile.last_name || undefined,
-                    nextEvaluationDate: profile.next_evaluation_date || undefined
+                    nextEvaluationDate: profile.next_evaluation_date || undefined,
+                    photo_url: profile.avatar_url || undefined
                 };
             });
             setManagedUsers(fetchedUsers);
@@ -825,8 +826,8 @@ export const DashboardAdmin: React.FC<Props> = ({
             // For Admin/Professor, update their own profile in 'profiles' table same as students
             const { error: dbError } = await supabase
                 .from('profiles')
-                .update({ avatar_url: publicUrl }) // Changed photo_url to avatar_url
-                .eq('id', user.id); // Update own ID
+                .update({ avatar_url: publicUrl })
+                .eq('id', user.id);
 
             if (dbError) throw dbError;
 
