@@ -489,18 +489,6 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       {/* Top Actions */}
       <div className="flex flex-wrap gap-2 justify-end bg-stone-800 p-4 rounded-xl border border-stone-700">
-        <Button variant="secondary" onClick={() => setProfView('music_manager')} className="border border-stone-600">
-          <Music size={18} className="text-yellow-400" /> Músicas
-        </Button>
-        <Button variant="secondary" onClick={() => setProfView('assignments')} className="border border-stone-600">
-          <BookOpen size={18} className="text-blue-400" /> Trabalhos
-        </Button>
-        <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
-          <Shirt size={18} className="text-orange-400" /> Uniforme
-        </Button>
-        <Button variant="secondary" onClick={() => setProfView('grades')} className="border border-stone-600">
-          <Award size={18} className="text-green-400" /> Notas
-        </Button>
         {profView === 'dashboard' && (
           <Button onClick={() => setProfView('new_class')}>
             <PlusCircle size={18} /> Nova Aula
@@ -752,22 +740,23 @@ export const DashboardProfessor: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-stone-950/30 p-3 rounded-lg border border-stone-800">
-                      <div className="text-center px-4 border-r border-stone-800">
-                        <p className="text-xs text-stone-500 uppercase">Média Geral</p>
-                        <p className="text-2xl font-bold text-green-500">{avgGrade}</p>
-                      </div>
-                      <div className="text-center px-4">
-                        <p className="text-xs text-stone-500 uppercase">Vídeos Enviados</p>
-                        <p className="text-2xl font-bold text-purple-500">{studentVideos.length}</p>
+                    <div className="flex flex-wrap items-center gap-4 bg-stone-950/30 p-4 rounded-xl border border-stone-800 w-full md:w-auto">
+                      <div className="flex flex-1 md:flex-initial divide-x divide-stone-800 items-center">
+                        <div className="text-center px-4">
+                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Média</p>
+                          <p className="text-2xl font-black text-green-500 leading-none">{avgGrade}</p>
+                        </div>
+                        <div className="text-center px-4">
+                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Vídeos</p>
+                          <p className="text-2xl font-black text-purple-500 leading-none">{studentVideos.length}</p>
+                        </div>
                       </div>
                       <Button
                         variant="primary"
-                        size="sm"
-                        className="ml-2 h-10"
+                        className="flex-1 md:flex-initial shadow-lg shadow-purple-900/20 font-bold h-11 px-6 px-4"
                         onClick={() => { setSelectedStudentForGrades(student.id); setProfView('grades'); }}
                       >
-                        <Award size={16} className="mr-1" /> Avaliar
+                        <Award size={18} /> Avaliar
                       </Button>
                     </div>
                   </div>
