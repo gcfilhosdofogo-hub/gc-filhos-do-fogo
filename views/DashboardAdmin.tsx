@@ -460,9 +460,9 @@ export const DashboardAdmin: React.FC<Props> = ({
             // Updated to await the response and create debts
             const newEvent = await onAddEvent(eventPayload);
 
-            // If event has a cost, create pending registrations for ALL active users (Students and Professors)
-            if (newEvent && eventPrice > 0) {
-                const targets = managedUsers.filter(u => u.role === 'aluno' || u.role === 'professor');
+            // Create pending registrations for ALL active users (Students, Professors, and Admins)
+            if (newEvent) {
+                const targets = managedUsers.filter(u => u.role === 'aluno' || u.role === 'professor' || u.role === 'admin');
 
                 // We'll iterate and add them. Note: In a real app, this should be a batch insert or DB trigger.
                 // For now, we do it client-side as requested.
@@ -473,10 +473,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                         user_name: targetUser.nickname || targetUser.name,
                         event_title: newEvent.title,
                         amount_paid: eventPrice,
-                        status: 'pending', // Debt created
+                        status: eventPrice > 0 ? 'pending' : 'paid', // Mark as paid if free
                     });
                 }
-                alert(`Evento criado com débito de R$ ${eventPrice} para todos os alunos e professores.`);
+                alert(`Evento criado com ${targets.length} participantes registrados.`);
             }
         }
         setEventFormData({ title: '', date: '', description: '', price: '' });
@@ -2373,6 +2373,26 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     status: 'pending',
                                                     type: 'evaluation'
                                                 });
+
+                                                // Update user profile with the new graduation cost and date (Source of Truth for "Next Evaluation" card)
+                                                const { error: updateError } = await supabase
+                                                    .from('profiles')
+                                                    .update({
+                                                        graduation_cost: amount,
+                                                        next_evaluation_date: evalModalDueDate
+                                                    })
+                                                    .eq('id', evalModalStudent.id);
+
+                                                if (updateError) {
+                                                    console.error('Error updating profile evaluation info:', updateError);
+                                                } else {
+                                                    // Update local state to reflect change immediately
+                                                    setManagedUsers(prev => prev.map(u =>
+                                                        u.id === evalModalStudent.id
+                                                            ? { ...u, graduationCost: amount, nextEvaluationDate: evalModalDueDate }
+                                                            : u
+                                                    ));
+                                                }
 
                                                 alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado com sucesso para ${evalModalStudent.nickname || evalModalStudent.name}!`);
 
