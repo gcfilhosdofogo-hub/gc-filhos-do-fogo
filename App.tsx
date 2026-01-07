@@ -301,7 +301,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date') // Added next_evaluation_date
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url') // Added avatar_url
       .eq('id', userId)
       .single();
 
@@ -337,11 +337,12 @@ function AppContent() {
             beltColor: profileData.belt_color || undefined,
             professorName: profileData.professor_name || undefined,
             birthDate: profileData.birth_date || undefined,
-            graduationCost: profileData.graduation_cost !== null ? Number(profileData.graduation_cost) : 0,
+            graduationCost: profileData.graduation_cost !== null ? parseFloat(profileData.graduation_cost.toString()) : 0,
             phone: profileData.phone || undefined,
             first_name: profileData.first_name || undefined,
             last_name: profileData.last_name || undefined,
             nextEvaluationDate: profileData.next_evaluation_date || undefined,
+            photo_url: profileData.avatar_url || undefined,
           };
           setUser(fetchedUser);
           setCurrentView('dashboard');
@@ -402,6 +403,7 @@ function AppContent() {
           birth_date: updatedData.birthDate,
           phone: updatedData.phone,
           updated_at: new Date().toISOString(),
+          avatar_url: updatedData.photo_url,
         })
         .eq('id', session.user.id);
 
@@ -423,11 +425,12 @@ function AppContent() {
             beltColor: updatedProfile.belt_color || undefined,
             professorName: updatedProfile.professor_name || undefined,
             birthDate: updatedProfile.birth_date || undefined,
-            graduationCost: updatedProfile.graduation_cost !== null ? Number(updatedProfile.graduation_cost) : 0,
+            graduationCost: updatedProfile.graduation_cost ? parseFloat(updatedProfile.graduation_cost.toString()) : 0,
             phone: updatedProfile.phone || undefined,
             first_name: updatedProfile.first_name || undefined,
             last_name: updatedProfile.last_name || undefined,
             nextEvaluationDate: updatedProfile.next_evaluation_date || undefined,
+            photo_url: updatedProfile.avatar_url || undefined,
           };
           setUser(fetchedUser);
           alert('Profile updated successfully!');

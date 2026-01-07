@@ -16,6 +16,7 @@ export interface User {
   first_name?: string; // Supabase profile field
   last_name?: string; // Supabase profile field
   nextEvaluationDate?: string; // YYYY-MM-DD
+  photo_url?: string; // Profile photo URL
 }
 
 export interface ClassSession {

@@ -269,7 +269,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
       // Update auth metadata if possible (optional but good for consistency)
       await supabase.auth.updateUser({
-        data: { photo_url: publicUrl }
+        data: { avatar_url: publicUrl }
       });
 
       // Update profile in DB via onUpdateProfile (which handles the DB update usually)
@@ -279,7 +279,7 @@ export const DashboardAluno: React.FC<Props> = ({
       // Update profile table directly to be safe
       const { error: dbError } = await supabase
         .from('profiles')
-        .update({ photo_url: publicUrl })
+        .update({ avatar_url: publicUrl })
         .eq('id', user.id);
 
       if (dbError) throw dbError;
@@ -837,7 +837,7 @@ export const DashboardAluno: React.FC<Props> = ({
                     <GraduationCap size={12} /> Próxima Avaliação
                   </p>
                   <div className="text-center">
-                    <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                    <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                     {user.nextEvaluationDate && (
                       <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
                     )}
@@ -1128,7 +1128,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   <div className="bg-stone-900 p-3 rounded mb-6 border border-stone-700">
                     <div className="flex items-center justify-between">
                       <p className="text-stone-300 text-sm font-semibold">Avaliação</p>
-                      <p className="text-white font-bold">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                      <p className="text-white font-bold">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                     </div>
                     <div className="mt-3">
                       <Button

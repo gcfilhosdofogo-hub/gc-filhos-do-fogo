@@ -111,7 +111,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     const fetchMyStudents = async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, first_name, last_name, nickname, belt, phone, graduation_cost')
+        .select('id, first_name, last_name, nickname, belt, phone, graduation_cost, next_evaluation_date')
         .eq('professor_name', user.nickname || user.first_name || user.name);
 
       if (error) {
@@ -125,7 +125,8 @@ export const DashboardProfessor: React.FC<Props> = ({
           role: 'aluno', // Always aluno for these
           belt: p.belt || undefined,
           phone: p.phone || undefined,
-          graduationCost: p.graduation_cost !== null ? Number(p.graduation_cost) : undefined,
+          graduationCost: p.graduation_cost !== null ? parseFloat(p.graduation_cost.toString()) : 0,
+          nextEvaluationDate: p.next_evaluation_date || undefined
         }));
         setMyStudents(students);
       }
@@ -421,8 +422,8 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      await supabase.auth.updateUser({ data: { photo_url: publicUrl } });
-      const { error: dbError } = await supabase.from('profiles').update({ photo_url: publicUrl }).eq('id', user.id);
+      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } }); // Changed photo_url to avatar_url
+      const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id); // Changed photo_url to avatar_url
 
       if (dbError) throw dbError;
 
@@ -733,8 +734,20 @@ export const DashboardProfessor: React.FC<Props> = ({
                       <div>
                         <h3 className="text-xl font-bold text-white">{student.nickname || student.name}</h3>
                         <p className="text-stone-400 text-sm">{student.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="bg-stone-800 text-xs px-2 py-0.5 rounded border border-stone-700 text-stone-300">{student.belt || 'Sem Graduação'}</span>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <span className="bg-stone-800 text-xs px-2 py-0.5 rounded border border-stone-700 text-stone-300 w-fit">{student.belt || 'Sem Graduação'}</span>
+                          <div className="flex gap-2 items-center">
+                            {student.nextEvaluationDate && (
+                              <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                <Calendar size={10} /> {new Date(student.nextEvaluationDate).toLocaleDateString()}
+                              </span>
+                            )}
+                            {student.graduationCost !== undefined && student.graduationCost > 0 && (
+                              <span className="text-[10px] text-green-400 font-mono">
+                                R$ {student.graduationCost.toFixed(2).replace('.', ',')}
+                              </span>
+                            )}
+                          </div>
                           {student.phone && <span className="flex items-center gap-1 text-xs text-blue-400"><MessageCircle size={10} /> {student.phone}</span>}
                         </div>
                       </div>
@@ -893,7 +906,7 @@ export const DashboardProfessor: React.FC<Props> = ({
               <GraduationCap size={12} /> Próxima Avaliação
             </p>
             <div className="text-center">
-              <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+              <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
               {user.nextEvaluationDate && (
                 <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
               )}
@@ -1010,17 +1023,6 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
                   </div>
                 ))}
-              </div>
-              {/* New Assignments Card Summary */}
-              <div
-                onClick={() => setProfView('assignments')}
-                className="mt-4 bg-stone-900 p-3 rounded cursor-pointer hover:bg-stone-700 transition-colors border border-stone-600 flex justify-between items-center"
-              >
-                <div className="flex items-center gap-2">
-                  <BookOpen size={16} className="text-blue-400" />
-                  <span className="text-sm font-bold text-white">Trabalhos Pendentes</span>
-                </div>
-                <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">{profAssignments.filter(a => a.status === 'pending').length}</span>
               </div>
 
               <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
