@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade } from '../types';
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award } from 'lucide-react'; // Import FileUp, Eye and Award
 import { Button } from '../components/Button';
@@ -50,7 +50,7 @@ const UNIFORM_PRICES = {
     combo: 110
 };
 
-type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager';
 
 export const DashboardAdmin: React.FC<Props> = ({
@@ -142,6 +142,10 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [evalModalAmount, setEvalModalAmount] = useState<string>('');
     const [evalModalDueDate, setEvalModalDueDate] = useState<string>('');
 
+    // State for inline evaluation editing
+    const [editingEvaluationDate, setEditingEvaluationDate] = useState<string>('');
+
+
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
@@ -204,6 +208,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         return { mainColor, pontaColor };
     }, [user.belt, user.beltColor]);
 
+
+
     // Evaluation State
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [evalData, setEvalData] = useState({ positive: '', negative: '' });
@@ -234,7 +240,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // --- SUPABASE USER MANAGEMENT ---
     const fetchManagedUsers = useCallback(async () => {
-        const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role'); // Removed avatar_url and email from select
+        const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date'); // Removed avatar_url and email from select
         if (error) {
             console.error('Error fetching managed users:', error);
             // Optionally show a toast notification
@@ -255,6 +261,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     phone: profile.phone || undefined,
                     first_name: profile.first_name || undefined,
                     last_name: profile.last_name || undefined,
+                    nextEvaluationDate: profile.next_evaluation_date || undefined
                 };
             });
             setManagedUsers(fetchedUsers);
@@ -291,6 +298,75 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const totalRevenue = totalMonthlyPayments + totalUniformRevenue + totalEventRevenue;
     const pendingRevenue = pendingMonthlyPayments + pendingUniformRevenue + pendingEventRevenue;
+
+    const financialMovements = useMemo(() => {
+        const movements: any[] = [];
+
+        // Monthly Payments
+        monthlyPayments.forEach(p => {
+            movements.push({
+                date: p.status === 'paid' ? p.paid_at || '-' : p.due_date,
+                description: `Mensalidade - ${p.month}`,
+                student: p.student_name,
+                type: 'Mensalidade',
+                value: p.amount,
+                status: p.status === 'paid' ? 'Pago' : 'Pendente'
+            });
+        });
+
+        // Uniform Orders
+        uniformOrders.forEach(o => {
+            movements.push({
+                date: o.date,
+                description: `Uniforme - ${o.item}`,
+                student: o.user_name,
+                type: 'Uniforme',
+                value: o.total,
+                status: o.status === 'ready' || o.status === 'delivered' ? 'Pago' : 'Pendente'
+            });
+        });
+
+        // Event Registrations
+        eventRegistrations.forEach(reg => {
+            movements.push({
+                date: '-',
+                description: `Evento - ${reg.event_title}`,
+                student: reg.user_name,
+                type: 'Evento',
+                value: reg.amount_paid,
+                status: reg.status === 'paid' ? 'Pago' : 'Pendente'
+            });
+        });
+
+        return movements.sort((a, b) => {
+            if (a.date === '-' || b.date === '-') return 0;
+            return new Date(b.date.split('/').reverse().join('-')).getTime() - new Date(a.date.split('/').reverse().join('-')).getTime();
+        });
+    }, [monthlyPayments, uniformOrders, eventRegistrations]);
+
+    const handleDownloadFinancialReport = () => {
+        const headers = ["Data", "Descrição", "Aluno", "Tipo", "Valor", "Status"];
+        const csvContent = [
+            headers.join(";"),
+            ...financialMovements.map(m => [
+                m.date,
+                m.description,
+                m.student,
+                m.type,
+                m.value.toFixed(2).replace('.', ','),
+                m.status
+            ].join(";"))
+        ].join("\n");
+
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const pendingUniformOrders = uniformOrders.filter(o => o.status === 'pending');
     const pendingEventRegistrations = eventRegistrations.filter(reg => reg.status === 'pending');
@@ -589,28 +665,72 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
     };
 
-    const handleUpdateUserGraduationCost = async (userIdToUpdate: string) => { // Renamed function
+    const handleUpdateEvaluationInfo = async (userIdToUpdate: string) => { // Renamed function
         const newCost = parseFloat(editingGradCostValue);
         if (isNaN(newCost) || newCost < 0) {
-            alert('Por favor, insira um valor numérico válido para o custo de graduação.');
+            alert('Por favor, insira um valor numérico válido para o custo de avaliação.');
             return;
         }
 
         const { error } = await supabase
             .from('profiles')
-            .update({ graduation_cost: newCost })
+            .update({
+                graduation_cost: newCost,
+                next_evaluation_date: editingEvaluationDate || null
+            })
             .eq('id', userIdToUpdate);
 
         if (error) {
-            console.error('Error updating graduation cost:', error);
-            alert('Erro ao atualizar custo de graduação.');
+            console.error('Error updating evaluation info:', error);
+            alert('Erro ao atualizar informações de avaliação.');
         } else {
-            alert('Custo de graduação atualizado com sucesso!');
+            alert('Informações de avaliação atualizadas com sucesso!');
             setEditingGradCostId(null);
             setEditingGradCostValue('');
+            setEditingEvaluationDate('');
             fetchManagedUsers(); // Re-fetch to update the list
             const userName = managedUsers.find(u => u.id === userIdToUpdate)?.nickname || 'Usuário';
-            onNotifyAdmin(`Atualizou custo de graduação do usuário: ${userName} para R$ ${newCost.toFixed(2)}`, user);
+            onNotifyAdmin(`Atualizou avaliação do usuário: ${userName} para Data: ${editingEvaluationDate} / Valor: R$ ${newCost.toFixed(2)}`, user);
+        }
+    };
+
+    // PROFILE PHOTO UPLOAD
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const photoInputRef = useRef<HTMLInputElement>(null);
+
+    const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+        const file = e.target.files[0];
+        setUploadingPhoto(true);
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/profile_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+            await supabase.auth.updateUser({ data: { photo_url: publicUrl } });
+
+            // For Admin/Professor, update their own profile in 'profiles' table same as students
+            const { error: dbError } = await supabase
+                .from('profiles')
+                .update({ photo_url: publicUrl })
+                .eq('id', user.id); // Update own ID
+
+            if (dbError) throw dbError;
+
+            onUpdateProfile({ photo_url: publicUrl }); // Update local state for consistency
+            alert("Foto de perfil atualizada!");
+
+        } catch (error: any) {
+            console.error('Error uploading profile photo:', error);
+            alert('Erro ao atualizar foto de perfil: ' + error.message);
+        } finally {
+            setUploadingPhoto(false);
         }
     };
 
@@ -995,11 +1115,29 @@ export const DashboardAdmin: React.FC<Props> = ({
             {/* Header */}
             <div className="bg-gradient-to-r from-red-900 to-stone-900 p-8 rounded-2xl border border-red-900/50 shadow-2xl relative overflow-hidden">
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-                    <div className="relative group cursor-pointer">
-                        <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg">
-                            <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
+
+                    <div className="relative group cursor-pointer" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+                        <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
+                            {user.photo_url ? (
+                                <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <Logo className="w-full h-full object-cover" />
+                            )}
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Camera className="text-white" size={24} />
+                            </div>
                         </div>
+                        {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center rounded-full"><div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div></div>}
                     </div>
+                    <input
+                        type="file"
+                        ref={photoInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleProfilePhotoUpload}
+                        disabled={uploadingPhoto}
+                    />
 
                     <div className="text-center md:text-left">
                         <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
@@ -1080,7 +1218,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                     onClick={() => setActiveTab('my_classes')}
                     className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'my_classes' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <Users size={16} /> Minhas Aulas
+                    <BookOpen size={16} /> Minhas Aulas
+                </button>
+                <button
+                    onClick={() => setActiveTab('reports')}
+                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'reports' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                >
+                    <FileText size={16} /> Relatórios
                 </button>
                 <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer" className="ml-auto">
                     <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2" style={{ backgroundColor: '#5865F2', borderColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
@@ -2120,7 +2264,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <th className="p-4">Função</th>
                                         <th className="p-4">Contato</th>
                                         <th className="p-4">Graduação</th>
-                                        <th className="p-4">Custo Graduação (R$)</th> {/* New column */}
+                                        <th className="p-4">Próxima Avaliação</th> {/* New column */}
                                         <th className="p-4 rounded-tr-lg text-right">Ações</th>
                                     </tr>
                                 </thead>
@@ -2155,45 +2299,72 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <td className="p-4 text-stone-300 text-xs">
                                                 {u.belt}
                                             </td>
-                                            <td className="p-4"> {/* Graduation Cost Column */}
+                                            <td className="p-4"> {/* Evaluation Info Column */}
                                                 {editingGradCostId === u.id ? (
-                                                    <div className="flex items-center gap-1">
-                                                        <input
-                                                            type="number"
-                                                            value={editingGradCostValue}
-                                                            onChange={(e) => setEditingGradCostValue(e.target.value)}
-                                                            className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
-                                                            placeholder="0.00"
-                                                            min="0"
-                                                            step="0.01"
-                                                        />
-                                                        <button
-                                                            onClick={() => handleUpdateUserGraduationCost(u.id)} // Use generic function
-                                                            className="text-green-500 hover:text-green-400 p-1 rounded"
-                                                            title="Salvar Custo"
-                                                        >
-                                                            <Save size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); }}
-                                                            className="text-stone-500 hover:text-red-500 p-1 rounded"
-                                                            title="Cancelar"
-                                                        >
-                                                            <X size={16} />
-                                                        </button>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-stone-400 w-8">Valor:</span>
+                                                            <input
+                                                                type="number"
+                                                                value={editingGradCostValue}
+                                                                onChange={(e) => setEditingGradCostValue(e.target.value)}
+                                                                className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
+                                                                placeholder="0.00"
+                                                                min="0"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-stone-400 w-8">Data:</span>
+                                                            <input
+                                                                type="date"
+                                                                value={editingEvaluationDate}
+                                                                onChange={(e) => setEditingEvaluationDate(e.target.value)}
+                                                                className="w-24 bg-stone-900 border border-stone-600 rounded px-2 py-1 text-white text-xs"
+                                                            />
+                                                        </div>
+                                                        <div className="flex justify-end gap-1 mt-1">
+                                                            <button
+                                                                onClick={() => handleUpdateEvaluationInfo(u.id)} // Use generic function
+                                                                className="text-green-500 hover:text-green-400 p-1 rounded bg-stone-800 border border-stone-700 hover:bg-stone-700"
+                                                                title="Salvar"
+                                                            >
+                                                                <Save size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); setEditingEvaluationDate(''); }}
+                                                                className="text-stone-500 hover:text-red-500 p-1 rounded bg-stone-800 border border-stone-700 hover:bg-stone-700"
+                                                                title="Cancelar"
+                                                            >
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex items-center gap-2 group">
-                                                        <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
-                                                            {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'Não definido'}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => { setEditingGradCostId(u.id); setEditingGradCostValue(u.graduationCost?.toString() || '0'); }}
-                                                            className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded"
-                                                            title="Editar Custo"
-                                                        >
-                                                            <Edit2 size={12} />
-                                                        </button>
+                                                    <div className="flex flex-col gap-1 group">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-stone-400 w-8">Valor:</span>
+                                                            <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
+                                                                {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'ND'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-stone-400 w-8">Data:</span>
+                                                            <span className={`${u.nextEvaluationDate ? 'text-white' : 'text-stone-500 italic'}`}>
+                                                                {u.nextEvaluationDate ? new Date(u.nextEvaluationDate).toLocaleDateString() : 'ND'}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingGradCostId(u.id);
+                                                                    setEditingGradCostValue(u.graduationCost?.toString() || '0');
+                                                                    setEditingEvaluationDate(u.nextEvaluationDate || '');
+                                                                }}
+                                                                className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded ml-auto"
+                                                                title="Editar Avaliação"
+                                                            >
+                                                                <Edit2 size={12} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </td>
@@ -3033,6 +3204,79 @@ export const DashboardAdmin: React.FC<Props> = ({
                 </div>
             )}
 
+            {activeTab === 'reports' && (
+                <div className="space-y-6 animate-fade-in relative">
+                    <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <FileText className="text-orange-500" />
+                                    Relatório Financeiro Detalhado
+                                </h2>
+                                <p className="text-stone-400 text-sm">Visão geral de todas as receitas confirmadas e pendentes.</p>
+                            </div>
+                            <Button onClick={handleDownloadFinancialReport}>
+                                <FileText size={18} className="mr-2" /> Baixar Relatório (CSV)
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-stone-900 p-4 rounded-xl border border-stone-700">
+                                <p className="text-stone-500 text-xs uppercase font-bold mb-1">Total Recebido</p>
+                                <p className="text-2xl font-bold text-green-500">R$ {totalRevenue.toFixed(2).replace('.', ',')}</p>
+                            </div>
+                            <div className="bg-stone-900 p-4 rounded-xl border border-stone-700">
+                                <p className="text-stone-500 text-xs uppercase font-bold mb-1">Pendente Total</p>
+                                <p className="text-2xl font-bold text-red-500">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
+                                        <th className="p-4 rounded-tl-lg">Data</th>
+                                        <th className="p-4">Descrição</th>
+                                        <th className="p-4">Aluno</th>
+                                        <th className="p-4">Tipo</th>
+                                        <th className="p-4">Valor</th>
+                                        <th className="p-4 rounded-tr-lg">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-stone-700 text-sm">
+                                    {financialMovements.map((move, idx) => (
+                                        <tr key={idx} className="hover:bg-stone-700/30">
+                                            <td className="p-4 text-stone-300">{move.date}</td>
+                                            <td className="p-4 font-medium text-white">{move.description}</td>
+                                            <td className="p-4 text-stone-300">{move.student}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold border ${move.type === 'Mensalidade' ? 'border-blue-900/50 text-blue-400 bg-blue-900/10' :
+                                                        move.type === 'Uniforme' ? 'border-orange-900/50 text-orange-400 bg-orange-900/10' :
+                                                            move.type === 'Evento' ? 'border-green-900/50 text-green-400 bg-green-900/10' :
+                                                                'border-purple-900/50 text-purple-400 bg-purple-900/10'
+                                                    }`}>
+                                                    {move.type}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-white font-mono">R$ {move.value.toFixed(2).replace('.', ',')}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${move.status === 'Pago' ? 'text-green-400 bg-green-950/40' : 'text-yellow-400 bg-yellow-950/40'}`}>
+                                                    {move.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {financialMovements.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="p-8 text-center text-stone-500 italic">Nenhuma movimentação financeira encontrada.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

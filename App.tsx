@@ -426,6 +426,7 @@ function AppContent() {
             phone: updatedProfile.phone || undefined,
             first_name: updatedProfile.first_name || undefined,
             last_name: updatedProfile.last_name || undefined,
+            nextEvaluationDate: updatedProfile.next_evaluation_date || undefined,
           };
           setUser(fetchedUser);
           alert('Profile updated successfully!');

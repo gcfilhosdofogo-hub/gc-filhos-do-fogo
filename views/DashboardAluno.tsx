@@ -236,6 +236,67 @@ export const DashboardAluno: React.FC<Props> = ({
     setTimeout(() => setCostPixCopied(false), 2000);
   };
 
+  // PROFILE PHOTO UPLOAD
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setUploadingPhoto(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/profile_${Date.now()}.${fileExt}`;
+
+      // Upload to 'avatars' bucket (create if needed or use public)
+      // Assuming 'avatars' bucket exists or similar public bucket.
+      // Ideally should be a public bucket for ease of access
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (error) {
+        // Fallback to 'school_reports_files' temporarily if avatars missing, 
+        // but strictly avatars is better. Let's assume avatars exists from previous steps or create it.
+        throw error;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+      // Initialize updateData object
+      const updateData: any = { photo_url: publicUrl };
+
+      // Update auth metadata if possible (optional but good for consistency)
+      await supabase.auth.updateUser({
+        data: { photo_url: publicUrl }
+      });
+
+      // Update profile in DB via onUpdateProfile (which handles the DB update usually)
+      // But verify if onUpdateProfile does DB update or just local state.
+      // Assuming onUpdateProfile triggers the DB update in App.tsx
+
+      // Update profile table directly to be safe
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update({ photo_url: publicUrl })
+        .eq('id', user.id);
+
+      if (dbError) throw dbError;
+
+      onUpdateProfile({ photo_url: publicUrl }); // Update local state
+      alert("Foto de perfil atualizada!");
+
+    } catch (error: any) {
+      console.error('Error uploading profile photo:', error);
+      alert('Erro ao atualizar foto de perfil: ' + error.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+
+
   const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
@@ -731,11 +792,28 @@ export const DashboardAluno: React.FC<Props> = ({
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
               <div className="flex flex-col items-center text-center">
                 {/* Profile Image with Upload */}
-                <div className="relative group cursor-pointer mb-4">
-                  <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-orange-600 overflow-hidden">
-                    <Logo className="w-full h-full object-cover" />
+                <div className="relative group cursor-pointer mb-4" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+                  <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-orange-600 overflow-hidden relative">
+                    {user.photo_url ? (
+                      <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <Logo className="w-full h-full object-cover" />
+                    )}
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                      <Camera className="text-white" size={24} />
+                    </div>
                   </div>
+                  {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center rounded-full"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div></div>}
                 </div>
+                <input
+                  type="file"
+                  ref={photoInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleProfilePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
 
                 <h2 className="text-2xl font-bold text-white">{user.nickname || user.name}</h2>
                 {user.nickname && <p className="text-stone-400 text-sm">{user.name}</p>}
@@ -758,7 +836,12 @@ export const DashboardAluno: React.FC<Props> = ({
                   <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
                     <GraduationCap size={12} /> Próxima Avaliação
                   </p>
-                  <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                    {user.nextEvaluationDate && (
+                      <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
+                    )}
+                  </div>
                   {(user.graduationCost ?? 0) === 0 ? (
                     <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
                   ) : (

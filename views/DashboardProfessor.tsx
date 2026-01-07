@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award } from 'lucide-react'; // Adicionado Shield
 import { Button } from '../components/Button';
@@ -402,6 +402,40 @@ export const DashboardProfessor: React.FC<Props> = ({
     }
   }
 
+  // PROFILE PHOTO UPLOAD
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setUploadingPhoto(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/profile_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+      await supabase.auth.updateUser({ data: { photo_url: publicUrl } });
+      const { error: dbError } = await supabase.from('profiles').update({ photo_url: publicUrl }).eq('id', user.id);
+
+      if (dbError) throw dbError;
+
+      onUpdateProfile({ photo_url: publicUrl });
+      alert("Foto de perfil atualizada!");
+    } catch (error: any) {
+      console.error('Error uploading profile photo:', error);
+      alert('Erro ao atualizar foto de perfil: ' + error.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSaveEvaluation = () => {
     alert("Avaliação salva com sucesso!");
     setProfView('all_students');
@@ -419,11 +453,28 @@ export const DashboardProfessor: React.FC<Props> = ({
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-900 to-stone-900 p-8 rounded-2xl border border-purple-900/50 shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-          <div className="relative group">
-            <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg">
-              <Logo className="w-full h-full object-cover" />
+          <div className="relative group cursor-pointer" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+            <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
+              {user.photo_url ? (
+                <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <Logo className="w-full h-full object-cover" />
+              )}
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Camera className="text-white" size={24} />
+              </div>
             </div>
+            {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center rounded-full"><div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div></div>}
           </div>
+          <input
+            type="file"
+            ref={photoInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleProfilePhotoUpload}
+            disabled={uploadingPhoto}
+          />
 
           <div className="text-center md:text-left">
             <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
@@ -666,45 +717,118 @@ export const DashboardProfessor: React.FC<Props> = ({
       )}
 
       {/* --- ATTENDANCE VIEW --- */}
+      {/* --- ATTENDANCE / ALL STUDENTS VIEW --- */}
       {profView === 'all_students' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-          <h2 className="text-2xl font-bold text-white mb-6">Meus Alunos ({myStudents.length})</h2>
+          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar ao Painel</button>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Meus Alunos ({myStudents.length})</h2>
+            <div className="bg-stone-900 px-3 py-1 rounded-full text-xs text-stone-400 border border-stone-700">
+              Total de Vídeos: {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length}
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myStudents.map(student => (
-              <div key={student.id} className="bg-stone-900 p-4 rounded-xl border border-stone-700 flex flex-col gap-3">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-stone-700 flex items-center justify-center text-lg font-bold text-white border-2 border-stone-600">
-                    {student.nickname?.charAt(0) || student.name.charAt(0)}
+          <div className="grid grid-cols-1 gap-6">
+            {myStudents.map(student => {
+              const studentVideos = homeTrainings.filter(ht => ht.user_id === student.id);
+              const studentGradesList = studentGrades.filter(g => g.student_id === student.id);
+              const avgGrade = (studentGradesList.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGradesList.length || 1)).toFixed(1);
+
+              return (
+                <div key={student.id} className="bg-stone-900 p-6 rounded-xl border border-stone-700 flex flex-col gap-4">
+                  {/* Header Info */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-800 pb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-stone-800 flex items-center justify-center text-2xl font-bold text-white border-2 border-stone-600 shadow-lg">
+                        {student.nickname?.charAt(0) || student.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">{student.nickname || student.name}</h3>
+                        <p className="text-stone-400 text-sm">{student.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="bg-stone-800 text-xs px-2 py-0.5 rounded border border-stone-700 text-stone-300">{student.belt || 'Sem Graduação'}</span>
+                          {student.phone && <span className="flex items-center gap-1 text-xs text-blue-400"><MessageCircle size={10} /> {student.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-stone-950/30 p-3 rounded-lg border border-stone-800">
+                      <div className="text-center px-4 border-r border-stone-800">
+                        <p className="text-xs text-stone-500 uppercase">Média Geral</p>
+                        <p className="text-2xl font-bold text-green-500">{avgGrade}</p>
+                      </div>
+                      <div className="text-center px-4">
+                        <p className="text-xs text-stone-500 uppercase">Vídeos Enviados</p>
+                        <p className="text-2xl font-bold text-purple-500">{studentVideos.length}</p>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="ml-2 h-10"
+                        onClick={() => { setSelectedStudentForGrades(student.id); setProfView('grades'); }}
+                      >
+                        <Award size={16} className="mr-1" /> Avaliar
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-white">{student.nickname || student.name}</h3>
-                    <p className="text-xs text-stone-400">{student.belt || 'Sem Graduação'}</p>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Videos Section */}
+                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                      <h4 className="text-indigo-400 font-bold mb-3 flex items-center gap-2"><Video size={16} /> Vídeos de Treino</h4>
+                      {studentVideos.length > 0 ? (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                          {studentVideos.map(video => (
+                            <div key={video.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-indigo-500">
+                              <div>
+                                <p className="text-white font-medium truncate w-40">{video.video_name}</p>
+                                <p className="text-xs text-stone-500">{video.date}</p>
+                              </div>
+                              <a href={video.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 p-1">
+                                <PlayCircle size={18} />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic py-2">Nenhum vídeo enviado.</p>
+                      )}
+                    </div>
+
+                    {/* Grades Section */}
+                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                      <h4 className="text-green-400 font-bold mb-3 flex items-center gap-2"><Award size={16} /> Últimas Notas</h4>
+                      {studentGradesList.length > 0 ? (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                          {studentGradesList.slice(0, 5).map(grade => ( // Show last 5
+                            <div key={grade.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-green-500">
+                              <div>
+                                <p className="text-stone-300 text-xs uppercase">{grade.category === 'theory' ? 'Teórica' : grade.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
+                                {/* Show written feedback to professor */}
+                                <p className="text-stone-500 text-xs truncate w-40" title={grade.written}>{grade.written || '-'}</p>
+                              </div>
+                              <span className="font-bold text-white text-lg">
+                                {Number.isFinite(typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric))
+                                  ? (typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric)).toFixed(1)
+                                  : '-'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic py-2">Nenhuma nota registrada.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
+              )
+            })}
 
-                <div className="text-sm text-stone-300 space-y-1 bg-stone-800/50 p-2 rounded">
-                  <p className="flex items-center gap-2"><Award size={12} className="text-green-500" /> Média: {(studentGrades.filter(g => g.student_id === student.id).reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGrades.filter(g => g.student_id === student.id).length || 1)).toFixed(1)}</p>
-                  <p className="flex items-center gap-2"><Video size={12} className="text-purple-500" /> Vídeos: {homeTrainings.filter(ht => ht.user_id === student.id).length}</p>
-                  {student.phone && <p className="flex items-center gap-2"><MessageCircle size={12} className="text-blue-500" /> {student.phone}</p>}
-                </div>
-
-                <div className="flex gap-2 mt-auto">
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    size="sm"
-                    onClick={() => { setSelectedStudentForGrades(student.id); setProfView('grades'); }}
-                  >
-                    Avaliar
-                  </Button>
-                </div>
-              </div>
-            ))}
             {myStudents.length === 0 && (
-              <div className="col-span-full text-center py-8 text-stone-500">
-                Nenhum aluno encontrado vinculado a este professor.
+              <div className="text-center py-12 text-stone-500 bg-stone-900/50 rounded-xl border border-stone-800 border-dashed">
+                <Users size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhum aluno encontrado vinculado a este professor.</p>
               </div>
             )}
           </div>
@@ -777,9 +901,14 @@ export const DashboardProfessor: React.FC<Props> = ({
           {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
           <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
             <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-              <Wallet size={12} /> Sua Próxima Graduação
+              <GraduationCap size={12} /> Próxima Avaliação
             </p>
-            <p className="text-xl font-bold text-white text-center">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+            <div className="text-center">
+              <p className="text-xl font-bold text-white">R$ {(user.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+              {user.nextEvaluationDate && (
+                <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
+              )}
+            </div>
             {(user.graduationCost ?? 0) === 0 ? (
               <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
             ) : (
@@ -787,7 +916,6 @@ export const DashboardProfessor: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Photo Upload Card */}
           <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
             <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
             <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50">
@@ -797,6 +925,30 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <label className="cursor-pointer flex flex-col items-center"><Camera size={32} className="text-stone-500 mb-2" /><span className="text-purple-400 font-bold">Enviar Foto</span><input type="file" className="hidden" onChange={handlePhotoUpload} /></label>
               )}
             </div>
+          </div>
+
+          {/* MAIN ACTIONS BAR */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Button onClick={() => setProfView('all_students')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-900 to-indigo-700 hover:from-indigo-800 hover:to-indigo-600 border border-indigo-500/30">
+              <Users size={28} className="text-indigo-300" />
+              <span className="text-sm font-bold">Meus Alunos</span>
+              <span className="text-xs text-indigo-200">Ver Tudo</span>
+            </Button>
+            <Button onClick={() => setProfView('assignments')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-cyan-900 to-cyan-700 hover:from-cyan-800 hover:to-cyan-600 border border-cyan-500/30">
+              <BookOpen size={28} className="text-cyan-300" />
+              <span className="text-sm font-bold">Trabalhos</span>
+              <span className="text-xs text-cyan-200">Gerenciar</span>
+            </Button>
+            <Button onClick={() => setProfView('music_manager')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-amber-900 to-amber-700 hover:from-amber-800 hover:to-amber-600 border border-amber-500/30">
+              <Music size={28} className="text-amber-300" />
+              <span className="text-sm font-bold">Músicas</span>
+              <span className="text-xs text-amber-200">Acervo</span>
+            </Button>
+            <Button onClick={() => setProfView('uniform')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-900 to-emerald-700 hover:from-emerald-800 hover:to-emerald-600 border border-emerald-500/30">
+              <Shirt size={28} className="text-emerald-300" />
+              <span className="text-sm font-bold">Uniforme</span>
+              <span className="text-xs text-emerald-200">Pedidos</span>
+            </Button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">

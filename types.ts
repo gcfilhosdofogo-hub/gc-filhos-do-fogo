@@ -15,6 +15,7 @@ export interface User {
   phone?: string; // WhatsApp: 55 + DDD + Numero
   first_name?: string; // Supabase profile field
   last_name?: string; // Supabase profile field
+  nextEvaluationDate?: string; // YYYY-MM-DD
 }
 
 export interface ClassSession {
