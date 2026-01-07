@@ -301,7 +301,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role') // Removed 'email'
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date') // Added next_evaluation_date
       .eq('id', userId)
       .single();
 
@@ -341,6 +341,7 @@ function AppContent() {
             phone: profileData.phone || undefined,
             first_name: profileData.first_name || undefined,
             last_name: profileData.last_name || undefined,
+            nextEvaluationDate: profileData.next_evaluation_date || undefined,
           };
           setUser(fetchedUser);
           setCurrentView('dashboard');

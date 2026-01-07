@@ -1829,120 +1829,137 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    <div className="bg-stone-800 p-6 rounded-xl border border-stone-700 mt-6">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <DollarSign className="text-green-500" />
-                                    Controle de Mensalidades
-                                </h2>
-                                <p className="text-stone-400 text-sm">Vencimento: Dia 10 de cada mês</p>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                                <div className="bg-stone-900 p-3 rounded-lg border border-stone-600">
-                                    <span className="text-stone-400 text-xs uppercase font-bold">Pendente a Receber</span>
-                                    <p className="text-2xl font-bold text-red-500">R$ {pendingMonthlyPayments.toFixed(2).replace('.', ',')}</p>
+                    <div className="bg-stone-800 rounded-2xl border border-stone-700 mt-6 overflow-hidden shadow-xl">
+                        <div className="p-6 border-b border-stone-700/50 bg-stone-900/10">
+                            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-green-500/10 rounded-xl border border-green-500/20 text-green-500">
+                                        <DollarSign size={28} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white tracking-tight">Controle de Mensalidades</h2>
+                                        <p className="text-stone-400 text-sm">Vencimento sugerido: Dia 10 de cada mês</p>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => setShowBeltConfig(true)}
-                                    className="bg-stone-700 hover:bg-stone-600 text-white p-3 rounded-lg border border-stone-500 transition-colors shadow-lg"
-                                    title="Configurar Valores de Graduação"
-                                >
-                                    <Settings size={24} />
-                                </button>
-                                <Button onClick={handleGenerateMonthlyPayments} variant="secondary" className="h-12 border-green-600 text-green-500 hover:bg-green-900/20" title="Gerar Mensalidades em Massa (Dia 5)">
-                                    <CalendarCheck size={18} className="mr-2" /> Gerar Mês
-                                </Button>
-                                <Button onClick={() => setShowAddPaymentModal(true)} className="h-12">
-                                    <Plus size={18} /> Adicionar Pagamento
-                                </Button>
+
+                                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                                    <div className="bg-stone-900/50 px-4 py-2 rounded-xl border border-stone-700 flex flex-col justify-center min-w-[150px]">
+                                        <span className="text-stone-500 text-[10px] uppercase font-black tracking-wider">A Receber</span>
+                                        <p className="text-lg font-black text-red-500 leading-none">R$ {pendingMonthlyPayments.toFixed(2).replace('.', ',')}</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 ml-auto lg:ml-0">
+                                        <button
+                                            onClick={() => setShowBeltConfig(true)}
+                                            className="p-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg border border-stone-600 transition-all shadow-md"
+                                            title="Configurar Valores de Graduação"
+                                        >
+                                            <Settings size={20} />
+                                        </button>
+                                        <Button
+                                            onClick={handleGenerateMonthlyPayments}
+                                            variant="secondary"
+                                            className="border border-green-900/50 text-green-400 hover:bg-green-900/20 px-4 py-2 text-sm h-11"
+                                        >
+                                            <CalendarCheck size={16} /> <span className="hidden sm:inline">Gerar Mês</span>
+                                        </Button>
+                                        <Button
+                                            onClick={() => setShowAddPaymentModal(true)}
+                                            className="px-4 py-2 text-sm font-bold h-11 shadow-lg shadow-orange-900/20"
+                                        >
+                                            <Plus size={18} /> Adicionar Pagamento
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Filters */}
-                        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                            {['all', 'paid', 'pending', 'overdue'].map(status => (
-                                <button
-                                    key={status}
-                                    onClick={() => setPaymentFilter(status as any)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-colors ${paymentFilter === status
-                                        ? 'bg-stone-200 text-stone-900'
-                                        : 'bg-stone-900 text-stone-500 hover:bg-stone-700'
-                                        }`}
-                                >
-                                    {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : status === 'pending' ? 'Pendentes' : 'Atrasados'}
-                                </button>
-                            ))}
-                        </div>
+                        <div className="p-6">
 
-                        {/* Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Aluno</th>
-                                        <th className="p-4">Mês Ref.</th>
-                                        <th className="p-4">Vencimento</th>
-                                        <th className="p-4">Valor</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4">Comprovante</th> {/* New column for proof */}
-                                        <th className="p-4 text-right">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-stone-700 text-sm">
-                                    {filteredPayments.map((payment) => (
-                                        <tr key={payment.id} className="hover:bg-stone-700/30">
-                                            <td className="p-4 font-medium text-white">{payment.student_name}</td>
-                                            <td className="p-4 text-stone-300">{payment.month}</td>
-                                            <td className="p-4 text-stone-300">{payment.due_date}</td>
-                                            <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
-                                            <td className="p-4">
-                                                {payment.status === 'paid' && (
-                                                    <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                                        <CheckCircle size={12} /> Pago em {payment.paid_at}
-                                                    </span>
-                                                )}
-                                                {payment.status === 'pending' && (
-                                                    <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
-                                                        <Clock size={12} /> Pendente
-                                                    </span>
-                                                )}
-                                                {payment.status === 'overdue' && (
-                                                    <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
-                                                        <AlertCircle size={12} /> Atrasado
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="p-4"> {/* Proof Column */}
-                                                {payment.proof_url ? (
-                                                    <button
-                                                        onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
-                                                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                                                    >
-                                                        <FileUp size={14} /> Ver Comprovante
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-stone-500 text-xs italic">Nenhum</span>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                {payment.status !== 'paid' && (
-                                                    <button
-                                                        onClick={() => handleMarkAsPaid(payment.id)}
-                                                        className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
-                                                    >
-                                                        Dar Baixa
-                                                    </button>
-                                                )}
-                                            </td>
+                            {/* Filters */}
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                {['all', 'paid', 'pending', 'overdue'].map(status => (
+                                    <button
+                                        key={status}
+                                        onClick={() => setPaymentFilter(status as any)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide transition-colors ${paymentFilter === status
+                                            ? 'bg-stone-200 text-stone-900'
+                                            : 'bg-stone-900 text-stone-500 hover:bg-stone-700'
+                                            }`}
+                                    >
+                                        {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : status === 'pending' ? 'Pendentes' : 'Atrasados'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
+                                            <th className="p-4">Aluno</th>
+                                            <th className="p-4">Mês Ref.</th>
+                                            <th className="p-4">Vencimento</th>
+                                            <th className="p-4">Valor</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4">Comprovante</th> {/* New column for proof */}
+                                            <th className="p-4 text-right">Ação</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {filteredPayments.length === 0 && (
-                                <div className="text-center py-8 text-stone-500">Nenhum registro encontrado.</div>
-                            )}
+                                    </thead>
+                                    <tbody className="divide-y divide-stone-700 text-sm">
+                                        {filteredPayments.map((payment) => (
+                                            <tr key={payment.id} className="hover:bg-stone-700/30">
+                                                <td className="p-4 font-medium text-white">{payment.student_name}</td>
+                                                <td className="p-4 text-stone-300">{payment.month}</td>
+                                                <td className="p-4 text-stone-300">{payment.due_date}</td>
+                                                <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
+                                                <td className="p-4">
+                                                    {payment.status === 'paid' && (
+                                                        <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                                            <CheckCircle size={12} /> Pago em {payment.paid_at}
+                                                        </span>
+                                                    )}
+                                                    {payment.status === 'pending' && (
+                                                        <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
+                                                            <Clock size={12} /> Pendente
+                                                        </span>
+                                                    )}
+                                                    {payment.status === 'overdue' && (
+                                                        <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
+                                                            <AlertCircle size={12} /> Atrasado
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4"> {/* Proof Column */}
+                                                    {payment.proof_url ? (
+                                                        <button
+                                                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                                                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                                                        >
+                                                            <FileUp size={14} /> Ver Comprovante
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-stone-500 text-xs italic">Nenhum</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    {payment.status !== 'paid' && (
+                                                        <button
+                                                            onClick={() => handleMarkAsPaid(payment.id)}
+                                                            className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
+                                                        >
+                                                            Dar Baixa
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {filteredPayments.length === 0 && (
+                                    <div className="text-center py-8 text-stone-500">Nenhum registro encontrado.</div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -3251,9 +3268,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <td className="p-4 text-stone-300">{move.student}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold border ${move.type === 'Mensalidade' ? 'border-blue-900/50 text-blue-400 bg-blue-900/10' :
-                                                        move.type === 'Uniforme' ? 'border-orange-900/50 text-orange-400 bg-orange-900/10' :
-                                                            move.type === 'Evento' ? 'border-green-900/50 text-green-400 bg-green-900/10' :
-                                                                'border-purple-900/50 text-purple-400 bg-purple-900/10'
+                                                    move.type === 'Uniforme' ? 'border-orange-900/50 text-orange-400 bg-orange-900/10' :
+                                                        move.type === 'Evento' ? 'border-green-900/50 text-green-400 bg-green-900/10' :
+                                                            'border-purple-900/50 text-purple-400 bg-purple-900/10'
                                                     }`}>
                                                     {move.type}
                                                 </span>
