@@ -121,7 +121,9 @@ export const DashboardProfessor: React.FC<Props> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventFileInputRef = useRef<HTMLInputElement>(null);
 
-  const myMonthlyPayments = monthlyPayments || []; // Already filtered in App.tsx
+  const myFilteredPayments = (monthlyPayments || []).filter(p => p.student_id === user.id);
+  const myMonthlyPayments = myFilteredPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
+  const myEvaluations = myFilteredPayments.filter(p => p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'));
   const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.user_id === user.id) : [];
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -601,23 +603,7 @@ export const DashboardProfessor: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* Graduation Cost Alert */}
-        <div className="w-full bg-green-900/30 border border-green-800 rounded-lg p-4 mt-4 animate-pulse">
-          <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-            <GraduationCap size={12} /> Próxima Avaliação
-          </p>
-          <div className="text-center">
-            <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
-            {user.nextEvaluationDate && (
-              <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
-            )}
-          </div>
-          {(user.graduationCost ?? 0) === 0 ? (
-            <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
-          ) : (
-            <p className="text-[10px] text-stone-400 mt-1 text-center">Valor definido pela coordenação</p>
-          )}
-        </div>
+
       </div>
 
       {/* --- UNIFORM VIEW --- */}
@@ -910,6 +896,65 @@ export const DashboardProfessor: React.FC<Props> = ({
                   <span className="text-stone-400 text-xs">Data: {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString() : 'Não definida'}</span>
                   <span className="text-white font-bold">R$ {(user.graduationCost || 0).toFixed(2).replace('.', ',')}</span>
                 </div>
+              </div>
+
+              <h4 className="text-sm font-bold text-white mb-2">Avaliações</h4>
+              <div className="space-y-3 mb-6">
+                {myEvaluations.length > 0 ? (
+                  myEvaluations.map(payment => (
+                    <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                      <div>
+                        <p className="font-bold text-white text-sm">Avaliação ({payment.due_date})</p>
+                        <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        {payment.status === 'paid' && (
+                          <span className="text-green-400 text-xs flex items-center gap-1">
+                            <Check size={12} /> Pago
+                          </span>
+                        )}
+                        {payment.status === 'pending' && !payment.proof_url && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              className="text-xs h-auto px-2 py-1"
+                              onClick={() => {
+                                setSelectedPaymentToProof(payment);
+                                fileInputRef.current?.click();
+                              }}
+                              disabled={uploadingPaymentProof}
+                            >
+                              {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
+                            </Button>
+                            <input
+                              type="file"
+                              accept="image/*, application/pdf"
+                              className="hidden"
+                              ref={fileInputRef}
+                              onChange={handleFileChangeForPaymentProof}
+                              disabled={uploadingPaymentProof}
+                            />
+                          </>
+                        )}
+                        {payment.status === 'pending' && payment.proof_url && (
+                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                            <Clock size={12} /> Enviado
+                          </span>
+                        )}
+                        {payment.proof_url && (
+                          <button
+                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Ver
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 text-sm italic">Nenhuma avaliação pendente.</p>
+                )}
               </div>
 
               <h4 className="text-sm font-bold text-white mb-2">Inscrições em Eventos</h4>

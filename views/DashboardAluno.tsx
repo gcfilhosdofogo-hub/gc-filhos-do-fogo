@@ -116,8 +116,9 @@ export const DashboardAluno: React.FC<Props> = ({
   const myHomeTrainings = homeTrainings.filter(ht => ht.user_id === user.id);
   const mySchoolReports = schoolReports.filter(sr => sr.user_id === user.id);
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
-  const myMonthlyPayments = monthlyPayments.filter(p => p.student_id === user?.id); // Filter payments for the current user
-  const evalPayment = useMemo(() => myMonthlyPayments.find(p => p.month.toLowerCase().includes('avalia')), [myMonthlyPayments]);
+  const myRawPayments = monthlyPayments.filter(p => p.student_id === user?.id);
+  const myMonthlyPayments = myRawPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
+  const evalPayment = useMemo(() => myRawPayments.find(p => (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'))), [myRawPayments]);
   const beltColors = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
     const colorMap: Record<string, string> = {
@@ -996,8 +997,8 @@ export const DashboardAluno: React.FC<Props> = ({
                     <AlertCircle size={12} /> Todos os eventos são de participação obrigatória.
                   </p>
                   <div className="space-y-3">
-                    {events.length > 0 ? (
-                      events.map((event) => (
+                    {events.filter(e => !e.status || e.status === 'active').length > 0 ? (
+                      events.filter(e => !e.status || e.status === 'active').map((event) => (
                         <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-4 border-red-500">
                           <div className="flex justify-between items-start">
                             <div>

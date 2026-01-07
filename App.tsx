@@ -468,9 +468,11 @@ function AppContent() {
   };
 
   const handleCancelEvent = async (eventId: string) => {
-    const { error } = await supabase.from('group_events').delete().eq('id', eventId);
-    if (error) console.error('Error deleting event:', error);
-    else setEvents(prev => prev.filter(event => event.id !== eventId));
+    // Soft delete: update status to 'cancelled' instead of deleting
+    // This preserves event_registrations and financial records
+    const { error } = await supabase.from('group_events').update({ status: 'cancelled' }).eq('id', eventId);
+    if (error) console.error('Error cancelling event:', error);
+    else setEvents(prev => prev.map(event => event.id === eventId ? { ...event, status: 'cancelled' } : event));
   };
 
   const handleNotifyAdmin = async (action: string, actor: User) => {

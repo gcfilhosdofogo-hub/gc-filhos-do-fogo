@@ -277,6 +277,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                     photo_url: profile.avatar_url || undefined
                 };
             });
+            // Sort by belt rank descending
+            fetchedUsers.sort((a, b) => {
+                const indexA = ALL_BELTS.indexOf(a.belt || 'Cordel Cinza');
+                const indexB = ALL_BELTS.indexOf(b.belt || 'Cordel Cinza');
+                return indexB - indexA;
+            });
             setManagedUsers(fetchedUsers);
 
             // Process for Pedagogy tab replaced by useMemo hook below
@@ -335,23 +341,20 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         const formatDatePTBR = (isoString: string | null | undefined): string => {
             if (!isoString) return '-';
-            // Check if already in DD/MM/YYYY format
             if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
-
             try {
                 const date = new Date(isoString);
-                // Adjust for timezone offset if it's a pure date string (YYYY-MM-DD) to prevent off-by-one error
-                // However, new Date('YYYY-MM-DD') is UTC, and toLocaleDateString uses local. 
-                // A safer simple parse for YYYY-MM-DD:
                 if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
                     const [y, m, d] = isoString.split('-');
                     return `${d}/${m}/${y}`;
                 }
-
                 return date.toLocaleDateString('pt-BR');
-            } catch (e) {
-                return isoString;
-            }
+            } catch (e) { return isoString; }
+        };
+
+        const getBelt = (userId: string) => {
+            const u = managedUsers.find(user => (user.id === userId));
+            return u?.belt || '-';
         };
 
         // Monthly Payments
@@ -360,6 +363,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 date: p.status === 'paid' ? formatDatePTBR(p.paid_at) : formatDatePTBR(p.due_date),
                 description: `Mensalidade - ${p.month}`,
                 student: p.student_name,
+                belt: getBelt(p.student_id),
                 type: 'Mensalidade',
                 value: p.amount,
                 status: p.status === 'paid' ? 'Pago' : 'Pendente'
@@ -372,6 +376,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 date: formatDatePTBR(o.date),
                 description: `Uniforme - ${o.item}`,
                 student: o.user_name,
+                belt: getBelt(o.user_id),
                 type: 'Uniforme',
                 value: o.total,
                 status: o.status === 'ready' || o.status === 'delivered' ? 'Pago' : 'Pendente'
@@ -380,14 +385,13 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         // Event Registrations
         eventRegistrations.forEach(reg => {
-            // Try to find the event start date
             const linkedEvent = events.find(e => e.id === reg.event_id);
-            const dateDisplay = linkedEvent ? formatDatePTBR(linkedEvent.date) : '-'; // Events have a date string
-
+            const dateDisplay = linkedEvent ? formatDatePTBR(linkedEvent.date) : '-';
             movements.push({
                 date: dateDisplay,
                 description: `Evento - ${reg.event_title}`,
                 student: reg.user_name,
+                belt: getBelt(reg.user_id),
                 type: 'Evento',
                 value: reg.amount_paid,
                 status: reg.status === 'paid' ? 'Pago' : 'Pendente'
@@ -395,7 +399,18 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
 
         return movements.sort((a, b) => {
-            // Helper to parse DD/MM/YYYY for sorting
+            // Sort by Belt Rank Descending (Higher Index First)
+            const indexA = ALL_BELTS.indexOf(a.belt);
+            const indexB = ALL_BELTS.indexOf(b.belt);
+            if (indexA !== -1 && indexB !== -1 && indexA !== indexB) {
+                return indexB - indexA;
+            } else if (indexA !== -1 && indexB === -1) {
+                return -1; // A has belt, B doesn't -> A first
+            } else if (indexA === -1 && indexB !== -1) {
+                return 1; // B has belt, A doesn't -> B first
+            }
+
+            // Secondary: Date Descending
             const parseDate = (d: string) => {
                 if (d === '-') return 0;
                 if (d.includes('/')) {
@@ -404,20 +419,19 @@ export const DashboardAdmin: React.FC<Props> = ({
                 }
                 return 0;
             };
-            return parseDate(b.date) - parseDate(a.date); // Sort descending (newest first)
+            return parseDate(b.date) - parseDate(a.date);
         });
-    }, [monthlyPayments, uniformOrders, eventRegistrations, events]); // Added events dependency
-
-
+    }, [monthlyPayments, uniformOrders, eventRegistrations, events, managedUsers]);
 
     const handleDownloadFinancialReport = () => {
-        const headers = ["Data", "Descrição", "Aluno", "Tipo", "Valor", "Status"];
+        const headers = ["Data", "Descrição", "Aluno", "Graduação", "Tipo", "Valor", "Status"];
         const csvContent = [
             headers.join(";"),
             ...financialMovements.map(m => [
                 m.date,
                 m.description,
                 m.student,
+                m.belt,
                 m.type,
                 m.value.toFixed(2).replace('.', ','),
                 m.status
@@ -460,8 +474,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleDeleteEvent = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
         e.stopPropagation();
+        const event = events.find(ev => ev.id === id);
         if (editingId === id) handleCancelEdit();
         onCancelEvent(id);
+        if (event) {
+            onNotifyAdmin(`Cancelou o evento: ${event.title}`, user);
+        }
     };
 
     const handleSaveEvent = async (e: React.FormEvent) => {
@@ -769,7 +787,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             phone: userForm.phone || null,
             professor_name: userForm.professorName || null,
             birth_date: userForm.birthDate || null,
-            updated_at: new Date().toISOString(), // Add updated_at timestamp
+            // updated_at: new Date().toISOString(), // Removed to prevent schema errors if column invalid
         };
 
         const { error } = await supabase
@@ -779,7 +797,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         if (error) {
             console.error('Error updating user:', error);
-            alert('Erro ao atualizar usuário.');
+            alert('Erro ao atualizar usuário: ' + error.message);
         } else {
             alert('Usuário atualizado com sucesso!');
             setShowUserModal(false);
@@ -1303,18 +1321,33 @@ export const DashboardAdmin: React.FC<Props> = ({
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
             </div>
 
-            {/* Graduation Cost Alert for Admin (Moved here) */}
-            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
+            {/* Graduation and Evaluation Card */}
+            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col md:flex-row gap-4">
+                <div className="flex-1 w-full bg-stone-900 rounded-lg p-4 border-l-4 overflow-hidden relative">
                     <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
                     {beltColors.pontaColor && (
                         <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
                     )}
                     <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
-                    <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                    <p className="text-lg font-bold text-white flex items-center gap-2">
                         <Award className="text-orange-500" />
                         {user.belt || 'Cordel Cinza'}
                     </p>
+                </div>
+
+                {/* Evaluation Info (consolidated) */}
+                <div className="flex-1 w-full bg-green-900/20 rounded-lg p-4 border border-green-900/50">
+                    <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center gap-1">
+                        <GraduationCap size={14} /> Próxima Avaliação
+                    </p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                        {user.nextEvaluationDate && (
+                            <span className="text-xs text-stone-400 border-l border-stone-600 pl-3">
+                                Data: <span className="text-green-400">{new Date(user.nextEvaluationDate).toLocaleDateString()}</span>
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -1389,23 +1422,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             {/* --- TAB: OVERVIEW --- */}
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-fade-in">
-                    {/* Graduation Cost Alert for Admin (Same as Professor/Student) */}
-                    <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
-                        <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-                            <GraduationCap size={12} /> Próxima Avaliação
-                        </p>
-                        <div className="text-center">
-                            <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
-                            {user.nextEvaluationDate && (
-                                <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
-                            )}
-                        </div>
-                        {Number(user.graduationCost || 0) === 0 ? (
-                            <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
-                        ) : (
-                            <p className="text-[10px] text-stone-400 mt-1 text-center">Valor definido pela coordenação</p>
-                        )}
-                    </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <button
@@ -1636,7 +1653,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {events.map(event => (
+                            {events.filter(e => !e.status || e.status === 'active').map(event => (
                                 <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative group">
                                     <div className="flex justify-between items-start">
                                         <h4 className="font-bold text-white">{event.title}</h4>
@@ -3617,6 +3634,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <th className="p-4 rounded-tl-lg">Data</th>
                                             <th className="p-4">Descrição</th>
                                             <th className="p-4">Aluno</th>
+                                            <th className="p-4">Graduação</th>
                                             <th className="p-4">Tipo</th>
                                             <th className="p-4">Valor</th>
                                             <th className="p-4 rounded-tr-lg">Status</th>
@@ -3628,6 +3646,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <td className="p-4 text-stone-300">{move.date}</td>
                                                 <td className="p-4 font-medium text-white">{move.description}</td>
                                                 <td className="p-4 text-stone-300">{move.student}</td>
+                                                <td className="p-4 text-stone-300 bg-stone-800/20">{move.belt}</td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold border ${move.type === 'Mensalidade' ? 'border-blue-900/50 text-blue-400 bg-blue-900/10' :
                                                         move.type === 'Uniforme' ? 'border-orange-900/50 text-orange-400 bg-orange-900/10' :
