@@ -113,6 +113,7 @@ export interface PaymentRecord {
   status: PaymentStatus;
   paid_at?: string;
   amount: number;
+  type?: string; // 'Mensalidade' or 'evaluation'
   created_at?: string;
   proof_url?: string; // URL do comprovante de pagamento
   proof_name?: string; // Nome do arquivo do comprovante

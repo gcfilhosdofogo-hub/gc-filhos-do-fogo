@@ -171,6 +171,9 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
+        const [mainPart, ...rest] = b.split('ponta');
+        const pontaPart = rest.join('ponta'); // In case there are multiple 'ponta' (unlikely)
+
         const colorMap: Record<string, string> = {
             'verde': '#22c55e',
             'amarelo': '#FDD835',
@@ -182,39 +185,37 @@ export const DashboardAdmin: React.FC<Props> = ({
         let mainColor = user.beltColor || '#fff';
         let pontaColor: string | null = null;
 
-        if (b.includes('verde, amarelo, azul e branco')) {
+        if (mainPart.includes('verde, amarelo, azul e branco')) {
             mainColor = 'linear-gradient(to bottom,#22c55e,#FDD835,#3b82f6,#ffffff)';
-        } else if (b.includes('amarelo e azul')) {
+        } else if (mainPart.includes('amarelo e azul')) {
             mainColor = 'linear-gradient(to bottom,#FDD835,#3b82f6)';
-        } else if (b.includes('verde e amarelo')) {
+        } else if (mainPart.includes('verde e amarelo')) {
             mainColor = 'linear-gradient(to bottom,#22c55e,#FDD835)';
-        } else if (b.includes('verde e branco')) {
+        } else if (mainPart.includes('verde e branco')) {
             mainColor = 'linear-gradient(to bottom,#22c55e,#ffffff)';
-        } else if (b.includes('amarelo e branco')) {
+        } else if (mainPart.includes('amarelo e branco')) {
             mainColor = 'linear-gradient(to bottom,#FDD835,#ffffff)';
-        } else if (b.includes('azul e branco')) {
+        } else if (mainPart.includes('azul e branco')) {
             mainColor = 'linear-gradient(to bottom,#3b82f6,#ffffff)';
-        } else if (b.includes('cinza')) {
+        } else if (mainPart.includes('cinza')) {
             mainColor = '#9ca3af';
-        } else if (b.includes('verde')) {
+        } else if (mainPart.includes('verde')) {
             mainColor = '#22c55e';
-        } else if (b.includes('amarelo')) {
+        } else if (mainPart.includes('amarelo')) {
             mainColor = '#FDD835';
-        } else if (b.includes('azul')) {
+        } else if (mainPart.includes('azul')) {
             mainColor = '#3b82f6';
-        } else if (b.includes('branco')) {
+        } else if (mainPart.includes('branco')) {
             mainColor = '#ffffff';
         }
 
-        if (b.includes('ponta')) {
-            const pontaMatch = b.match(/ponta\s+(\w+)/);
-            if (pontaMatch) {
-                const pontaName = pontaMatch[1];
-                if (pontaName.includes('verde')) pontaColor = colorMap['verde'];
-                else if (pontaName.includes('amarelo')) pontaColor = colorMap['amarelo'];
-                else if (pontaName.includes('azul')) pontaColor = colorMap['azul'];
-                else if (pontaName.includes('branco')) pontaColor = colorMap['branco'];
-            }
+        if (pontaPart) {
+            if (pontaPart.includes('verde') && pontaPart.includes('amarelo')) {
+                pontaColor = 'linear-gradient(to bottom, #22c55e, #FDD835)';
+            } else if (pontaPart.includes('verde')) pontaColor = colorMap['verde'];
+            else if (pontaPart.includes('amarelo')) pontaColor = colorMap['amarelo'];
+            else if (pontaPart.includes('azul')) pontaColor = colorMap['azul'];
+            else if (pontaPart.includes('branco')) pontaColor = colorMap['branco'];
         }
 
         return { mainColor, pontaColor };
@@ -586,7 +587,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                         month: targetMonth,
                         due_date: formattedDueDate,
                         amount: 50.00,
-                        status: 'pending' as const
+                        status: 'pending' as const,
+                        type: 'Mensalidade'
                     };
                     await onAddPaymentRecord(newPayment);
                     createdCount++;
@@ -913,6 +915,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             due_date: newPaymentForm.dueDate,
             amount: parseFloat(newPaymentForm.amount),
             status: 'pending',
+            type: 'Mensalidade'
         };
 
         await onAddPaymentRecord(newPayment);
@@ -1263,8 +1266,15 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
     }, [managedUsers, studentGrades]);
 
-    const filteredMonthlyPayments = monthlyPayments.filter(p => (!p.type || p.type === 'Mensalidade') && (paymentFilter === 'all' ? true : p.status === paymentFilter));
-    const evaluationPayments = monthlyPayments.filter(p => p.type === 'evaluation' && (paymentFilter === 'all' ? true : p.status === paymentFilter));
+    const filteredMonthlyPayments = monthlyPayments.filter(p =>
+        (!p.type || p.type === 'Mensalidade') &&
+        !p.month.toLowerCase().includes('avalia') &&
+        (paymentFilter === 'all' ? true : p.status === paymentFilter)
+    );
+    const evaluationPayments = monthlyPayments.filter(p =>
+        (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia')) &&
+        (paymentFilter === 'all' ? true : p.status === paymentFilter)
+    );
     const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
     const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
 
@@ -2727,9 +2737,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 onClick={() => {
                                                                     setEvalModalStudent(u);
                                                                     setEvalModalAmount((u.graduationCost ?? 0).toString());
-                                                                    const dueDate = new Date();
-                                                                    dueDate.setDate(dueDate.getDate() + 15);
-                                                                    setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
+                                                                    const defaultDate = u.nextEvaluationDate || new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0];
+                                                                    setEvalModalDueDate(defaultDate);
                                                                     setShowEvalModal(true);
                                                                 }}
                                                                 className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 font-bold"

@@ -248,7 +248,7 @@ function AppContent() {
         .from('monthly_payments')
         .select('id')
         .eq('month', currentMonth)
-        .eq('type', 'monthly_fee')
+        .eq('type', 'Mensalidade')
         .limit(1);
 
       if (checkError) throw checkError;
@@ -277,7 +277,7 @@ function AppContent() {
         due_date: dueDate,
         amount: 50,
         status: 'pending',
-        type: 'monthly_fee'
+        type: 'Mensalidade'
       }));
 
       const { error: insertError } = await supabase.from('monthly_payments').insert(newPayments);
