@@ -58,32 +58,32 @@ export const DashboardAdmin: React.FC<Props> = ({
     onAddEvent,
     onEditEvent,
     onCancelEvent,
-    events,
+    events = [],
     notifications = [],
     musicList = [],
     onAddMusic = (_music: MusicItem) => { },
     onNotifyAdmin = (_action: string, _user: User) => { },
     onUpdateProfile,
-    uniformOrders,
+    uniformOrders = [],
     onAddOrder,
     onUpdateOrderStatus,
-    schoolReports, // New prop
-    assignments, // New prop
+    schoolReports = [],
+    assignments = [],
     onAddAssignment,
     onUpdateAssignment,
-    homeTrainings, // New prop
-    monthlyPayments, // Use prop for payments
+    homeTrainings = [],
+    monthlyPayments = [],
     onAddPaymentRecord,
     onUpdatePaymentRecord,
-    eventRegistrations, // New prop
+    eventRegistrations = [],
     onAddEventRegistration,
     onUpdateEventRegistrationStatus,
-    onNavigate, // New prop
-    classSessions, // Use prop for class sessions
+    onNavigate,
+    classSessions = [],
     onAddClassSession,
     onUpdateClassSession,
-    studentGrades,
-    onClearNotifications,
+    studentGrades = [],
+    onClearNotifications = () => { },
 }) => {
     const { session } = useSession(); // Get session from context
     const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -154,13 +154,15 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // State for inline evaluation editing
     const [editingEvaluationDate, setEditingEvaluationDate] = useState<string>('');
+    const today = new Date().toISOString().split('T')[0];
+    const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name));
 
 
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
-    const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Filter classes for this admin acting as professor
-    const [selectedClassId, setSelectedClassId] = useState<string | null>(null); // Changed to string
+    const myClasses = useMemo(() => (classSessions || []).filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
+    const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
     const [attendanceData, setAttendanceData] = useState<Record<string, boolean>>({});
     const [justifications, setJustifications] = useState<Record<string, string>>({});
     const [showSuccess, setShowSuccess] = useState(false);
@@ -225,15 +227,15 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [evalData, setEvalData] = useState({ positive: '', negative: '' });
 
     // Assignments State (for Professor Mode)
-    const [profModeAssignments, setProfModeAssignments] = useState<Assignment[]>(assignments.filter(a => a.created_by === user.id)); // Filter assignments created by this admin
-    const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '', studentId: '' }); // Added studentId
+    const profModeAssignments = useMemo(() => (assignments || []).filter(a => a.created_by === user.id), [assignments, user.id]);
+    const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '', studentId: '' });
     const [showAssignToStudentModal, setShowAssignToStudentModal] = useState(false);
     const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<Assignment | null>(null);
     const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<string>('');
 
 
     // Uniform State (for Professor Mode)
-    const [myOrders, setMyOrders] = useState<UniformOrder[]>(uniformOrders.filter(o => o.user_id === user.id)); // Filter orders for this admin
+    const myOrders = useMemo(() => (uniformOrders || []).filter(o => o.user_id === user.id), [uniformOrders, user.id]);
     const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
     const [costPixCopied, setCostPixCopied] = useState(false);
 
@@ -283,11 +285,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     useEffect(() => {
         fetchManagedUsers();
-        // Filter assignments for professor mode based on the admin's user ID
-        setProfModeAssignments(assignments.filter(a => a.created_by === user.id));
-        setMyClasses(classSessions.filter(cs => cs.professor_id === user.id)); // Update myClasses when classSessions change
-        setMyOrders(uniformOrders.filter(o => o.user_id === user.id)); // Update myOrders when uniformOrders change
-    }, [fetchManagedUsers, assignments, user.id, classSessions, uniformOrders]);
+    }, [fetchManagedUsers]);
 
     // --- CUSTOM ADMIN DISPLAY NAME ---
     const getAdminDisplayName = () => {
@@ -298,14 +296,14 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     // --- ADMIN HANDLERS ---
-    const totalMonthlyPayments = monthlyPayments.filter(p => p.status === 'paid').reduce((acc, curr) => acc + curr.amount, 0);
-    const pendingMonthlyPayments = monthlyPayments.filter(p => p.status !== 'paid').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalMonthlyPayments = (monthlyPayments || []).filter(p => p.status === 'paid').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const pendingMonthlyPayments = (monthlyPayments || []).filter(p => p.status !== 'paid').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
-    const totalUniformRevenue = uniformOrders.filter(o => o.status !== 'pending').reduce((acc, curr) => acc + curr.total, 0);
-    const pendingUniformRevenue = uniformOrders.filter(o => o.status === 'pending').reduce((acc, curr) => acc + curr.total, 0);
+    const totalUniformRevenue = (uniformOrders || []).filter(o => o.status !== 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+    const pendingUniformRevenue = (uniformOrders || []).filter(o => o.status === 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
 
-    const totalEventRevenue = eventRegistrations.filter(reg => reg.status === 'paid').reduce((acc, curr) => acc + curr.amount_paid, 0);
-    const pendingEventRevenue = eventRegistrations.filter(reg => reg.status === 'pending').reduce((acc, curr) => acc + curr.amount_paid, 0);
+    const totalEventRevenue = (eventRegistrations || []).filter(reg => reg.status === 'paid').reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
+    const pendingEventRevenue = (eventRegistrations || []).filter(reg => reg.status === 'pending').reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
 
     const totalRevenue = totalMonthlyPayments + totalUniformRevenue + totalEventRevenue;
     const pendingRevenue = pendingMonthlyPayments + pendingUniformRevenue + pendingEventRevenue;
@@ -317,7 +315,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        const relevantGrades = studentGrades.filter(g => studentsForAttendance.some(s => s.id === g.student_id));
+        const relevantGrades = studentGrades.filter(g => managedUsers.filter(u => u.role === 'aluno').some(s => s.id === g.student_id));
 
         const calcAvg = (grades: StudentGrade[]) => {
             if (grades.length === 0) return 0;
@@ -330,7 +328,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             monthly: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= oneMonthAgo)),
             annual: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= startOfYear))
         };
-    }, [studentGrades, studentsForAttendance]);
+    }, [studentGrades, managedUsers]);
 
     const financialMovements = useMemo(() => {
         const movements: any[] = [];
@@ -372,8 +370,21 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
 
         return movements.sort((a, b) => {
-            if (a.date === '-' || b.date === '-') return 0;
-            return new Date(b.date.split('/').reverse().join('-')).getTime() - new Date(a.date.split('/').reverse().join('-')).getTime();
+            if (!a.date || a.date === '-' || !b.date || b.date === '-') return 0;
+
+            const parseDate = (d: string) => {
+                if (d.includes('/')) {
+                    const parts = d.split('/');
+                    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+                }
+                return new Date(d).getTime();
+            };
+
+            const timeB = parseDate(b.date);
+            const timeA = parseDate(a.date);
+
+            if (isNaN(timeB) || isNaN(timeA)) return 0;
+            return timeB - timeA;
         });
     }, [monthlyPayments, uniformOrders, eventRegistrations]);
 
@@ -1192,8 +1203,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                     attendanceRate: 85, // Mock data or derive from attendance table if available
                     technicalGrade: techGrade,
                     musicalityGrade: sGrades.find(g => g.category === 'musicality')?.numeric || 0,
-                    lastEvaluation: sGrades.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]?.written || 'S/A',
-                    graduationCost: s.graduationCost,
+                    lastEvaluation: sGrades.sort((a, b) => {
+                        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                        return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+                    })[0]?.written || 'S/A',
+                    graduationCost: s.graduationCost || 0,
                     phone: s.phone
                 };
             });
@@ -1210,9 +1225,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const filteredPayments = monthlyPayments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
     const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
-    const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name)); // Filter by admin's nickname as professor
     const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
-    const today = new Date().toISOString().split('T')[0];
 
     const filteredManagedUsers = managedUsers.filter(u =>
         u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
