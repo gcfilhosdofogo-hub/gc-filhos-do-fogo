@@ -139,6 +139,28 @@ export const DashboardProfessor: React.FC<Props> = ({
     setProfAssignments(assignments.filter(a => a.created_by === user.id));
   }, [classSessions, assignments, user.id]);
 
+  // Calculate Grade Averages
+  const gradeStats = useMemo(() => {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const relevantGrades = studentGrades.filter(g => myStudents.some(s => s.id === g.student_id));
+
+    const calcAvg = (grades: StudentGrade[]) => {
+      if (grades.length === 0) return 0;
+      const sum = grades.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0);
+      return sum / grades.length;
+    };
+
+    return {
+      weekly: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= oneWeekAgo)),
+      monthly: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= oneMonthAgo)),
+      annual: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= startOfYear))
+    };
+  }, [studentGrades, myStudents]);
+
 
   // Filter my orders
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
@@ -644,6 +666,52 @@ export const DashboardProfessor: React.FC<Props> = ({
       )}
 
       {/* --- ATTENDANCE VIEW --- */}
+      {profView === 'all_students' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
+          <h2 className="text-2xl font-bold text-white mb-6">Meus Alunos ({myStudents.length})</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myStudents.map(student => (
+              <div key={student.id} className="bg-stone-900 p-4 rounded-xl border border-stone-700 flex flex-col gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-stone-700 flex items-center justify-center text-lg font-bold text-white border-2 border-stone-600">
+                    {student.nickname?.charAt(0) || student.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white">{student.nickname || student.name}</h3>
+                    <p className="text-xs text-stone-400">{student.belt || 'Sem Graduação'}</p>
+                  </div>
+                </div>
+
+                <div className="text-sm text-stone-300 space-y-1 bg-stone-800/50 p-2 rounded">
+                  <p className="flex items-center gap-2"><Award size={12} className="text-green-500" /> Média: {(studentGrades.filter(g => g.student_id === student.id).reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGrades.filter(g => g.student_id === student.id).length || 1)).toFixed(1)}</p>
+                  <p className="flex items-center gap-2"><Video size={12} className="text-purple-500" /> Vídeos: {homeTrainings.filter(ht => ht.user_id === student.id).length}</p>
+                  {student.phone && <p className="flex items-center gap-2"><MessageCircle size={12} className="text-blue-500" /> {student.phone}</p>}
+                </div>
+
+                <div className="flex gap-2 mt-auto">
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    size="sm"
+                    onClick={() => { setSelectedStudentForGrades(student.id); setProfView('grades'); }}
+                  >
+                    Avaliar
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {myStudents.length === 0 && (
+              <div className="col-span-full text-center py-8 text-stone-500">
+                Nenhum aluno encontrado vinculado a este professor.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* --- ATTENDANCE VIEW --- */}
       {profView === 'attendance' && selectedClassInfo && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <div className="flex justify-between items-center mb-6">
@@ -746,8 +814,51 @@ export const DashboardProfessor: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* EVENTS CARD */}
+            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Calendar className="text-yellow-500" /> Eventos
+              </h3>
+              <div className="space-y-4">
+                {events.length > 0 ? (
+                  events.map(event => (
+                    <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative overflow-hidden group">
+                      <h4 className="font-bold text-white mb-1 relative z-10">{event.title}</h4>
+                      <p className="text-orange-400 text-sm mb-2 relative z-10">{event.date}</p>
+                      <p className="text-stone-400 text-xs relative z-10">{event.description}</p>
+                      {event.price ? (
+                        <span className="inline-block mt-2 bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded border border-green-900/50">
+                          Valor: R$ {event.price.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="inline-block mt-2 bg-stone-800 text-stone-400 text-xs px-2 py-1 rounded">Gratuito</span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 italic text-sm">Nenhum evento programado.</p>
+                )}
+              </div>
+            </div>
+
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
               <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-stone-900 p-2 rounded text-center">
+                  <p className="text-[10px] text-stone-400 uppercase">Semanal</p>
+                  <p className="text-lg font-bold text-green-400">{gradeStats.weekly.toFixed(1)}</p>
+                </div>
+                <div className="bg-stone-900 p-2 rounded text-center">
+                  <p className="text-[10px] text-stone-400 uppercase">Mensal</p>
+                  <p className="text-lg font-bold text-blue-400">{gradeStats.monthly.toFixed(1)}</p>
+                </div>
+                <div className="bg-stone-900 p-2 rounded text-center">
+                  <p className="text-[10px] text-stone-400 uppercase">Anual</p>
+                  <p className="text-lg font-bold text-purple-400">{gradeStats.annual.toFixed(1)}</p>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 {myStudents.slice(0, 3).map(s => (
                   <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">

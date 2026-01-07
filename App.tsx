@@ -437,10 +437,15 @@ function AppContent() {
 
   // --- Event Handlers (Supabase Interactions) ---
   const handleAddEvent = async (newEvent: Omit<GroupEvent, 'id' | 'created_at'>) => {
-    if (!session) return;
+    if (!session) return null;
     const { data, error } = await supabase.from('group_events').insert({ ...newEvent, created_by: session.user.id }).select().single();
-    if (error) console.error('Error adding event:', error);
-    else setEvents(prev => [...prev, data]);
+    if (error) {
+      console.error('Error adding event:', error);
+      return null;
+    } else {
+      setEvents(prev => [...prev, data]);
+      return data;
+    }
   };
 
   const handleEditEvent = async (updatedEvent: GroupEvent) => {

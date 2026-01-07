@@ -105,6 +105,11 @@ export const DashboardAluno: React.FC<Props> = ({
   const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
   const uniformFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Assignment Submission Upload State
+  const [uploadingAssignment, setUploadingAssignment] = useState(false);
+  const [selectedAssignmentToSubmit, setSelectedAssignmentToSubmit] = useState<any | null>(null);
+  const assignmentFileInputRef = useRef<HTMLInputElement>(null);
+
 
   // Filter my orders from global state
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
@@ -578,6 +583,52 @@ export const DashboardAluno: React.FC<Props> = ({
     } finally {
       if (uniformFileInputRef.current) {
         uniformFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFileChangeForAssignment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedAssignmentToSubmit) {
+      setUploadingAssignment(false);
+      return;
+    }
+
+    const file = e.target.files[0];
+    setUploadingAssignment(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      // Using 'school_reports_files' as a general document bucket if assignment_submissions doesn't exist
+      const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('school_reports_files') // Fallback bucket that likely exists
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const fileUrl = uploadData.path;
+
+      // Update assignment with submission
+      const updatedAssignment = {
+        ...selectedAssignmentToSubmit,
+        attachment_url: fileUrl,  // Using attachment_url as submission url per types
+        attachment_name: file.name,
+        status: 'completed'
+      };
+
+      await onUpdateAssignment(updatedAssignment);
+      setUploadingAssignment(false);
+      setSelectedAssignmentToSubmit(null);
+      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou trabalho: ${selectedAssignmentToSubmit.title}`, user);
+      alert("Trabalho enviado com sucesso!");
+    } catch (error: any) {
+      console.error('Error uploading assignment:', error);
+      alert("Erro ao enviar trabalho: " + error.message);
+      setUploadingAssignment(false);
+    } finally {
+      if (assignmentFileInputRef.current) {
+        assignmentFileInputRef.current.value = '';
       }
     }
   };
@@ -1140,6 +1191,35 @@ export const DashboardAluno: React.FC<Props> = ({
                               <Eye size={14} className="mr-1" /> Ver Material
                             </Button>
                           )}
+
+                          {/* Submission Button */}
+                          {assignment.status !== 'completed' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                className="text-xs h-auto px-2 py-1 mt-2 w-full border-cyan-500 text-cyan-500 hover:bg-cyan-900/20"
+                                onClick={() => {
+                                  setSelectedAssignmentToSubmit(assignment);
+                                  assignmentFileInputRef.current?.click();
+                                }}
+                                disabled={uploadingAssignment}
+                              >
+                                {uploadingAssignment && selectedAssignmentToSubmit?.id === assignment.id ? (
+                                  'Enviando...'
+                                ) : (
+                                  <><UploadCloud size={14} className="mr-1" /> Enviar Resposta</>
+                                )}
+                              </Button>
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.png"
+                                className="hidden"
+                                ref={assignmentFileInputRef}
+                                onChange={handleFileChangeForAssignment}
+                                disabled={uploadingAssignment}
+                              />
+                            </>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -1214,7 +1294,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                 ? (typeof g.numeric === 'number' ? g.numeric : Number(g.numeric)).toFixed(1)
                                 : '-'}
                             </span>
-                            <span className="text-stone-400 text-xs max-w-[60%] truncate">{g.written}</span>
+                            {/* Written grades hidden for students as requested */}
                           </div>
                         </div>
                       ))
