@@ -600,6 +600,24 @@ export const DashboardProfessor: React.FC<Props> = ({
             {user.belt || 'Cordel Cinza'}
           </p>
         </div>
+
+        {/* Graduation Cost Alert */}
+        <div className="w-full bg-green-900/30 border border-green-800 rounded-lg p-4 mt-4 animate-pulse">
+          <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
+            <GraduationCap size={12} /> Próxima Avaliação
+          </p>
+          <div className="text-center">
+            <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+            {user.nextEvaluationDate && (
+              <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
+            )}
+          </div>
+          {(user.graduationCost ?? 0) === 0 ? (
+            <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
+          ) : (
+            <p className="text-[10px] text-stone-400 mt-1 text-center">Valor definido pela coordenação</p>
+          )}
+        </div>
       </div>
 
       {/* --- UNIFORM VIEW --- */}
