@@ -1263,7 +1263,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
     }, [managedUsers, studentGrades]);
 
-    const filteredPayments = monthlyPayments.filter(p => paymentFilter === 'all' ? true : p.status === paymentFilter);
+    const filteredMonthlyPayments = monthlyPayments.filter(p => (!p.type || p.type === 'Mensalidade') && (paymentFilter === 'all' ? true : p.status === paymentFilter));
+    const evaluationPayments = monthlyPayments.filter(p => p.type === 'evaluation' && (paymentFilter === 'all' ? true : p.status === paymentFilter));
     const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
     const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
 
@@ -1322,28 +1323,28 @@ export const DashboardAdmin: React.FC<Props> = ({
             </div>
 
             {/* Graduation and Evaluation Card */}
-            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col md:flex-row gap-4">
-                <div className="flex-1 w-full bg-stone-900 rounded-lg p-4 border-l-4 overflow-hidden relative">
+            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col items-center justify-center space-y-4">
+                <div className="w-full max-w-sm bg-stone-900 rounded-lg p-6 border-l-4 overflow-hidden relative flex flex-col items-center text-center">
                     <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
                     {beltColors.pontaColor && (
                         <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
                     )}
-                    <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
-                    <p className="text-lg font-bold text-white flex items-center gap-2">
-                        <Award className="text-orange-500" />
+                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Graduação Atual</p>
+                    <p className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+                        <Award className="text-orange-500" size={24} />
                         {user.belt || 'Cordel Cinza'}
                     </p>
                 </div>
 
                 {/* Evaluation Info (consolidated) */}
-                <div className="flex-1 w-full bg-green-900/20 rounded-lg p-4 border border-green-900/50">
-                    <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center gap-1">
-                        <GraduationCap size={14} /> Próxima Avaliação
+                <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
+                    <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                        <GraduationCap size={16} /> Próxima Avaliação
                     </p>
-                    <div className="flex items-center gap-3">
-                        <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                         {user.nextEvaluationDate && (
-                            <span className="text-xs text-stone-400 border-l border-stone-600 pl-3">
+                            <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
                                 Data: <span className="text-green-400">{new Date(user.nextEvaluationDate).toLocaleDateString()}</span>
                             </span>
                         )}
@@ -2186,7 +2187,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-stone-700 text-sm">
-                                        {filteredPayments.map((payment) => (
+                                        {filteredMonthlyPayments.map((payment) => (
                                             <tr key={payment.id} className="hover:bg-stone-700/30">
                                                 <td className="p-4 font-medium text-white">{payment.student_name}</td>
                                                 <td className="p-4 text-stone-300">{payment.month}</td>
@@ -2209,7 +2210,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="p-4"> {/* Proof Column */}
+                                                <td className="p-4">
                                                     {payment.proof_url ? (
                                                         <button
                                                             onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
@@ -2251,80 +2252,83 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         ))}
                                     </tbody>
                                 </table>
-                                {filteredPayments.length === 0 && (
-                                    <div className="text-center py-8 text-stone-500">Nenhum registro encontrado.</div>
+                                {filteredMonthlyPayments.length === 0 && (
+                                    <div className="text-center py-8 text-stone-500">Nenhum registro encontrado em Mensalidades.</div>
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-stone-800 p-6 rounded-xl border border-stone-700 mt-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <GraduationCap className="text-purple-500" />
-                                Gerenciamento de Avaliações
-                            </h2>
+                    {/* NEW SECTION: AVALIAÇÕES PANEL (FINANCIAL RECORDS) */}
+                    <div className="bg-stone-800 rounded-2xl border border-stone-700 mt-6 overflow-hidden shadow-xl">
+                        <div className="p-6 border-b border-stone-700/50 bg-purple-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-500">
+                                    <GraduationCap size={28} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-white tracking-tight">Pagamentos de Avaliações</h2>
+                            </div>
                         </div>
-                        <p className="text-stone-400 text-sm mb-4">Controle os custos e geração de boletos para trocas de graduação.</p>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Usuário</th>
-                                        <th className="p-4">Graduação Atual</th>
-                                        <th className="p-4">Custo Padrão</th>
-                                        <th className="p-4 text-right">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-stone-700 text-sm">
-                                    {managedUsers
-                                        .filter(u => ['aluno', 'professor', 'admin'].includes(u.role))
-                                        .map(student => (
-                                            <tr key={student.id} className="hover:bg-stone-700/30">
-                                                <td className="p-4 font-medium text-white">{student.nickname || student.name}</td>
-                                                <td className="p-4 text-stone-300">{student.belt || 'Sem Cordel'}</td>
-                                                <td className="p-4 text-white font-mono">R$ {(student.graduationCost ?? 0).toFixed(2).replace('.', ',')}</td>
+
+                        <div className="p-6">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
+                                            <th className="p-4">Aluno</th>
+                                            <th className="p-4">Identificador</th>
+                                            <th className="p-4">Vencimento</th>
+                                            <th className="p-4">Valor</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4 text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-stone-700 text-sm">
+                                        {evaluationPayments.map((payment) => (
+                                            <tr key={payment.id} className="hover:bg-stone-700/30">
+                                                <td className="p-4 font-medium text-white">{payment.student_name}</td>
+                                                <td className="p-4 text-stone-300">{payment.month}</td>
+                                                <td className="p-4 text-stone-300">{payment.due_date}</td>
+                                                <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
+                                                <td className="p-4">
+                                                    {payment.status === 'paid' && (
+                                                        <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                                            <CheckCircle size={12} /> Pago
+                                                        </span>
+                                                    )}
+                                                    {payment.status === 'pending' && (
+                                                        <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
+                                                            <Clock size={12} /> Pendente
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td className="p-4 text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            className="text-xs h-8"
-                                                            variant="secondary"
-                                                            onClick={() => {
-                                                                setEvalModalStudent(student);
-                                                                setEvalModalAmount((student.graduationCost ?? 0).toString());
-                                                                // Default due date: 15 days from now
-                                                                const dueDate = new Date();
-                                                                dueDate.setDate(dueDate.getDate() + 15);
-                                                                setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
-                                                                setShowEvalModal(true);
-                                                            }}
-                                                        >
-                                                            Gerar Boleto
-                                                        </Button>
-                                                        {(student.graduationCost ?? 0) > 0 && (
+                                                        {payment.status !== 'paid' && (
                                                             <button
-                                                                onClick={async () => {
-                                                                    if (!confirm(`Limpar custo de avaliação de ${student.nickname || student.name}?`)) return;
-                                                                    try {
-                                                                        await supabase.from('profiles').update({ graduation_cost: 0, next_evaluation_date: null }).eq('id', student.id);
-                                                                        onNotifyAdmin(`Limpou custo de avaliação de ${student.nickname || student.name}`, user);
-                                                                        alert('Custo de avaliação limpo com sucesso!');
-                                                                    } catch (err: any) {
-                                                                        alert('Erro ao limpar custo: ' + err.message);
-                                                                    }
-                                                                }}
-                                                                className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                                title="Limpar custo de avaliação"
+                                                                onClick={() => handleMarkAsPaid(payment.id)}
+                                                                className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
                                                             >
-                                                                <Trash2 size={14} />
+                                                                Confirmar
                                                             </button>
                                                         )}
+                                                        <button
+                                                            onClick={() => handleDeletePayment(payment.id)}
+                                                            className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
+                                                            title="Excluir"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         ))}
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                                {evaluationPayments.length === 0 && (
+                                    <div className="text-center py-8 text-stone-500 italic">Nenhum registro de pagamento de avaliação encontrado.</div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -2698,29 +2702,40 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         </div>
                                                     ) : (
                                                         <div className="flex flex-col gap-1 group">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs text-stone-400 w-8">Valor:</span>
-                                                                <span className={`${u.graduationCost !== undefined && u.graduationCost > 0 ? 'text-green-400 font-bold' : 'text-stone-500 italic'}`}>
-                                                                    {u.graduationCost !== undefined ? `R$ ${u.graduationCost.toFixed(2).replace('.', ',')}` : 'ND'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-xs text-stone-400 w-8">Data:</span>
-                                                                <span className={`${u.nextEvaluationDate ? 'text-white' : 'text-stone-500 italic'}`}>
-                                                                    {u.nextEvaluationDate ? new Date(u.nextEvaluationDate).toLocaleDateString() : 'ND'}
-                                                                </span>
+                                                            <p className="font-bold text-white flex items-center gap-1">
+                                                                R$ {(u.graduationCost ?? 0).toFixed(2).replace('.', ',')}
                                                                 <button
                                                                     onClick={() => {
                                                                         setEditingGradCostId(u.id);
-                                                                        setEditingGradCostValue(u.graduationCost?.toString() || '0');
-                                                                        setEditingEvaluationDate(u.nextEvaluationDate || '');
+                                                                        setEditingGradCostValue((u.graduationCost ?? 0).toString());
+                                                                        setEditingEvaluationDate(u.nextEvaluationDate || today);
                                                                     }}
-                                                                    className="opacity-0 group-hover:opacity-100 text-stone-500 hover:text-blue-500 transition-opacity p-1 rounded ml-auto"
-                                                                    title="Editar Avaliação"
+                                                                    className="text-stone-500 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 >
                                                                     <Edit2 size={12} />
                                                                 </button>
-                                                            </div>
+                                                            </p>
+                                                            {u.nextEvaluationDate ? (
+                                                                <p className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30">
+                                                                    {new Date(u.nextEvaluationDate).toLocaleDateString()}
+                                                                </p>
+                                                            ) : (
+                                                                <p className="text-[10px] text-stone-500 italic">S/ Data</p>
+                                                            )}
+                                                            {/* Button to generate the boleto directly from here */}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEvalModalStudent(u);
+                                                                    setEvalModalAmount((u.graduationCost ?? 0).toString());
+                                                                    const dueDate = new Date();
+                                                                    dueDate.setDate(dueDate.getDate() + 15);
+                                                                    setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
+                                                                    setShowEvalModal(true);
+                                                                }}
+                                                                className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 font-bold"
+                                                            >
+                                                                <Plus size={10} /> Gerar Boleto
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </td>

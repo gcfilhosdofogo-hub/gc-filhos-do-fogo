@@ -590,20 +590,32 @@ export const DashboardProfessor: React.FC<Props> = ({
         </a>
       </div>
 
-      <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-        <div className="w-full bg-stone-900 rounded-lg p-4 mb-4 border-l-4 overflow-hidden relative">
+      <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col items-center justify-center space-y-4">
+        <div className="w-full max-w-sm bg-stone-900 rounded-lg p-6 border-l-4 overflow-hidden relative flex flex-col items-center text-center">
           <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
           {beltColors.pontaColor && (
             <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
           )}
-          <p className="text-xs text-stone-500 uppercase tracking-wider">Graduação Atual</p>
-          <p className="text-lg font-bold text-white flex items-center justify-center gap-2">
-            <Award className="text-orange-500" />
+          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Graduação Atual</p>
+          <p className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+            <Award className="text-orange-500" size={24} />
             {user.belt || 'Cordel Cinza'}
           </p>
         </div>
 
-
+        <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
+          <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+            <GraduationCap size={16} /> Próxima Avaliação
+          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+            {user.nextEvaluationDate && (
+              <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
+                Data: <span className="text-green-400">{new Date(user.nextEvaluationDate).toLocaleDateString()}</span>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* --- UNIFORM VIEW --- */}
@@ -889,14 +901,6 @@ export const DashboardProfessor: React.FC<Props> = ({
                 {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
                 {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX (Eventos/Avaliação)'}
               </Button>
-
-              <div className="bg-stone-900 p-3 rounded mb-6 border border-stone-700">
-                <p className="text-stone-300 text-sm font-semibold mb-2">Próxima Avaliação</p>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-stone-400 text-xs">Data: {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString() : 'Não definida'}</span>
-                  <span className="text-white font-bold">R$ {(user.graduationCost || 0).toFixed(2).replace('.', ',')}</span>
-                </div>
-              </div>
 
               <h4 className="text-sm font-bold text-white mb-2">Avaliações</h4>
               <div className="space-y-3 mb-6">
@@ -1214,24 +1218,6 @@ export const DashboardProfessor: React.FC<Props> = ({
       {/* --- DEFAULT DASHBOARD --- */}
       {profView === 'dashboard' && (
         <div className="space-y-6">
-          {/* Graduation Cost Alert for Professor */}
-          {/* MODIFIED: Always show graduationCost, default to 0 if undefined */}
-          <div className="bg-green-900/30 border border-green-800 rounded-xl p-4 mb-4 animate-pulse">
-            <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-1 flex items-center justify-center gap-1">
-              <GraduationCap size={12} /> Próxima Avaliação
-            </p>
-            <div className="text-center">
-              <p className="text-xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
-              {user.nextEvaluationDate && (
-                <p className="text-sm font-semibold text-green-400 mt-1">Data: {new Date(user.nextEvaluationDate).toLocaleDateString()}</p>
-              )}
-            </div>
-            {(user.graduationCost ?? 0) === 0 ? (
-              <p className="text-[10px] text-stone-400 mt-1 text-center">Custo definido pela coordenação (Gratuito)</p>
-            ) : (
-              <p className="text-[10px] text-stone-400 mt-1 text-center">Valor definido pela coordenação</p>
-            )}
-          </div>
 
           <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
             <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
