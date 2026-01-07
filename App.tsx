@@ -762,10 +762,14 @@ function AppContent() {
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings} // Professor can see all home trainings
-              eventRegistrations={eventRegistrations} // Professor can see all event registrations
+              eventRegistrations={eventRegistrations} // Professor sees their own registrations (due to fetchData logic)
               onAddStudentGrade={handleAddStudentGrade}
               studentGrades={studentGrades}
               onAddAttendance={handleAddAttendance}
+              monthlyPayments={monthlyPayments.filter(p => p.student_id === user.id)} // Pass professor's payments
+              onUpdatePaymentRecord={handleUpdatePaymentRecord}
+              onUpdateOrderWithProof={handleUpdateOrderWithProof} // Reuse order proof logic if needed
+              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof} // For event payment proofs
             />
           )}
           {user.role === 'admin' && (

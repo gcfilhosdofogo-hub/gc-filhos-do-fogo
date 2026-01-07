@@ -333,10 +333,31 @@ export const DashboardAdmin: React.FC<Props> = ({
     const financialMovements = useMemo(() => {
         const movements: any[] = [];
 
+        const formatDatePTBR = (isoString: string | null | undefined): string => {
+            if (!isoString) return '-';
+            // Check if already in DD/MM/YYYY format
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
+
+            try {
+                const date = new Date(isoString);
+                // Adjust for timezone offset if it's a pure date string (YYYY-MM-DD) to prevent off-by-one error
+                // However, new Date('YYYY-MM-DD') is UTC, and toLocaleDateString uses local. 
+                // A safer simple parse for YYYY-MM-DD:
+                if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
+                    const [y, m, d] = isoString.split('-');
+                    return `${d}/${m}/${y}`;
+                }
+
+                return date.toLocaleDateString('pt-BR');
+            } catch (e) {
+                return isoString;
+            }
+        };
+
         // Monthly Payments
         monthlyPayments.forEach(p => {
             movements.push({
-                date: p.status === 'paid' ? p.paid_at || '-' : p.due_date,
+                date: p.status === 'paid' ? formatDatePTBR(p.paid_at) : formatDatePTBR(p.due_date),
                 description: `Mensalidade - ${p.month}`,
                 student: p.student_name,
                 type: 'Mensalidade',
@@ -348,7 +369,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         // Uniform Orders
         uniformOrders.forEach(o => {
             movements.push({
-                date: o.date,
+                date: formatDatePTBR(o.date),
                 description: `Uniforme - ${o.item}`,
                 student: o.user_name,
                 type: 'Uniforme',
@@ -359,8 +380,12 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         // Event Registrations
         eventRegistrations.forEach(reg => {
+            // Try to find the event start date
+            const linkedEvent = events.find(e => e.id === reg.event_id);
+            const dateDisplay = linkedEvent ? formatDatePTBR(linkedEvent.date) : '-'; // Events have a date string
+
             movements.push({
-                date: '-',
+                date: dateDisplay,
                 description: `Evento - ${reg.event_title}`,
                 student: reg.user_name,
                 type: 'Evento',
@@ -370,23 +395,20 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
 
         return movements.sort((a, b) => {
-            if (!a.date || a.date === '-' || !b.date || b.date === '-') return 0;
-
+            // Helper to parse DD/MM/YYYY for sorting
             const parseDate = (d: string) => {
+                if (d === '-') return 0;
                 if (d.includes('/')) {
-                    const parts = d.split('/');
-                    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+                    const [day, month, year] = d.split('/');
+                    return new Date(`${year}-${month}-${day}`).getTime();
                 }
-                return new Date(d).getTime();
+                return 0;
             };
-
-            const timeB = parseDate(b.date);
-            const timeA = parseDate(a.date);
-
-            if (isNaN(timeB) || isNaN(timeA)) return 0;
-            return timeB - timeA;
+            return parseDate(b.date) - parseDate(a.date); // Sort descending (newest first)
         });
-    }, [monthlyPayments, uniformOrders, eventRegistrations]);
+    }, [monthlyPayments, uniformOrders, eventRegistrations, events]); // Added events dependency
+
+
 
     const handleDownloadFinancialReport = () => {
         const headers = ["Data", "Descrição", "Aluno", "Tipo", "Valor", "Status"];
@@ -2231,57 +2253,59 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <table className="w-full text-left">
                                 <thead>
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Aluno</th>
+                                        <th className="p-4">Usuário</th>
                                         <th className="p-4">Graduação Atual</th>
                                         <th className="p-4">Custo Padrão</th>
                                         <th className="p-4 text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-stone-700 text-sm">
-                                    {managedUsers.map(student => (
-                                        <tr key={student.id} className="hover:bg-stone-700/30">
-                                            <td className="p-4 font-medium text-white">{student.nickname || student.name}</td>
-                                            <td className="p-4 text-stone-300">{student.belt || 'Sem Cordel'}</td>
-                                            <td className="p-4 text-white font-mono">R$ {(student.graduationCost ?? 0).toFixed(2).replace('.', ',')}</td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        className="text-xs h-8"
-                                                        variant="secondary"
-                                                        onClick={() => {
-                                                            setEvalModalStudent(student);
-                                                            setEvalModalAmount((student.graduationCost ?? 0).toString());
-                                                            // Default due date: 15 days from now
-                                                            const dueDate = new Date();
-                                                            dueDate.setDate(dueDate.getDate() + 15);
-                                                            setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
-                                                            setShowEvalModal(true);
-                                                        }}
-                                                    >
-                                                        Gerar Boleto
-                                                    </Button>
-                                                    {(student.graduationCost ?? 0) > 0 && (
-                                                        <button
-                                                            onClick={async () => {
-                                                                if (!confirm(`Limpar custo de avaliação de ${student.nickname || student.name}?`)) return;
-                                                                try {
-                                                                    await supabase.from('profiles').update({ graduation_cost: 0, next_evaluation_date: null }).eq('id', student.id);
-                                                                    onNotifyAdmin(`Limpou custo de avaliação de ${student.nickname || student.name}`, user);
-                                                                    alert('Custo de avaliação limpo com sucesso!');
-                                                                } catch (err: any) {
-                                                                    alert('Erro ao limpar custo: ' + err.message);
-                                                                }
+                                    {managedUsers
+                                        .filter(u => ['aluno', 'professor', 'admin'].includes(u.role))
+                                        .map(student => (
+                                            <tr key={student.id} className="hover:bg-stone-700/30">
+                                                <td className="p-4 font-medium text-white">{student.nickname || student.name}</td>
+                                                <td className="p-4 text-stone-300">{student.belt || 'Sem Cordel'}</td>
+                                                <td className="p-4 text-white font-mono">R$ {(student.graduationCost ?? 0).toFixed(2).replace('.', ',')}</td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            className="text-xs h-8"
+                                                            variant="secondary"
+                                                            onClick={() => {
+                                                                setEvalModalStudent(student);
+                                                                setEvalModalAmount((student.graduationCost ?? 0).toString());
+                                                                // Default due date: 15 days from now
+                                                                const dueDate = new Date();
+                                                                dueDate.setDate(dueDate.getDate() + 15);
+                                                                setEvalModalDueDate(dueDate.toISOString().split('T')[0]);
+                                                                setShowEvalModal(true);
                                                             }}
-                                                            className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                            title="Limpar custo de avaliação"
                                                         >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                            Gerar Boleto
+                                                        </Button>
+                                                        {(student.graduationCost ?? 0) > 0 && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!confirm(`Limpar custo de avaliação de ${student.nickname || student.name}?`)) return;
+                                                                    try {
+                                                                        await supabase.from('profiles').update({ graduation_cost: 0, next_evaluation_date: null }).eq('id', student.id);
+                                                                        onNotifyAdmin(`Limpou custo de avaliação de ${student.nickname || student.name}`, user);
+                                                                        alert('Custo de avaliação limpo com sucesso!');
+                                                                    } catch (err: any) {
+                                                                        alert('Erro ao limpar custo: ' + err.message);
+                                                                    }
+                                                                }}
+                                                                className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
+                                                                title="Limpar custo de avaliação"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
                                 </tbody>
                             </table>
                         </div>
@@ -2310,7 +2334,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                 <div className="space-y-4">
                                     <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                                        <p className="text-stone-400 text-sm">Aluno</p>
+                                        <p className="text-stone-400 text-sm">Usuário</p>
                                         <p className="text-white font-bold text-lg">{evalModalStudent.nickname || evalModalStudent.name}</p>
                                         <p className="text-stone-500 text-xs mt-1">Graduação: {evalModalStudent.belt || 'Sem Cordel'}</p>
                                     </div>

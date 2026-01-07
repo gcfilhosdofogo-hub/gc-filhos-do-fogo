@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle } from 'lucide-react'; // Adicionado Shield, GraduationCap e PlayCircle
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket } from 'lucide-react'; // Adicionado FileUp, Eye, DollarSign, FileText, Ticket
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -25,6 +25,10 @@ interface Props {
   onAddStudentGrade: (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   studentGrades: StudentGrade[];
   onAddAttendance: (records: any[]) => Promise<void>;
+  monthlyPayments: any[]; // Changed to any[] or PaymentRecord[] if imported
+  onUpdatePaymentRecord: (updatedPayment: any) => Promise<void>;
+  onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
+  onUpdateEventRegistrationWithProof: (updatedRegistration: any) => Promise<void>;
 }
 
 interface AssignmentFormState {
@@ -41,7 +45,7 @@ const UNIFORM_PRICES = {
   combo: 110
 };
 
-type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades';
+type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial';
 
 export const DashboardProfessor: React.FC<Props> = ({
   user,
@@ -62,6 +66,11 @@ export const DashboardProfessor: React.FC<Props> = ({
   onAddStudentGrade,
   studentGrades,
   onAddAttendance,
+  monthlyPayments,
+  onUpdatePaymentRecord,
+  onUpdateOrderWithProof,
+  onUpdateEventRegistrationWithProof,
+  eventRegistrations, // Add this
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Use real class sessions
@@ -103,6 +112,75 @@ export const DashboardProfessor: React.FC<Props> = ({
     musicality: { written: '', numeric: '' },
   });
   const [savingGrades, setSavingGrades] = useState(false);
+
+  // Financial & Uploads
+  const [uploadingPaymentProof, setUploadingPaymentProof] = useState(false);
+  const [uploadingEventProof, setUploadingEventProof] = useState(false);
+  const [selectedPaymentToProof, setSelectedPaymentToProof] = useState<any | null>(null);
+  const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<any | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const eventFileInputRef = useRef<HTMLInputElement>(null);
+
+  const myMonthlyPayments = monthlyPayments || []; // Already filtered in App.tsx
+  const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.user_id === user.id) : [];
+
+  const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) return;
+    const file = e.target.files[0];
+    setUploadingPaymentProof(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/payment_proofs/${selectedPaymentToProof.id}_${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('payment_proofs').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(filePath);
+
+      await onUpdatePaymentRecord({
+        ...selectedPaymentToProof,
+        status: 'pending', // Keeps pending until admin confirms, but now has proof
+        proof_url: publicUrl,
+        proof_name: file.name
+      });
+      alert('Comprovante enviado com sucesso!');
+      setSelectedPaymentToProof(null);
+    } catch (error: any) {
+      console.error('Error uploading proof:', error);
+      alert('Erro ao enviar comprovante: ' + error.message);
+    } finally {
+      setUploadingPaymentProof(false);
+    }
+  };
+
+  const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedEventRegToProof) return;
+    const file = e.target.files[0];
+    setUploadingEventProof(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/payment_proofs/${selectedEventRegToProof.id}_event_${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('payment_proofs').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('payment_proofs').getPublicUrl(filePath);
+
+      await onUpdateEventRegistrationWithProof({
+        ...selectedEventRegToProof,
+        proof_url: publicUrl,
+        proof_name: file.name
+      });
+      alert('Comprovante de evento enviado com sucesso!');
+      setSelectedEventRegToProof(null);
+    } catch (error: any) {
+      console.error('Error uploading event proof:', error);
+      alert('Erro ao enviar comprovante: ' + error.message);
+    } finally {
+      setUploadingEventProof(false);
+    }
+  };
+
+  const handleViewPaymentProof = (url: string, name: string) => {
+    window.open(url, '_blank');
+  };
+
 
   // State for students managed by this professor
   const [myStudents, setMyStudents] = useState<User[]>([]);
@@ -496,6 +574,9 @@ export const DashboardProfessor: React.FC<Props> = ({
             <PlusCircle size={18} /> Nova Aula
           </Button>
         )}
+        <Button onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
+          <Wallet size={18} /> Financeiro
+        </Button>
         <Button variant="outline" onClick={handleCopyPix} className={pixCopied ? "border-green-500 text-green-500" : ""} title="PIX Mensalidade">
           {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />}
           {pixCopied ? 'Copiado!' : 'Mensalidade'}
@@ -703,6 +784,176 @@ export const DashboardProfessor: React.FC<Props> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* --- FINANCIAL VIEW --- */}
+      {profView === 'financial' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar ao Painel</button>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Monthly Payments */}
+            <div className="bg-stone-900/50 p-4 rounded-xl border border-stone-700">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Wallet className="text-green-500" />
+                Minhas Mensalidades
+              </h3>
+              <div className="mb-4">
+                <Button
+                  fullWidth
+                  variant="outline"
+                  onClick={handleCopyPix}
+                  className={pixCopied ? "border-green-500 text-green-500" : ""}
+                >
+                  {pixCopied ? <Check size={18} /> : <Copy size={18} />}
+                  {pixCopied ? 'Chave Copiada!' : 'PIX Mensalidade'}
+                </Button>
+                <p className="text-xs text-stone-500 mt-2 text-center">soufilhodofogo@gmail.com</p>
+              </div>
+              <div className="space-y-3">
+                {myMonthlyPayments.length > 0 ? (
+                  myMonthlyPayments.map(payment => (
+                    <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                      <div>
+                        <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                        <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        {payment.status === 'paid' && (
+                          <span className="text-green-400 text-xs flex items-center gap-1">
+                            <Check size={12} /> Pago
+                          </span>
+                        )}
+                        {payment.status === 'pending' && !payment.proof_url && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              className="text-xs h-auto px-2 py-1"
+                              onClick={() => {
+                                setSelectedPaymentToProof(payment);
+                                fileInputRef.current?.click();
+                              }}
+                              disabled={uploadingPaymentProof}
+                            >
+                              {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
+                            </Button>
+                            <input
+                              type="file"
+                              accept="image/*, application/pdf"
+                              className="hidden"
+                              ref={fileInputRef}
+                              onChange={handleFileChangeForPaymentProof}
+                              disabled={uploadingPaymentProof}
+                            />
+                          </>
+                        )}
+                        {payment.status === 'pending' && payment.proof_url && (
+                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                            <Clock size={12} /> Enviado
+                          </span>
+                        )}
+                        {payment.proof_url && (
+                          <button
+                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Ver
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Events & Costs */}
+            <div className="bg-stone-900/50 p-4 rounded-xl border border-stone-700">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Ticket className="text-purple-500" />
+                Eventos e Avaliações
+              </h3>
+              <Button
+                fullWidth
+                variant="outline"
+                onClick={handleCopyCostPix}
+                className={costPixCopied ? "border-green-500 text-green-500 mb-4" : "mb-4"}
+              >
+                {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
+                {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX (Eventos/Avaliação)'}
+              </Button>
+
+              <div className="bg-stone-900 p-3 rounded mb-6 border border-stone-700">
+                <p className="text-stone-300 text-sm font-semibold mb-2">Próxima Avaliação</p>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-stone-400 text-xs">Data: {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString() : 'Não definida'}</span>
+                  <span className="text-white font-bold">R$ {(user.graduationCost || 0).toFixed(2).replace('.', ',')}</span>
+                </div>
+              </div>
+
+              <h4 className="text-sm font-bold text-white mb-2">Inscrições em Eventos</h4>
+              <div className="space-y-3">
+                {myEventRegistrations.length > 0 ? (
+                  myEventRegistrations.map(reg => (
+                    <div key={reg.id} className={`bg-stone-900 p-3 rounded border-l-2 ${reg.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                      <div>
+                        <p className="font-bold text-white text-sm">{reg.event_title}</p>
+                        <p className="text-stone-500 text-xs">R$ {reg.amount_paid.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        {reg.status === 'paid' && (
+                          <span className="text-green-400 text-xs flex items-center gap-1">
+                            <Check size={12} /> Pago
+                          </span>
+                        )}
+                        {reg.status === 'pending' && !reg.proof_url && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              className="text-xs h-auto px-2 py-1"
+                              onClick={() => {
+                                setSelectedEventRegToProof(reg);
+                                eventFileInputRef.current?.click();
+                              }}
+                              disabled={uploadingEventProof}
+                            >
+                              {uploadingEventProof && selectedEventRegToProof?.id === reg.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
+                            </Button>
+                            <input
+                              type="file"
+                              accept="image/*, application/pdf"
+                              className="hidden"
+                              ref={eventFileInputRef}
+                              onChange={handleFileChangeForEventProof}
+                              disabled={uploadingEventProof}
+                            />
+                          </>
+                        )}
+                        {reg.status === 'pending' && reg.proof_url && (
+                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                            <Clock size={12} /> Enviado
+                          </span>
+                        )}
+                        {reg.proof_url && (
+                          <button
+                            onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Ver
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 text-sm italic">Nenhuma inscrição.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
