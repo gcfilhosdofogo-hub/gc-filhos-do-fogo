@@ -1047,7 +1047,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
         const student = managedUsers.find(u => u.id === newPaymentForm.studentId);
         if (!student) {
-            alert('Aluno não encontrado.');
+            alert('Usuário não encontrado.');
             return;
         }
 
@@ -4040,7 +4040,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                         <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                             <div>
-                                <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Aluno</label>
+                                <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Usuário</label>
                                 <select
                                     id="student"
                                     name="student"
@@ -4049,9 +4049,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                     required
                                 >
-                                    <option value="">Selecione um aluno</option>
-                                    {managedUsers.filter(u => u.role === 'aluno').map(u => (
-                                        <option key={u.id} value={u.id}>{u.nickname || u.name}</option>
+                                    <option value="">Selecione um usuário</option>
+                                    {managedUsers.filter(u => ['aluno', 'professor', 'admin'].includes(u.role)).map(u => (
+                                        <option key={u.id} value={u.id}>{u.nickname || u.name} ({u.role})</option>
                                     ))}
                                 </select>
                             </div>
