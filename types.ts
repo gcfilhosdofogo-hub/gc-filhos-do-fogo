@@ -123,7 +123,8 @@ export interface StudentAcademicData {
   studentId: string;
   studentName: string;
   attendanceRate: number; // 0-100
-  technicalGrade: number; // 0-10
+  theoryGrade: number; // 0-10
+  movementGrade: number; // 0-10
   musicalityGrade: number; // 0-10
   lastEvaluation: string;
   graduationCost?: number; // Custo definido pelo admin para este aluno específico

@@ -200,10 +200,10 @@ export const DashboardAdmin: React.FC<Props> = ({
     // State for manual installment (parcelado)
     const [showInstallmentModal, setShowInstallmentModal] = useState(false);
     const [installmentStudent, setInstallmentStudent] = useState<User | null>(null);
-    const [installmentAmount, setInstallmentAmount] = useState<string>('');
+    const [installmentCount, setInstallmentCount] = useState<number>(1);
     const [installmentDueDate, setInstallmentDueDate] = useState<string>('');
     const today = new Date().toISOString().split('T')[0];
-    const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name));
+    const studentsForAttendance = (managedUsers || []).filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name));
 
     const formatDatePTBR = (isoString: string | null | undefined): string => {
         if (!isoString) return '-';
@@ -236,8 +236,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [classPhoto, setClassPhoto] = useState<string | null>(null);
     const [pixCopied, setPixCopied] = useState(false);
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
+    const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; url: string }>({ title: '', category: 'theory', lyrics: '', url: '' });
     const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
-    const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; file: File | null }>({ title: '', category: 'theory', lyrics: '', file: null });
     const [evalData, setEvalData] = useState({ positive: '', negative: '' });
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [studentName, setStudentName] = useState('');
@@ -557,7 +557,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleDownloadPedagogicalReport = () => {
-        const headers = ["Professor", "Aluno", "Presença", "Nota Técnica", "Musicalidade", "Última Avaliação", "Custo Graduação (R$)"];
+        const headers = ["Professor", "Aluno", "Presença", "Teórica", "Movimentação", "Musicalidade", "Última Avaliação", "Custo Graduação (R$)"];
         const rows: string[] = [];
 
         professorsData.forEach(prof => {
@@ -566,7 +566,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                     prof.professorName,
                     s.studentName,
                     `${s.attendanceRate}%`,
-                    (s.technicalGrade || 0).toFixed(1).replace('.', ','),
+                    (s.theoryGrade || 0).toFixed(1).replace('.', ','),
+                    (s.movementGrade || 0).toFixed(1).replace('.', ','),
                     (s.musicalityGrade || 0).toFixed(1).replace('.', ','),
                     s.lastEvaluation || 'S/A',
                     (s.graduationCost || 0).toFixed(2).replace('.', ',')
@@ -1067,55 +1068,73 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleCreateInstallment = async () => {
-        const amount = parseFloat(installmentAmount);
-        if (isNaN(amount) || amount <= 0) {
-            alert('Por favor, insira um valor válido.');
-            return;
-        }
-        if (!installmentDueDate) {
-            alert('Por favor, selecione a data de vencimento.');
-            return;
-        }
         if (!installmentStudent) return;
+        const totalAmount = installmentStudent.graduationCost || 0;
 
-        // 1. Create the payment record as 'evaluation' type
-        await onAddPaymentRecord({
-            student_id: installmentStudent.id,
-            student_name: installmentStudent.nickname || installmentStudent.name,
-            month: `Parcela Avaliação - ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
-            due_date: installmentDueDate,
-            amount: amount,
-            status: 'pending',
-            type: 'evaluation'
-        });
-
-        // 2. Update the profile to deduct the amount from total graduation cost
-        const currentCost = installmentStudent.graduationCost || 0;
-        const remainingCost = Math.max(0, currentCost - amount);
-
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-                graduation_cost: remainingCost
-            })
-            .eq('id', installmentStudent.id);
-
-        if (updateError) {
-            console.error('Error updating profile graduation cost:', updateError);
-            alert('Boleto gerado, mas erro ao atualizar saldo devedor.');
-        } else {
-            setManagedUsers(prev => prev.map(u =>
-                u.id === installmentStudent.id
-                    ? { ...u, graduationCost: remainingCost }
-                    : u
-            ));
-            alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado! Saldo restante: R$ ${remainingCost.toFixed(2).replace('.', ',')}`);
+        if (totalAmount <= 0) {
+            alert('Este aluno não possui saldo devedor para parcelar.');
+            return;
         }
 
-        setShowInstallmentModal(false);
-        setInstallmentStudent(null);
-        setInstallmentAmount('');
-        setInstallmentDueDate('');
+        if (!installmentDueDate) {
+            alert('Por favor, selecione a data de vencimento da primeira parcela.');
+            return;
+        }
+
+        const installmentValue = totalAmount / installmentCount;
+        const baseDate = new Date(installmentDueDate + 'T12:00:00'); // Prevent timezone shift
+
+        try {
+            // Create N installment records
+            for (let i = 0; i < installmentCount; i++) {
+                const dueDate = new Date(baseDate);
+                dueDate.setMonth(dueDate.getMonth() + i);
+
+                await onAddPaymentRecord({
+                    student_id: installmentStudent.id,
+                    student_name: installmentStudent.nickname || installmentStudent.name,
+                    month: `Parcela ${i + 1}/${installmentCount} - Avaliação`,
+                    due_date: dueDate.toISOString().split('T')[0],
+                    amount: installmentValue,
+                    status: 'pending',
+                    type: 'evaluation'
+                });
+            }
+
+            // Update profile to clear "unbilled" graduation cost, as it's now billed in installments
+            // OR we can keep it and reduce it as they pay. 
+            // The user requested: "tendo o valor do total em aberto como referencia".
+            // Typically, if we generate boletos, we might want toゼロ out the "unbilled" cost or leave it?
+            // Existing logic zeroed/reduced it. Let's set it to 0 as it's now fully "billed" via installments.
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    graduation_cost: 0 // Assumes now it's all in payment slips
+                })
+                .eq('id', installmentStudent.id);
+
+            if (updateError) {
+                console.error('Error updating profile graduation cost:', updateError);
+                alert('Boletos gerados, mas erro ao atualizar saldo devedor no perfil.');
+            } else {
+                setManagedUsers(prev => prev.map(u =>
+                    u.id === installmentStudent.id
+                        ? { ...u, graduationCost: 0 }
+                        : u
+                ));
+                alert(`${installmentCount} parcelas de R$ ${installmentValue.toFixed(2).replace('.', ',')} geradas com sucesso!`);
+            }
+
+            setShowInstallmentModal(false);
+            setInstallmentStudent(null);
+            setInstallmentCount(1);
+            setInstallmentDueDate('');
+
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao gerar parcelas.');
+        }
     };
 
     const handleUpdateEventRegistration = async (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => {
@@ -1166,13 +1185,16 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleSaveAttendance = async () => {
         if (!selectedClassId) return;
 
-        const records = Object.entries(attendanceData).map(([studentId, isPresent]) => ({
-            session_id: selectedClassId,
-            student_id: studentId,
-            status: isPresent ? 'present' : 'absent',
-            justification: !isPresent ? justifications[studentId] : null,
-            professor_id: user.id
-        }));
+        const records = studentsForAttendance.map(student => {
+            const isPresent = !!attendanceData[student.id];
+            return {
+                session_id: selectedClassId,
+                student_id: student.id,
+                status: isPresent ? 'present' : 'absent',
+                justification: !isPresent ? justifications[student.id] : null,
+                professor_id: user.id
+            };
+        });
 
         try {
             await onAddAttendance(records);
@@ -1243,38 +1265,9 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const handleSubmitMusic = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!musicForm.title || (!musicForm.lyrics && !musicForm.file)) {
-            alert('Por favor, preencha o título e a letra ou faça upload de um arquivo.');
+        if (!musicForm.title || !musicForm.url) {
+            alert('Por favor, preencha o título e a URL da música.');
             return;
-        }
-
-        setUploadingMusicFile(true);
-        let fileUrl: string | undefined;
-
-        if (musicForm.file && session) {
-            try {
-                const file = musicForm.file;
-                const fileExt = file.name.split('.').pop();
-                const filePath = `${session.user.id}/music_files/${Date.now()}.${fileExt}`;
-
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('music_files')
-                    .upload(filePath, file);
-
-                if (uploadError) throw uploadError;
-
-                const { data: publicUrlData } = supabase.storage
-                    .from('music_files')
-                    .getPublicUrl(filePath);
-
-                fileUrl = publicUrlData.publicUrl;
-
-            } catch (error: any) {
-                console.error('Error uploading music file:', error);
-                alert('Erro ao fazer upload do arquivo de música: ' + error.message);
-                setUploadingMusicFile(false);
-                return;
-            }
         }
 
         onAddMusic({
@@ -1282,11 +1275,11 @@ export const DashboardAdmin: React.FC<Props> = ({
             title: musicForm.title,
             category: musicForm.category,
             lyrics: musicForm.lyrics,
-            file_url: fileUrl
+            file_url: musicForm.url
         });
+
         onNotifyAdmin(`Admin adicionou nova música: ${musicForm.title}`, user);
-        setMusicForm({ title: '', category: '', lyrics: '', file: null });
-        setUploadingMusicFile(false);
+        setMusicForm({ title: '', category: 'theory', lyrics: '', url: '' }); // Reset default category to theory or empty
         alert('Música adicionada!');
     };
 
@@ -1413,7 +1406,9 @@ export const DashboardAdmin: React.FC<Props> = ({
         try {
             const ext = file.name.split('.').pop();
             const filePath = `${user.id}/class_records/${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file);
+            const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file, {
+                upsert: true
+            });
             if (uploadError) throw uploadError;
             const { data: pub } = supabase.storage.from('class_records').getPublicUrl(filePath);
 
@@ -1432,7 +1427,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             setClassPhoto(null); // Clear preview after successful upload
         } catch (err: any) {
             console.error('Error uploading class record:', err);
-            alert('Erro ao enviar registro de aula: ' + err.message);
+            alert('Erro ao enviar registro de aula: ' + (err.message || err.error_description || 'Erro desconhecido'));
             setClassPhoto(null); // Clear preview on error
         }
     };
@@ -1487,19 +1482,20 @@ export const DashboardAdmin: React.FC<Props> = ({
 
             const studentsData: StudentAcademicData[] = profStudents.map(s => {
                 const sGrades = studentGrades.filter(g => g.student_id === s.id);
-                const techGrade = sGrades.find(g => g.category === 'movement')?.numeric || 0;
+                // Extract specific grades
+                const theoryGrade = sGrades.find(g => g.category === 'theory')?.numeric || 0;
+                const movementGrade = sGrades.find(g => g.category === 'movement')?.numeric || 0;
+                const musicalityGrade = sGrades.find(g => g.category === 'musicality')?.numeric || 0;
+
                 return {
                     studentId: s.id,
                     studentName: s.nickname || s.name,
                     attendanceRate: 85, // Mock data or derive from attendance table if available
-                    technicalGrade: techGrade,
-                    musicalityGrade: sGrades.find(g => g.category === 'musicality')?.numeric || 0,
-                    lastEvaluation: sGrades.sort((a, b) => {
-                        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                        return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
-                    })[0]?.written || 'S/A',
-                    graduationCost: s.graduationCost || 0,
+                    theoryGrade: Number(theoryGrade),
+                    movementGrade: Number(movementGrade),
+                    musicalityGrade: Number(musicalityGrade),
+                    lastEvaluation: s.nextEvaluationDate ? formatDatePTBR(s.nextEvaluationDate) : '-',
+                    graduationCost: s.graduationCost,
                     phone: s.phone
                 };
             });
@@ -2025,84 +2021,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                     )}
 
-                    {/* ADD PAYMENT MODAL */}
-                    {showAddPaymentModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
-                                <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
-                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                        <PlusCircle className="text-green-500" />
-                                        Adicionar Novo Pagamento
-                                    </h3>
-                                    <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white"><X size={24} /></button>
-                                </div>
-                                <form onSubmit={handleAddPayment} className="space-y-4">
-                                    <div>
-                                        <label htmlFor="studentId" className="block text-sm text-stone-400 mb-1">Aluno</label>
-                                        <select
-                                            id="studentId"
-                                            name="studentId"
-                                            value={newPaymentForm.studentId}
-                                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                            required
-                                        >
-                                            <option value="">Selecione um aluno</option>
-                                            {managedUsers.map(userItem => (
-                                                <option key={userItem.id} value={userItem.id}>{userItem.nickname || userItem.name} ({userItem.role})</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Mês de Referência</label>
-                                        <input
-                                            type="text"
-                                            id="month"
-                                            name="month"
-                                            value={newPaymentForm.month}
-                                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                            placeholder="Ex: Outubro"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Data de Vencimento</label>
-                                        <input
-                                            type="date"
-                                            id="dueDate"
-                                            name="dueDate"
-                                            value={newPaymentForm.dueDate}
-                                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
-                                        <input
-                                            type="number"
-                                            id="amount"
-                                            name="amount"
-                                            value={newPaymentForm.amount}
-                                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                            placeholder="Ex: 100.00"
-                                            min="0"
-                                            step="0.01"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                                        <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
-                                        <Button type="submit">
-                                            <Plus size={18} /> Adicionar Pagamento
-                                        </Button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
+
 
                     {/* EDIT PAYMENT MODAL */}
                     {showEditPaymentModal && editingPayment && (
@@ -3155,8 +3074,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 <tr className="border-b border-stone-700 text-xs text-stone-500">
                                                                     <th className="pb-2">Aluno</th>
                                                                     <th className="pb-2">Presença</th>
-                                                                    <th className="pb-2">Nota Téc.</th>
-                                                                    <th className="pb-2">Observação</th>
+                                                                    <th className="pb-2">Teórica</th>
+                                                                    <th className="pb-2">Moviment.</th>
+                                                                    <th className="pb-2">Musical.</th>
                                                                     <th className="pb-2">Custo Grad. (R$)</th>
                                                                 </tr>
                                                             </thead>
@@ -3184,14 +3104,22 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                             </div>
                                                                             <span className="text-xs text-stone-400">{student.attendanceRate}%</span>
                                                                         </td>
-                                                                        <td className="py-3 text-stone-300">
-                                                                            {Number.isFinite(typeof student.technicalGrade === 'number' ? student.technicalGrade : Number(student.technicalGrade))
-                                                                                ? (typeof student.technicalGrade === 'number' ? student.technicalGrade : Number(student.technicalGrade)).toFixed(1)
-                                                                                : '-'}
-                                                                        </td>
-                                                                        <td className="py-3 text-stone-400 text-xs italic">"{student.lastEvaluation}"</td>
                                                                         <td className="py-3">
-                                                                            {/* This section is now handled in the 'Gerenciar Usuários' tab */}
+                                                                            <span className={`font-bold ${((student.theoryGrade || 0) >= 7) ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                {(student.theoryGrade || 0).toFixed(1)}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="py-3">
+                                                                            <span className={`font-bold ${((student.movementGrade || 0) >= 7) ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                {(student.movementGrade || 0).toFixed(1)}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="py-3">
+                                                                            <span className={`font-bold ${((student.musicalityGrade || 0) >= 7) ? 'text-green-500' : 'text-red-500'}`}>
+                                                                                {(student.musicalityGrade || 0).toFixed(1)}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="py-3">
                                                                             <span className={`${student.graduationCost !== undefined && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
                                                                                 {student.graduationCost !== undefined ? `R$ ${student.graduationCost.toFixed(2).replace('.', ',')}` : '-'}
                                                                             </span>
@@ -3604,31 +3532,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <form onSubmit={handleSubmitMusic} className="space-y-4">
                                             <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                                             <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
+                                            <input type="text" placeholder="URL do Áudio (Ex: YouTube, Spotify, MP3 Direct Link)" value={musicForm.url} onChange={e => setMusicForm({ ...musicForm, url: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
                                             <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
 
-                                            {/* Music File Upload */}
-                                            <div className="border-2 border-dashed border-stone-600 rounded-lg p-4 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
-                                                {uploadingMusicFile ? (
-                                                    <div className="text-center">
-                                                        <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
-                                                        <p className="text-white">Enviando arquivo...</p>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Mic2 size={32} className="text-stone-500 mb-2" />
-                                                        <label className="cursor-pointer">
-                                                            <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
-                                                                {musicForm.file ? musicForm.file.name : 'Selecionar Arquivo de Áudio'}
-                                                            </span>
-                                                            <input type="file" accept="audio/*" className="hidden" onChange={handleMusicFileChange} />
-                                                        </label>
-                                                        <p className="text-xs text-stone-500 mt-2">Opcional: MP3, WAV, etc. Máx 10MB.</p>
-                                                    </>
-                                                )}
-                                            </div>
-
-                                            <Button fullWidth type="submit" disabled={uploadingMusicFile}>
-                                                {uploadingMusicFile ? 'Enviando...' : 'Adicionar Música'}
+                                            <Button fullWidth type="submit">
+                                                Adicionar Música
                                             </Button>
                                         </form>
                                         <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -3715,6 +3623,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <Shirt size={28} className="text-emerald-300" />
                                             <span className="text-sm font-bold">Uniforme</span>
                                             <span className="text-xs text-emerald-200">Pedidos</span>
+                                        </Button>
+                                        <Button onClick={() => setProfView('assignments')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-cyan-900 to-cyan-700 hover:from-cyan-800 hover:to-cyan-600 border border-cyan-500/30">
+                                            <BookOpen size={28} className="text-cyan-300" />
+                                            <span className="text-sm font-bold">Trabalhos</span>
+                                            <span className="text-xs text-cyan-200">Gerenciar</span>
                                         </Button>
                                     </div>
 
@@ -4052,16 +3965,24 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-stone-400 mb-2">Valor da Parcela (R$)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={installmentAmount}
-                                        onChange={(e) => setInstallmentAmount(e.target.value)}
-                                        className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white text-lg font-mono focus:border-blue-500 outline-none"
-                                        placeholder="0,00"
-                                    />
+                                    <label className="block text-sm text-stone-300 mb-2">Opção de Parcelamento</label>
+                                    <div className="flex items-center gap-4">
+                                        <select
+                                            value={installmentCount}
+                                            onChange={(e) => setInstallmentCount(Number(e.target.value))}
+                                            className="flex-1 bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                        >
+                                            {[...Array(12)].map((_, i) => (
+                                                <option key={i + 1} value={i + 1}>{i + 1}x</option>
+                                            ))}
+                                        </select>
+                                        <div className="flex-1 text-right">
+                                            <p className="text-xs text-stone-400">Valor por parcela</p>
+                                            <p className="text-xl font-bold text-white">
+                                                R$ {((installmentStudent.graduationCost || 0) / installmentCount).toFixed(2).replace('.', ',')}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -4085,7 +4006,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         onClick={() => {
                                             setShowInstallmentModal(false);
                                             setInstallmentStudent(null);
-                                            setInstallmentAmount('');
+                                            setInstallmentCount(1);
                                             setInstallmentDueDate('');
                                         }}
                                     >
@@ -4094,16 +4015,98 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <Button
                                         className="flex-1 bg-blue-600 hover:bg-blue-500"
                                         onClick={handleCreateInstallment}
-                                        disabled={!installmentAmount || parseFloat(installmentAmount) <= 0}
+                                        disabled={installmentCount <= 0}
                                     >
-                                        Confirmar Parcela
+                                        Confirmar Parcelamento ({installmentCount}x)
                                     </Button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                )
-            }
+                    </div>
+    )
+}
+{/* ADD PAYMENT MODAL - Global Position */ }
+{
+    showAddPaymentModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <PlusCircle className="text-green-500" />
+                        Adicionar Novo Pagamento
+                    </h3>
+                    <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white">
+                        <X size={24} />
+                    </button>
+                </div>
+                <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                    <div>
+                        <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Aluno</label>
+                        <select
+                            id="student"
+                            name="student"
+                            value={newPaymentForm.studentId}
+                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
+                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                            required
+                        >
+                            <option value="">Selecione um aluno</option>
+                            {managedUsers.filter(u => u.role === 'aluno').map(u => (
+                                <option key={u.id} value={u.id}>{u.nickname || u.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Referência (Mês/Ano)</label>
+                        <input
+                            type="text"
+                            id="month"
+                            name="month"
+                            value={newPaymentForm.month}
+                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
+                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                            placeholder="Ex: Janeiro/2024"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Vencimento</label>
+                        <input
+                            type="date"
+                            id="dueDate"
+                            name="dueDate"
+                            value={newPaymentForm.dueDate}
+                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
+                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
+                        <input
+                            type="number"
+                            id="amount"
+                            name="amount"
+                            value={newPaymentForm.amount}
+                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
+                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                            placeholder="Ex: 100.00"
+                            min="0"
+                            step="0.01"
+                            required
+                        />
+                    </div>
+                    <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
+                        <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                        <Button type="submit">
+                            <Plus size={18} /> Adicionar Pagamento
+                        </Button>
+                    </div>
+                </form>
+            </div>
         </div>
+    )
+}
     );
 };
