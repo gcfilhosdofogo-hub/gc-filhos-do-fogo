@@ -1107,24 +1107,19 @@ export const DashboardAdmin: React.FC<Props> = ({
             // Typically, if we generate boletos, we might want toゼロ out the "unbilled" cost or leave it?
             // Existing logic zeroed/reduced it. Let's set it to 0 as it's now fully "billed" via installments.
 
+            // logic update: User wants to see "1/10" and reduce total as they pay.
+            // So we do NOT zero out the graduationCost. We leave it as the "Original Debt Reference".
+            // The UI will calculate "Remaining" by subtracting PAID installments from this Total.
+            /*
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({
-                    graduation_cost: 0 // Assumes now it's all in payment slips
+                    graduation_cost: 0 
                 })
                 .eq('id', installmentStudent.id);
+            */
 
-            if (updateError) {
-                console.error('Error updating profile graduation cost:', updateError);
-                alert('Boletos gerados, mas erro ao atualizar saldo devedor no perfil.');
-            } else {
-                setManagedUsers(prev => prev.map(u =>
-                    u.id === installmentStudent.id
-                        ? { ...u, graduationCost: 0 }
-                        : u
-                ));
-                alert(`${installmentCount} parcelas de R$ ${installmentValue.toFixed(2).replace('.', ',')} geradas com sucesso!`);
-            }
+            alert(`${installmentCount} parcelas de R$ ${installmentValue.toFixed(2).replace('.', ',')} geradas com sucesso!`);
 
             setShowInstallmentModal(false);
             setInstallmentStudent(null);
@@ -2765,6 +2760,39 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     <Edit2 size={12} />
                                                                 </button>
                                                             </p>
+                                                            {(() => {
+                                                                const userInstallments = monthlyPayments.filter(p => p.student_id === u.id && p.month.includes('Parcela'));
+                                                                const totalInstallments = userInstallments.length;
+
+                                                                if (totalInstallments > 0) {
+                                                                    const paidInstallments = userInstallments.filter(p => p.status === 'paid').length;
+                                                                    // Extract total count from first record string "Parcela X/Y"
+                                                                    const match = userInstallments[0].month.match(/\/(\d+)/);
+                                                                    const maxInstallments = match ? match[1] : totalInstallments;
+
+                                                                    // Calculate remaining debt based on paid installments
+                                                                    const paidAmount = userInstallments
+                                                                        .filter(p => p.status === 'paid')
+                                                                        .reduce((sum, p) => sum + p.amount, 0);
+
+                                                                    const originalDebt = u.graduationCost ?? 0;
+                                                                    const remainingDebt = Math.max(0, originalDebt - paidAmount);
+
+                                                                    return (
+                                                                        <div className="flex flex-col items-start">
+                                                                            <span className="text-[10px] text-blue-400 font-bold">
+                                                                                {paidInstallments}/{maxInstallments} Parcelas
+                                                                            </span>
+                                                                            {paidAmount > 0 && (
+                                                                                <span className="text-[10px] text-stone-400">
+                                                                                    Restante: R$ {remainingDebt.toFixed(2).replace('.', ',')}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
                                                             {u.nextEvaluationDate ? (
                                                                 <p className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30">
                                                                     {formatDatePTBR(u.nextEvaluationDate)}
