@@ -65,7 +65,7 @@ function AppContent() {
     // Fetch Group Events
     const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
     if (eventsError) console.error('Error fetching events:', eventsError);
-    else setEvents(eventsData || []);
+    else setEvents((eventsData || []).filter(ev => ev.status !== 'cancelled'));
 
     // Fetch Music Items
     const { data: musicData, error: musicError } = await supabase.from('music_items').select('*');
@@ -607,6 +607,15 @@ function AppContent() {
     }
   };
 
+  const handleAddClassRecord = async (record: { photo_url: string; created_by: string; description?: string }) => {
+    if (!session) return;
+    const { error } = await supabase.from('class_records').insert(record);
+    if (error) {
+      console.error('Error adding class record:', error);
+      throw error;
+    }
+  };
+
   const handleAddStudentGrade = async (payload: Omit<StudentGrade, 'id' | 'created_at' | 'updated_at'>) => {
     const idCandidates = ['student_id', 'user_id', 'aluno_id'];
     const numericCandidates = [
@@ -723,7 +732,7 @@ function AppContent() {
           {user.role === 'aluno' && (
             <DashboardAluno
               user={user}
-              events={events}
+              events={events.filter(e => e.status !== 'cancelled')}
               musicList={musicList}
               uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only student's orders
               onAddOrder={handleAddOrder}
@@ -749,7 +758,7 @@ function AppContent() {
           {user.role === 'professor' && (
             <DashboardProfessor
               user={user}
-              events={events}
+              events={events.filter(e => e.status !== 'cancelled')}
               musicList={musicList}
               uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only professor's orders
               onAddOrder={handleAddOrder}
@@ -779,7 +788,7 @@ function AppContent() {
               onAddEvent={handleAddEvent}
               onEditEvent={handleEditEvent}
               onCancelEvent={handleCancelEvent}
-              events={events}
+              events={events.filter(e => e.status !== 'cancelled')}
               notifications={adminNotifications}
               onClearNotifications={handleClearNotifications}
               musicList={musicList}
@@ -805,6 +814,9 @@ function AppContent() {
               onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
               onNavigate={navigate} // Pass navigate function
               studentGrades={studentGrades}
+              onAddAttendance={handleAddAttendance}
+              onAddClassRecord={handleAddClassRecord}
+              allUsersProfiles={allUsersProfiles}
             />
           )}
         </div>

@@ -29,6 +29,8 @@ interface Props {
   onUpdatePaymentRecord: (updatedPayment: any) => Promise<void>;
   onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
   onUpdateEventRegistrationWithProof: (updatedRegistration: any) => Promise<void>;
+  onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
+  allUsersProfiles: User[];
 }
 
 interface AssignmentFormState {
@@ -70,9 +72,12 @@ export const DashboardProfessor: React.FC<Props> = ({
   onUpdatePaymentRecord,
   onUpdateOrderWithProof,
   onUpdateEventRegistrationWithProof,
-  eventRegistrations, // Add this
+  eventRegistrations,
+  onAddClassRecord = async () => { },
+  allUsersProfiles = [],
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
+  const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Use real class sessions
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '' });
 
@@ -403,18 +408,46 @@ export const DashboardProfessor: React.FC<Props> = ({
       alert('Por favor, preencha o título e a data de entrega do trabalho.');
       return;
     }
-    const assignmentPayload: Omit<AssignmentType, 'id' | 'created_at'> = {
-      created_by: user.id,
-      title: newAssignment.title,
-      description: newAssignment.description,
-      due_date: newAssignment.dueDate,
-      status: 'pending',
-      student_id: newAssignment.studentId || null, // Assign to specific student or null for general
-    };
-    await onAddAssignment(assignmentPayload);
+
+    const professorIdentity = user.nickname || user.first_name || user.name;
+    const targetStudents = selectedAssignmentTarget === 'all'
+      ? allUsersProfiles.filter(u => u.role === 'aluno')
+      : allUsersProfiles.filter(u => u.role === 'aluno' && u.professorName === professorIdentity);
+
+    if (targetStudents.length === 0 && !newAssignment.studentId) {
+      alert('Não há alunos para receber este trabalho.');
+      return;
+    }
+
+    if (newAssignment.studentId) {
+      const assignmentPayload: Omit<AssignmentType, 'id' | 'created_at'> = {
+        created_by: user.id,
+        title: newAssignment.title,
+        description: newAssignment.description,
+        due_date: newAssignment.dueDate,
+        status: 'pending',
+        student_id: newAssignment.studentId,
+      };
+      await onAddAssignment(assignmentPayload);
+    } else {
+      for (const student of targetStudents) {
+        const assignmentPayload: Omit<AssignmentType, 'id' | 'created_at'> = {
+          created_by: user.id,
+          title: newAssignment.title,
+          description: newAssignment.description,
+          due_date: newAssignment.dueDate,
+          status: 'pending',
+          student_id: student.id,
+        };
+        await onAddAssignment(assignmentPayload);
+      }
+    }
+
     setNewAssignment({ title: '', description: '', dueDate: '', studentId: '' });
+    alert(`Trabalho "${newAssignment.title}" criado e enviado com sucesso!`);
     onNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
-    setShowAssignToStudentModal(false); // Close modal after adding
+    setShowAssignToStudentModal(false);
+    setSelectedAssignmentTarget('mine');
   };
 
   const handleCompleteAssignment = async (assignmentId: string, studentId: string, file: File) => {
@@ -486,9 +519,16 @@ export const DashboardProfessor: React.FC<Props> = ({
       const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: pub } = supabase.storage.from('class_records').getPublicUrl(filePath);
+
+      await onAddClassRecord({
+        photo_url: pub.publicUrl,
+        created_by: user.id,
+        description: `Registro de aula por ${user.nickname || user.name}`
+      });
+
       setClassPhoto(null);
       onNotifyAdmin(`Registro de aula enviado: ${pub.publicUrl}`, user);
-      alert('Registro de aula enviado ao Admin.');
+      alert('Registro de aula enviado e salvo com sucesso!');
     } catch (err: any) {
       console.error('Error uploading class record:', err);
       alert('Erro ao enviar registro de aula.');
@@ -700,21 +740,136 @@ export const DashboardProfessor: React.FC<Props> = ({
       {profView === 'assignments' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-          <h2 className="2xl font-bold text-white mb-6">Trabalhos</h2>
-          <form onSubmit={handleAddAssignment} className="mb-6 space-y-4 bg-stone-900 p-4 rounded">
-            <input type="text" placeholder="Título" value={newAssignment.title} onChange={e => setNewAssignment({ ...newAssignment, title: e.target.value })} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" required />
-            <textarea placeholder="Descrição" value={newAssignment.description} onChange={e => setNewAssignment({ ...newAssignment, description: e.target.value })} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white" />
-            <input type="date" value={newAssignment.dueDate} onChange={e => setNewAssignment({ ...newAssignment, dueDate: e.target.value })} className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white [color-scheme:dark]" required />
-            <Button type="submit">Criar Tarefa</Button>
-          </form>
-          <div className="space-y-2">
-            {profAssignments.map(a => (
-              <div key={a.id} className="bg-stone-900 p-3 rounded border-l-4 border-blue-500">
-                <p className="font-bold text-white">{a.title}</p>
-                <p className="text-xs text-stone-400">Entrega: {a.due_date.split('-').reverse().join('/')}</p>
-                {a.student_id && <p className="text-xs text-stone-500">Atribuído a: {myStudents.find(s => s.id === a.student_id)?.nickname || 'Aluno Desconhecido'}</p>}
+          <form onSubmit={handleAddAssignment} className="mb-6 space-y-4 bg-stone-900 p-6 rounded-xl border border-stone-700">
+            <h3 className="text-lg font-bold text-white mb-4">Passar Novo Trabalho</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-stone-400 mb-1">Título do Trabalho</label>
+                <input
+                  type="text"
+                  required
+                  value={newAssignment.title}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                  className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white focus:border-blue-500 outline-none"
+                  placeholder="Ex: Pesquisa sobre Mestre Bimba"
+                />
               </div>
-            ))}
+              <div>
+                <label className="block text-sm text-stone-400 mb-1">Data de Entrega</label>
+                <input
+                  type="date"
+                  required
+                  value={newAssignment.dueDate}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
+                  className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white focus:border-blue-500 outline-none [color-scheme:dark]"
+                />
+              </div>
+            </div>
+
+            <div className="bg-stone-800 p-4 rounded-lg border border-stone-700">
+              <label className="block text-sm text-stone-300 font-bold mb-3">Público Alvo</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="assign_target"
+                    checked={selectedAssignmentTarget === 'mine'}
+                    onChange={() => setSelectedAssignmentTarget('mine')}
+                    className="w-4 h-4 accent-blue-500"
+                  />
+                  <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>Meus Alunos ({allUsersProfiles.filter(u => u.professorName === (user.nickname || user.name)).length})</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="assign_target"
+                    checked={selectedAssignmentTarget === 'all'}
+                    onChange={() => setSelectedAssignmentTarget('all')}
+                    className="w-4 h-4 accent-orange-500"
+                  />
+                  <span className={`text-sm ${selectedAssignmentTarget === 'all' ? 'text-orange-400 font-bold' : 'text-stone-400'}`}>Todos os Alunos ({allUsersProfiles.filter(u => u.role === 'aluno').length})</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-stone-400 mb-1">Descrição / Instruções</label>
+              <textarea
+                value={newAssignment.description}
+                onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
+                className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white focus:border-blue-500 outline-none h-20"
+                placeholder="Detalhes sobre o trabalho..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button type="submit" disabled={selectedAssignmentTarget === 'all' ? allUsersProfiles.filter(u => u.role === 'aluno').length === 0 : allUsersProfiles.filter(u => u.professorName === (user.nickname || user.name)).length === 0}>
+                <PlusCircle size={18} className="mr-1" />
+                {selectedAssignmentTarget === 'all' ? 'Passar para Todos' : 'Passar para Meus Alunos'}
+              </Button>
+            </div>
+          </form>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Pending */}
+            <div className="bg-stone-900/50 rounded-xl p-6 border border-stone-700">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Clock className="text-yellow-500" size={18} /> Pendentes
+              </h3>
+              <div className="space-y-3">
+                {profAssignments.filter(a => a.status === 'pending').map(a => (
+                  <div key={a.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-blue-500">
+                    <p className="font-bold text-white">{a.title}</p>
+                    <p className="text-xs text-stone-400 mb-2">{a.description}</p>
+                    <p className="text-xs text-stone-500 flex items-center gap-1">
+                      <Calendar size={12} /> Entrega: {a.due_date.split('-').reverse().join('/')}
+                    </p>
+                    {a.student_id && (
+                      <div className="mt-3 flex items-center justify-between bg-stone-800 p-2 rounded">
+                        <span className="text-white text-xs">
+                          Aluno: {allUsersProfiles.find(s => s.id === a.student_id)?.nickname || 'Aluno Desconhecido'}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          className="text-[10px] h-6 px-2"
+                          onClick={() => {
+                            setSelectedAssignmentToAssign(a);
+                            setShowAssignToStudentModal(true);
+                          }}
+                        >
+                          <UserPlus size={12} /> Reatribuir
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {profAssignments.filter(a => a.status === 'pending').length === 0 && (
+                  <p className="text-stone-500 text-sm italic text-center py-4">Nenhum trabalho pendente.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Completed */}
+            <div className="bg-stone-900/50 rounded-xl p-6 border border-stone-700">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Check className="text-green-500" size={18} /> Concluídos
+              </h3>
+              <div className="space-y-3">
+                {profAssignments.filter(a => a.status === 'completed').map(a => (
+                  <div key={a.id} className="bg-stone-900/30 p-4 rounded-lg border border-stone-700 opacity-80">
+                    <p className="font-bold text-stone-300 line-through decoration-stone-500">{a.title}</p>
+                    <p className="text-xs text-stone-500">Entregue por: {allUsersProfiles.find(s => s.id === a.student_id)?.nickname || 'Aluno'}</p>
+                    {a.attachment_url && (
+                      <a href={a.attachment_url} target="_blank" rel="noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-2 hover:underline">
+                        <Paperclip size={12} /> Ver Entrega
+                      </a>
+                    )}
+                  </div>
+                ))}
+                {profAssignments.filter(a => a.status === 'completed').length === 0 && (
+                  <p className="text-stone-500 text-sm italic text-center py-4">Nenhum trabalho concluído ainda.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
