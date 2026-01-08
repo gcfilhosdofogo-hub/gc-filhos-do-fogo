@@ -168,6 +168,25 @@ export const DashboardAdmin: React.FC<Props> = ({
     const today = new Date().toISOString().split('T')[0];
     const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name));
 
+    const formatDatePTBR = (isoString: string | null | undefined): string => {
+        if (!isoString) return '-';
+        // Se já estiver no formato DD/MM/AAAA, retorna como está
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
+
+        try {
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return isoString;
+
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return isoString;
+        }
+    };
+
 
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
@@ -403,25 +422,6 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const financialMovements = useMemo(() => {
         const movements: any[] = [];
-
-        const formatDatePTBR = (isoString: string | null | undefined): string => {
-            if (!isoString) return '-';
-            // Se já estiver no formato DD/MM/AAAA, retorna como está
-            if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
-
-            try {
-                const date = new Date(isoString);
-                if (isNaN(date.getTime())) return isoString;
-
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const year = date.getFullYear();
-
-                return `${day}/${month}/${year}`;
-            } catch (e) {
-                return isoString;
-            }
-        };
 
         const getBelt = (userId: string) => {
             const u = managedUsers.find(user => (user.id === userId));
