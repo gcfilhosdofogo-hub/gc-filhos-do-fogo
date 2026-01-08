@@ -296,9 +296,6 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
 
-    // Evaluation State
-    const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
-    const [evalData, setEvalData] = useState({ positive: '', negative: '' });
 
     // New Class Form State (for Professor Mode)
     const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
