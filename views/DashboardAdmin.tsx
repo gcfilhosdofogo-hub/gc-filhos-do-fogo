@@ -2788,7 +2788,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             <button
                                                                 onClick={() => {
                                                                     setInstallmentStudent(u);
-                                                                    setInstallmentAmount('');
+                                                                    setInstallmentCount(1);
                                                                     setInstallmentDueDate(u.nextEvaluationDate || today);
                                                                     setShowInstallmentModal(true);
                                                                 }}
