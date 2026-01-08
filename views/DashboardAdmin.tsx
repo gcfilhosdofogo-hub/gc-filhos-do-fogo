@@ -97,6 +97,11 @@ export const DashboardAdmin: React.FC<Props> = ({
     // Finance State
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
     const [showBeltConfig, setShowBeltConfig] = useState(false);
+    const [overdueSummary, setOverdueSummary] = useState<{ id: string; name: string; months: number }[]>([]);
+    const [liberatedUsers, setLiberatedUsers] = useState<string[]>(() => {
+        const saved = localStorage.getItem('liberated_overdue_users');
+        return saved ? JSON.parse(saved) : [];
+    });
     const [beltPrices, setBeltPrices] = useState<Record<string, number>>(() => {
         // Initialize with some default values mock
         const defaults: Record<string, number> = {};
@@ -154,6 +159,12 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // State for inline evaluation editing
     const [editingEvaluationDate, setEditingEvaluationDate] = useState<string>('');
+
+    // State for manual installment (parcelado)
+    const [showInstallmentModal, setShowInstallmentModal] = useState(false);
+    const [installmentStudent, setInstallmentStudent] = useState<User | null>(null);
+    const [installmentAmount, setInstallmentAmount] = useState<string>('');
+    const [installmentDueDate, setInstallmentDueDate] = useState<string>('');
     const today = new Date().toISOString().split('T')[0];
     const studentsForAttendance = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (user.nickname || user.first_name || user.name));
 
@@ -294,6 +305,59 @@ export const DashboardAdmin: React.FC<Props> = ({
         fetchManagedUsers();
     }, [fetchManagedUsers]);
 
+    // --- OVERDUE MONITORING LOGIC ---
+    useEffect(() => {
+        const checkOverdue = () => {
+            const usersWithSignificantOverdue = managedUsers.filter(u => {
+                // Already liberated/dismissed by admin for this session/localstorage
+                if (liberatedUsers.includes(u.id)) return false;
+
+                // Check age if student
+                let isTarget = true;
+                if (u.role === 'aluno' && u.birthDate) {
+                    const birth = new Date(u.birthDate);
+                    const today = new Date();
+                    let age = today.getFullYear() - birth.getFullYear();
+                    const m = today.getMonth() - birth.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+                    if (age < 18) isTarget = false;
+                }
+
+                if (!isTarget) return false;
+
+                // Calculate pending/overdue monthly payments
+                const unpaid = monthlyPayments.filter(p =>
+                    p.student_id === u.id &&
+                    (p.status === 'pending' || p.status === 'overdue') &&
+                    (!p.type || p.type === 'Mensalidade')
+                );
+
+                return unpaid.length >= 3;
+            }).map(u => ({
+                id: u.id,
+                name: u.nickname || u.name,
+                months: monthlyPayments.filter(p => p.student_id === u.id && (p.status === 'pending' || p.status === 'overdue') && (!p.type || p.type === 'Mensalidade')).length
+            }));
+
+            setOverdueSummary(usersWithSignificantOverdue);
+        };
+
+        if (managedUsers.length > 0 && monthlyPayments.length > 0) {
+            checkOverdue();
+        }
+    }, [managedUsers, monthlyPayments, liberatedUsers]);
+
+    const handleLiberateUser = (userId: string) => {
+        const updated = [...liberatedUsers, userId];
+        setLiberatedUsers(updated);
+        localStorage.setItem('liberated_overdue_users', JSON.stringify(updated));
+    };
+
+    const handleBlockUser = (userId: string) => {
+        alert(`O acesso do usuário ${managedUsers.find(u => u.id === userId)?.name} foi bloqueado temporariamente.`);
+        handleLiberateUser(userId); // Also clear it from the popup
+    };
+
     // --- CUSTOM ADMIN DISPLAY NAME ---
     const getAdminDisplayName = () => {
         if (user.nickname === 'Aquiles') return 'Administração Filhos do Fogo Argentina';
@@ -342,15 +406,21 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         const formatDatePTBR = (isoString: string | null | undefined): string => {
             if (!isoString) return '-';
+            // Se já estiver no formato DD/MM/AAAA, retorna como está
             if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
+
             try {
                 const date = new Date(isoString);
-                if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
-                    const [y, m, d] = isoString.split('-');
-                    return `${d}/${m}/${y}`;
-                }
-                return date.toLocaleDateString('pt-BR');
-            } catch (e) { return isoString; }
+                if (isNaN(date.getTime())) return isoString;
+
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                return isoString;
+            }
         };
 
         const getBelt = (userId: string) => {
@@ -360,23 +430,28 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         // Monthly Payments
         monthlyPayments.forEach(p => {
+            const isEval = p.type === 'evaluation' || p.month.toLowerCase().includes('avalia');
+            const student = managedUsers.find(u => u.id === p.student_id);
             movements.push({
                 date: p.status === 'paid' ? formatDatePTBR(p.paid_at) : formatDatePTBR(p.due_date),
-                description: `Mensalidade - ${p.month}`,
+                description: isEval ? `Avaliação - ${p.student_name}` : `Mensalidade - ${p.month}`,
                 student: p.student_name,
+                professor: student?.professorName || '-',
                 belt: getBelt(p.student_id),
-                type: 'Mensalidade',
+                type: isEval ? 'Avaliação' : 'Mensalidade',
                 value: p.amount,
-                status: p.status === 'paid' ? 'Pago' : 'Pendente'
+                status: p.status === 'paid' ? 'Pago' : p.status === 'overdue' ? 'Atrasado' : 'Pendente'
             });
         });
 
         // Uniform Orders
         uniformOrders.forEach(o => {
+            const student = managedUsers.find(u => u.id === o.user_id);
             movements.push({
                 date: formatDatePTBR(o.date),
                 description: `Uniforme - ${o.item}`,
                 student: o.user_name,
+                professor: student?.professorName || '-',
                 belt: getBelt(o.user_id),
                 type: 'Uniforme',
                 value: o.total,
@@ -388,10 +463,12 @@ export const DashboardAdmin: React.FC<Props> = ({
         eventRegistrations.forEach(reg => {
             const linkedEvent = events.find(e => e.id === reg.event_id);
             const dateDisplay = linkedEvent ? formatDatePTBR(linkedEvent.date) : '-';
+            const student = managedUsers.find(u => u.id === reg.user_id);
             movements.push({
                 date: dateDisplay,
                 description: `Evento - ${reg.event_title}`,
                 student: reg.user_name,
+                professor: student?.professorName || '-',
                 belt: getBelt(reg.user_id),
                 type: 'Evento',
                 value: reg.amount_paid,
@@ -425,13 +502,14 @@ export const DashboardAdmin: React.FC<Props> = ({
     }, [monthlyPayments, uniformOrders, eventRegistrations, events, managedUsers]);
 
     const handleDownloadFinancialReport = () => {
-        const headers = ["Data", "Descrição", "Aluno", "Graduação", "Tipo", "Valor", "Status"];
+        const headers = ["Data", "Descrição", "Aluno", "Professor", "Graduação", "Tipo", "Valor", "Status"];
         const csvContent = [
             headers.join(";"),
             ...financialMovements.map(m => [
                 m.date,
                 m.description,
                 m.student,
+                m.professor || '-',
                 m.belt,
                 m.type,
                 m.value.toFixed(2).replace('.', ','),
@@ -443,7 +521,48 @@ export const DashboardAdmin: React.FC<Props> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`);
+
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+
+        link.setAttribute("download", `relatorio_financeiro_${dd}-${mm}-${yyyy}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleDownloadPedagogicalReport = () => {
+        const headers = ["Professor", "Aluno", "Presença", "Nota Técnica", "Musicalidade", "Última Avaliação", "Custo Graduação (R$)"];
+        const rows: string[] = [];
+
+        professorsData.forEach(prof => {
+            prof.students.forEach(s => {
+                rows.push([
+                    prof.professorName,
+                    s.studentName,
+                    `${s.attendanceRate}%`,
+                    (s.technicalGrade || 0).toFixed(1).replace('.', ','),
+                    (s.musicalityGrade || 0).toFixed(1).replace('.', ','),
+                    s.lastEvaluation || 'S/A',
+                    (s.graduationCost || 0).toFixed(2).replace('.', ',')
+                ].join(";"));
+            });
+        });
+
+        const csvContent = [headers.join(";"), ...rows].join("\n");
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+
+        link.setAttribute("download", `relatorio_pedagogico_${dd}-${mm}-${yyyy}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -542,8 +661,8 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         let createdCount = 0;
 
-        // Fetch all active students and professors
-        const activeStudents = managedUsers.filter(u => u.role === 'aluno' || u.role === 'professor');
+        // Fetch all active students and professors (User requested to exclude EVERYONE from auto-gen)
+        const activeStudents: User[] = []; // managedUsers.filter(u => false); 
 
         try {
             for (const student of activeStudents) {
@@ -921,7 +1040,59 @@ export const DashboardAdmin: React.FC<Props> = ({
         await onAddPaymentRecord(newPayment);
         onNotifyAdmin(`Adicionou registro de pagamento para ${student.nickname || student.name}`, user);
         setShowAddPaymentModal(false);
-        setNewPaymentForm({ studentId: '', month: '', dueDate: '', 'amount': '' });
+        setNewPaymentForm({ studentId: '', month: '', dueDate: '', amount: '' });
+    };
+
+    const handleCreateInstallment = async () => {
+        const amount = parseFloat(installmentAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert('Por favor, insira um valor válido.');
+            return;
+        }
+        if (!installmentDueDate) {
+            alert('Por favor, selecione a data de vencimento.');
+            return;
+        }
+        if (!installmentStudent) return;
+
+        // 1. Create the payment record as 'evaluation' type
+        await onAddPaymentRecord({
+            student_id: installmentStudent.id,
+            student_name: installmentStudent.nickname || installmentStudent.name,
+            month: `Parcela Avaliação - ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`,
+            due_date: installmentDueDate,
+            amount: amount,
+            status: 'pending',
+            type: 'evaluation'
+        });
+
+        // 2. Update the profile to deduct the amount from total graduation cost
+        const currentCost = installmentStudent.graduationCost || 0;
+        const remainingCost = Math.max(0, currentCost - amount);
+
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+                graduation_cost: remainingCost
+            })
+            .eq('id', installmentStudent.id);
+
+        if (updateError) {
+            console.error('Error updating profile graduation cost:', updateError);
+            alert('Boleto gerado, mas erro ao atualizar saldo devedor.');
+        } else {
+            setManagedUsers(prev => prev.map(u =>
+                u.id === installmentStudent.id
+                    ? { ...u, graduationCost: remainingCost }
+                    : u
+            ));
+            alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado! Saldo restante: R$ ${remainingCost.toFixed(2).replace('.', ',')}`);
+        }
+
+        setShowInstallmentModal(false);
+        setInstallmentStudent(null);
+        setInstallmentAmount('');
+        setInstallmentDueDate('');
     };
 
     const handleUpdateEventRegistration = async (registrationId: string, status: 'pending' | 'paid' | 'cancelled') => {
@@ -1332,6 +1503,54 @@ export const DashboardAdmin: React.FC<Props> = ({
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
             </div>
 
+            {/* OVERDUE POPUP FOR ADMINS */}
+            {overdueSummary.length > 0 && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+                    <div className="bg-stone-800 rounded-3xl border-2 border-orange-500 shadow-[0_0_50px_rgba(249,115,22,0.3)] max-w-lg w-full p-8 animate-bounce-subtle">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="p-4 bg-orange-500/20 rounded-full border border-orange-500 mb-6 text-orange-500">
+                                <AlertTriangle size={64} />
+                            </div>
+                            <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter">
+                                Aviso de Inadimplência
+                            </h3>
+                            <p className="text-stone-300 mb-8 leading-relaxed">
+                                Os seguintes usuários possuem <span className="text-orange-400 font-bold">3 ou mais mensalidades atrasadas</span>. Verifique a situação financeira:
+                            </p>
+
+                            <div className="w-full max-h-48 overflow-y-auto mb-8 space-y-2 bg-stone-900/50 p-4 rounded-xl border border-stone-700 custom-scrollbar">
+                                {overdueSummary.map(u => (
+                                    <div key={u.id} className="flex justify-between items-center bg-stone-900 p-3 rounded-lg border border-stone-800 group">
+                                        <div className="text-left">
+                                            <div className="text-white font-bold">{u.name}</div>
+                                            <div className="text-[10px] text-red-500 font-black uppercase tracking-widest">{u.months} Meses em Aberto</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleLiberateUser(u.id)}
+                                                className="px-2 py-1 bg-blue-900/30 text-blue-400 text-[10px] font-bold rounded hover:bg-blue-900/50 transition-colors"
+                                            >
+                                                Liberar
+                                            </button>
+                                            <button
+                                                onClick={() => handleBlockUser(u.id)}
+                                                className="px-2 py-1 bg-red-900/30 text-red-400 text-[10px] font-bold rounded hover:bg-red-900/50 transition-colors"
+                                            >
+                                                Bloquear
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <Button fullWidth onClick={() => setOverdueSummary([])} className="bg-orange-600 hover:bg-orange-500 font-black h-14 text-lg">
+                                Entendido
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Graduation and Evaluation Card */}
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col items-center justify-center space-y-4">
                 <div className="w-full max-w-sm bg-stone-900 rounded-lg p-6 border-l-4 overflow-hidden relative flex flex-col items-center text-center">
@@ -1355,7 +1574,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                         {user.nextEvaluationDate && (
                             <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
-                                Data: <span className="text-green-400">{new Date(user.nextEvaluationDate).toLocaleDateString()}</span>
+                                Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
                             </span>
                         )}
                     </div>
@@ -2201,7 +2420,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <tr key={payment.id} className="hover:bg-stone-700/30">
                                                 <td className="p-4 font-medium text-white">{payment.student_name}</td>
                                                 <td className="p-4 text-stone-300">{payment.month}</td>
-                                                <td className="p-4 text-stone-300">{payment.due_date}</td>
+                                                <td className="p-4 text-stone-300">{payment.due_date.split('-').reverse().join('/')}</td>
                                                 <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
                                                 <td className="p-4">
                                                     {payment.status === 'paid' && (
@@ -2298,7 +2517,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <tr key={payment.id} className="hover:bg-stone-700/30">
                                                 <td className="p-4 font-medium text-white">{payment.student_name}</td>
                                                 <td className="p-4 text-stone-300">{payment.month}</td>
-                                                <td className="p-4 text-stone-300">{payment.due_date}</td>
+                                                <td className="p-4 text-stone-300">{payment.due_date.split('-').reverse().join('/')}</td>
                                                 <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
                                                 <td className="p-4">
                                                     {payment.status === 'paid' && (
@@ -2309,6 +2528,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     {payment.status === 'pending' && (
                                                         <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
                                                             <Clock size={12} /> Pendente
+                                                        </span>
+                                                    )}
+                                                    {payment.status === 'overdue' && (
+                                                        <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
+                                                            <AlertCircle size={12} /> Atrasado
                                                         </span>
                                                     )}
                                                 </td>
@@ -2342,129 +2566,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    {/* EVALUATION MODAL */}
-                    {showEvalModal && evalModalStudent && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative">
-                                <button
-                                    onClick={() => {
-                                        setShowEvalModal(false);
-                                        setEvalModalStudent(null);
-                                        setEvalModalAmount('');
-                                        setEvalModalDueDate('');
-                                    }}
-                                    className="absolute top-4 right-4 text-stone-400 hover:text-white"
-                                >
-                                    <X size={24} />
-                                </button>
 
-                                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                    <GraduationCap size={20} className="text-purple-500" />
-                                    Gerar Boleto de Avaliação
-                                </h3>
-
-                                <div className="space-y-4">
-                                    <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                                        <p className="text-stone-400 text-sm">Usuário</p>
-                                        <p className="text-white font-bold text-lg">{evalModalStudent.nickname || evalModalStudent.name}</p>
-                                        <p className="text-stone-500 text-xs mt-1">Graduação: {evalModalStudent.belt || 'Sem Cordel'}</p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm text-stone-400 mb-2">Valor do Boleto (R$)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={evalModalAmount}
-                                            onChange={(e) => setEvalModalAmount(e.target.value)}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white text-lg font-mono focus:border-purple-500 outline-none"
-                                            placeholder="0,00"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm text-stone-400 mb-2">Data de Vencimento</label>
-                                        <input
-                                            type="date"
-                                            value={evalModalDueDate}
-                                            onChange={(e) => setEvalModalDueDate(e.target.value)}
-                                            className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none"
-                                        />
-                                    </div>
-
-                                    <div className="flex gap-3 pt-4">
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1"
-                                            onClick={() => {
-                                                setShowEvalModal(false);
-                                                setEvalModalStudent(null);
-                                                setEvalModalAmount('');
-                                                setEvalModalDueDate('');
-                                            }}
-                                        >
-                                            Cancelar
-                                        </Button>
-                                        <Button
-                                            className="flex-1 bg-purple-600 hover:bg-purple-500"
-                                            onClick={async () => {
-                                                const amount = parseFloat(evalModalAmount);
-                                                if (isNaN(amount) || amount <= 0) {
-                                                    alert('Por favor, insira um valor válido.');
-                                                    return;
-                                                }
-                                                if (!evalModalDueDate) {
-                                                    alert('Por favor, selecione a data de vencimento.');
-                                                    return;
-                                                }
-
-                                                await onAddPaymentRecord({
-                                                    student_id: evalModalStudent.id,
-                                                    student_name: evalModalStudent.nickname || evalModalStudent.name,
-                                                    month: `Avaliação - ${new Date().getFullYear()}`,
-                                                    due_date: evalModalDueDate,
-                                                    amount: amount,
-                                                    status: 'pending',
-                                                    type: 'evaluation'
-                                                });
-
-                                                // Update user profile with the new graduation cost and date (Source of Truth for "Next Evaluation" card)
-                                                const { error: updateError } = await supabase
-                                                    .from('profiles')
-                                                    .update({
-                                                        graduation_cost: amount,
-                                                        next_evaluation_date: evalModalDueDate
-                                                    })
-                                                    .eq('id', evalModalStudent.id);
-
-                                                if (updateError) {
-                                                    console.error('Error updating profile evaluation info:', updateError);
-                                                } else {
-                                                    // Update local state to reflect change immediately
-                                                    setManagedUsers(prev => prev.map(u =>
-                                                        u.id === evalModalStudent.id
-                                                            ? { ...u, graduationCost: amount, nextEvaluationDate: evalModalDueDate }
-                                                            : u
-                                                    ));
-                                                }
-
-                                                alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado com sucesso para ${evalModalStudent.nickname || evalModalStudent.name}!`);
-
-                                                setShowEvalModal(false);
-                                                setEvalModalStudent(null);
-                                                setEvalModalAmount('');
-                                                setEvalModalDueDate('');
-                                            }}
-                                            disabled={!evalModalAmount || parseFloat(evalModalAmount) <= 0}
-                                        >
-                                            Confirmar
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )
             }
@@ -2727,7 +2829,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             </p>
                                                             {u.nextEvaluationDate ? (
                                                                 <p className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30">
-                                                                    {new Date(u.nextEvaluationDate).toLocaleDateString()}
+                                                                    {formatDatePTBR(u.nextEvaluationDate)}
                                                                 </p>
                                                             ) : (
                                                                 <p className="text-[10px] text-stone-500 italic">S/ Data</p>
@@ -2743,7 +2845,32 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 }}
                                                                 className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 font-bold"
                                                             >
-                                                                <Plus size={10} /> Gerar Boleto
+                                                                <Plus size={10} /> Gerar Boleto Total
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setInstallmentStudent(u);
+                                                                    setInstallmentAmount('');
+                                                                    setInstallmentDueDate(u.nextEvaluationDate || today);
+                                                                    setShowInstallmentModal(true);
+                                                                }}
+                                                                className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1 font-bold"
+                                                            >
+                                                                <DollarSign size={10} /> Parcelar
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setNewPaymentForm({
+                                                                        studentId: u.id,
+                                                                        month: '',
+                                                                        dueDate: today,
+                                                                        amount: '50.00'
+                                                                    });
+                                                                    setShowAddPaymentModal(true);
+                                                                }}
+                                                                className="text-[10px] text-green-400 hover:text-green-300 flex items-center gap-1 mt-1 font-bold"
+                                                            >
+                                                                <PlusCircle size={10} /> Add Mensalidade
                                                             </button>
                                                         </div>
                                                     )}
@@ -2945,11 +3072,16 @@ export const DashboardAdmin: React.FC<Props> = ({
                 activeTab === 'pedagogy' && (
                     <div className="space-y-6 animate-fade-in">
                         <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
-                            <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
-                                <GraduationCap className="text-blue-500" />
-                                Acompanhamento Pedagógico
-                                <span className="text-sm font-normal text-stone-400 ml-2">(Supervisão de Professores)</span>
-                            </h2>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <GraduationCap className="text-blue-500" />
+                                    Acompanhamento Pedagógico
+                                    <span className="text-sm font-normal text-stone-400 ml-2">(Supervisão de Professores)</span>
+                                </h2>
+                                <Button onClick={handleDownloadPedagogicalReport} variant="secondary" className="border border-stone-600">
+                                    <FileUp size={18} className="mr-2" /> Baixar Relatório Pedagógico (CSV)
+                                </Button>
+                            </div>
 
                             <div className="space-y-4">
                                 {professorsData.length > 0 ? (
@@ -3606,7 +3738,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <td className="py-2 text-white font-bold">{Number.isFinite(numericVal) ? numericVal.toFixed(1) : '-'}</td>
                                                         <td className="py-2 text-stone-400">{g.written}</td>
                                                         <td className="py-2 text-stone-300">{g.professor_name}</td>
-                                                        <td className="py-2 text-stone-500">{g.created_at?.split('T')[0] || ''}</td>
+                                                        <td className="py-2 text-stone-500">{formatDatePTBR(g.created_at)}</td>
                                                     </tr>
                                                 );
                                             })
@@ -3658,6 +3790,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <th className="p-4 rounded-tl-lg">Data</th>
                                             <th className="p-4">Descrição</th>
                                             <th className="p-4">Aluno</th>
+                                            <th className="p-4">Professor</th>
                                             <th className="p-4">Graduação</th>
                                             <th className="p-4">Tipo</th>
                                             <th className="p-4">Valor</th>
@@ -3670,6 +3803,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <td className="p-4 text-stone-300">{move.date}</td>
                                                 <td className="p-4 font-medium text-white">{move.description}</td>
                                                 <td className="p-4 text-stone-300">{move.student}</td>
+                                                <td className="p-4 text-stone-300">{move.professor || '-'}</td>
                                                 <td className="p-4 text-stone-300 bg-stone-800/20">{move.belt}</td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold border ${move.type === 'Mensalidade' ? 'border-blue-900/50 text-blue-400 bg-blue-900/10' :
@@ -3695,6 +3829,210 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+            {/* EVALUATION MODAL - Global position */}
+            {
+                showEvalModal && evalModalStudent && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative">
+                            <button
+                                onClick={() => {
+                                    setShowEvalModal(false);
+                                    setEvalModalStudent(null);
+                                    setEvalModalAmount('');
+                                    setEvalModalDueDate('');
+                                }}
+                                className="absolute top-4 right-4 text-stone-400 hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <GraduationCap size={20} className="text-purple-500" />
+                                Gerar Boleto de Avaliação
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                    <p className="text-stone-400 text-sm">Usuário</p>
+                                    <p className="text-white font-bold text-lg">{evalModalStudent.nickname || evalModalStudent.name}</p>
+                                    <p className="text-stone-500 text-xs mt-1">Graduação: {evalModalStudent.belt || 'Sem Cordel'}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-2">Valor do Boleto (R$)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={evalModalAmount}
+                                        onChange={(e) => setEvalModalAmount(e.target.value)}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white text-lg font-mono focus:border-purple-500 outline-none"
+                                        placeholder="0,00"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-2">Data de Vencimento</label>
+                                    <input
+                                        type="date"
+                                        value={evalModalDueDate}
+                                        onChange={(e) => setEvalModalDueDate(e.target.value)}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white focus:border-purple-500 outline-none"
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => {
+                                            setShowEvalModal(false);
+                                            setEvalModalStudent(null);
+                                            setEvalModalAmount('');
+                                            setEvalModalDueDate('');
+                                        }}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        className="flex-1 bg-purple-600 hover:bg-purple-500"
+                                        onClick={async () => {
+                                            const amount = parseFloat(evalModalAmount);
+                                            if (isNaN(amount) || amount <= 0) {
+                                                alert('Por favor, insira um valor válido.');
+                                                return;
+                                            }
+                                            if (!evalModalDueDate) {
+                                                alert('Por favor, selecione a data de vencimento.');
+                                                return;
+                                            }
+
+                                            await onAddPaymentRecord({
+                                                student_id: evalModalStudent.id,
+                                                student_name: evalModalStudent.nickname || evalModalStudent.name,
+                                                month: `Avaliação - ${new Date().getFullYear()}`,
+                                                due_date: evalModalDueDate,
+                                                amount: amount,
+                                                status: 'pending',
+                                                type: 'evaluation'
+                                            });
+
+                                            const { error: updateError } = await supabase
+                                                .from('profiles')
+                                                .update({
+                                                    graduation_cost: amount,
+                                                    next_evaluation_date: evalModalDueDate
+                                                })
+                                                .eq('id', evalModalStudent.id);
+
+                                            if (updateError) {
+                                                console.error('Error updating profile evaluation info:', updateError);
+                                            } else {
+                                                setManagedUsers(prev => prev.map(u =>
+                                                    u.id === evalModalStudent.id
+                                                        ? { ...u, graduationCost: amount, nextEvaluationDate: evalModalDueDate }
+                                                        : u
+                                                ));
+                                            }
+
+                                            alert(`Boleto de R$ ${amount.toFixed(2).replace('.', ',')} gerado com sucesso!`);
+                                            setShowEvalModal(false);
+                                            setEvalModalStudent(null);
+                                            setEvalModalAmount('');
+                                            setEvalModalDueDate('');
+                                        }}
+                                        disabled={!evalModalAmount || parseFloat(evalModalAmount) <= 0}
+                                    >
+                                        Confirmar
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+            {/* INSTALLMENT MODAL */}
+            {
+                showInstallmentModal && installmentStudent && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-stone-800 rounded-2xl border border-blue-600 shadow-2xl max-w-md w-full p-6 relative">
+                            <button
+                                onClick={() => {
+                                    setShowInstallmentModal(false);
+                                    setInstallmentStudent(null);
+                                    setInstallmentAmount('');
+                                    setInstallmentDueDate('');
+                                }}
+                                className="absolute top-4 right-4 text-stone-400 hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <DollarSign size={20} className="text-blue-500" />
+                                Gerar Boleto Parcelado (Avaliação)
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                    <p className="text-stone-400 text-sm">Usuário</p>
+                                    <p className="text-white font-bold text-lg">{installmentStudent.nickname || installmentStudent.name}</p>
+                                    <p className="text-blue-400 text-sm mt-1 font-bold">Total em Aberto: R$ {(installmentStudent.graduationCost ?? 0).toFixed(2).replace('.', ',')}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-2">Valor da Parcela (R$)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={installmentAmount}
+                                        onChange={(e) => setInstallmentAmount(e.target.value)}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white text-lg font-mono focus:border-blue-500 outline-none"
+                                        placeholder="0,00"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-2">Data de Vencimento</label>
+                                    <input
+                                        type="date"
+                                        value={installmentDueDate}
+                                        onChange={(e) => setInstallmentDueDate(e.target.value)}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+
+                                <div className="bg-blue-900/20 p-3 rounded border border-blue-900/30 text-[10px] text-blue-300 italic">
+                                    * Este valor será subtraído do custo total de graduação do aluno ao confirmar.
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => {
+                                            setShowInstallmentModal(false);
+                                            setInstallmentStudent(null);
+                                            setInstallmentAmount('');
+                                            setInstallmentDueDate('');
+                                        }}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        className="flex-1 bg-blue-600 hover:bg-blue-500"
+                                        onClick={handleCreateInstallment}
+                                        disabled={!installmentAmount || parseFloat(installmentAmount) <= 0}
+                                    >
+                                        Confirmar Parcela
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>

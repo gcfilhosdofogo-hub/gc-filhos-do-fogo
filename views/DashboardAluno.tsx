@@ -209,7 +209,6 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   }, [isClassDay, myHomeTrainings.length]); // Run once on mount
 
-  // Calculate Age
   const isOver18 = useMemo(() => {
     if (!user.birthDate) return false;
     const today = new Date();
@@ -221,6 +220,17 @@ export const DashboardAluno: React.FC<Props> = ({
     }
     return age >= 18;
   }, [user.birthDate]);
+
+  const overdueStatus = useMemo(() => {
+    const pending = myMonthlyPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
+    return {
+      count: pending.length,
+      isOverdue: pending.length >= 1,
+      isCritical: pending.length >= 3,
+      message: pending.length >= 3 ? "Atenção: Evite o bloqueio do seu acesso efetuando o pagamento!" : "Atraso no pagamento das mensalidades pode levar ao bloqueio do aplicativo!",
+      color: pending.length >= 3 ? 'red' : pending.length === 2 ? 'orange' : 'yellow'
+    };
+  }, [myMonthlyPayments]);
 
   const handleCopyPix = () => {
     const pixKey = 'soufilhodofogo@gmail.com';
@@ -923,6 +933,24 @@ export const DashboardAluno: React.FC<Props> = ({
               </button>
             </div>
 
+            {/* OVERDUE ALERT FOR ADULT STUDENTS */}
+            {isOver18 && overdueStatus.isOverdue && (
+              <div className={`p-4 rounded-xl border mb-6 flex items-center gap-4 animate-pulse-subtle shadow-lg ${overdueStatus.color === 'red' ? 'bg-red-900/30 border-red-500 text-red-500 shadow-red-900/20' :
+                overdueStatus.color === 'orange' ? 'bg-orange-900/30 border-orange-500 text-orange-400 shadow-orange-900/20' :
+                  'bg-yellow-900/30 border-yellow-500 text-yellow-400 shadow-yellow-900/20'
+                }`}>
+                <div className={`p-2 rounded-lg ${overdueStatus.color === 'red' ? 'bg-red-500/20' : overdueStatus.color === 'orange' ? 'bg-orange-500/20' : 'bg-yellow-500/20'}`}>
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm uppercase tracking-tighter">
+                    {overdueStatus.count === 1 ? 'Uma mensalidade pendente' : `${overdueStatus.count} mensalidades pendentes`}
+                  </h4>
+                  <p className="text-xs font-medium leading-tight mt-0.5">{overdueStatus.message}</p>
+                </div>
+              </div>
+            )}
+
             {/* --- TAB: OVERVIEW --- */}
             {activeMainTab === 'overview' && (
               <div className="space-y-6 animate-fade-in">
@@ -1010,7 +1038,7 @@ export const DashboardAluno: React.FC<Props> = ({
                               <p className="text-stone-400 text-sm mt-1">{event.description}</p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold">{event.date}</span>
+                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold">{event.date.split('-').reverse().join('/')}</span>
                               {event.price && event.price > 0 && (
                                 <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
                                   <DollarSign size={12} /> R$ {event.price.toFixed(2).replace('.', ',')}
@@ -1059,7 +1087,7 @@ export const DashboardAluno: React.FC<Props> = ({
                       myMonthlyPayments.map(payment => (
                         <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
                           <div>
-                            <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                            <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date.split('-').reverse().join('/')})</p>
                             <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
                           </div>
                           <div className="flex items-center gap-2 mt-2 sm:mt-0">
@@ -1257,7 +1285,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             <div className="flex-1">
                               <h4 className="font-bold text-white text-sm mb-1">{assignment.title}</h4>
                               <p className="text-stone-400 text-xs mb-2">{assignment.description}</p>
-                              <p className="text-stone-500 text-xs">Vencimento: {assignment.due_date}</p>
+                              <p className="text-stone-500 text-xs">Vencimento: {assignment.due_date.split('-').reverse().join('/')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {assignment.status === 'completed' ? (

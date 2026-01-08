@@ -124,7 +124,17 @@ export const DashboardProfessor: React.FC<Props> = ({
   const myFilteredPayments = (monthlyPayments || []).filter(p => p.student_id === user.id);
   const myMonthlyPayments = myFilteredPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
   const myEvaluations = myFilteredPayments.filter(p => p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'));
-  const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.user_id === user.id) : [];
+  const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.id === user.id) : [];
+
+  const overdueStatus = useMemo(() => {
+    const pending = myMonthlyPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
+    return {
+      count: pending.length,
+      isOverdue: pending.length >= 1,
+      message: pending.length >= 3 ? "Atenção: Evite o bloqueio do seu acesso efetuando o pagamento!" : "Atraso no pagamento das mensalidades pode levar ao bloqueio do aplicativo!",
+      color: pending.length >= 3 ? 'red' : pending.length === 2 ? 'orange' : 'yellow'
+    };
+  }, [myMonthlyPayments]);
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) return;
@@ -570,6 +580,24 @@ export const DashboardProfessor: React.FC<Props> = ({
         <div className="absolute right-0 top-0 w-64 h-64 bg-purple-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
       </div>
 
+      {/* OVERDUE ALERT FOR PROFESSORS */}
+      {overdueStatus.isOverdue && (
+        <div className={`p-4 rounded-xl border mb-6 flex items-center gap-4 animate-pulse-subtle shadow-lg ${overdueStatus.color === 'red' ? 'bg-red-900/30 border-red-500 text-red-500 shadow-red-900/20' :
+          overdueStatus.color === 'orange' ? 'bg-orange-900/30 border-orange-500 text-orange-400 shadow-orange-900/20' :
+            'bg-yellow-900/30 border-yellow-500 text-yellow-400 shadow-yellow-900/20'
+          }`}>
+          <div className={`p-2 rounded-lg ${overdueStatus.color === 'red' ? 'bg-red-500/20' : overdueStatus.color === 'orange' ? 'bg-orange-500/20' : 'bg-yellow-500/20'}`}>
+            <AlertTriangle size={24} />
+          </div>
+          <div>
+            <h4 className="font-black text-sm uppercase tracking-tighter">
+              {overdueStatus.count === 1 ? 'Uma mensalidade pendente' : `${overdueStatus.count} mensalidades pendentes`}
+            </h4>
+            <p className="text-xs font-medium leading-tight mt-0.5">{overdueStatus.message}</p>
+          </div>
+        </div>
+      )}
+
       {/* Top Actions */}
       <div className="flex flex-wrap gap-2 justify-end bg-stone-800 p-4 rounded-xl border border-stone-700">
         {profView === 'dashboard' && (
@@ -612,7 +640,7 @@ export const DashboardProfessor: React.FC<Props> = ({
             <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
             {user.nextEvaluationDate && (
               <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
-                Data: <span className="text-green-400">{new Date(user.nextEvaluationDate).toLocaleDateString()}</span>
+                Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
               </span>
             )}
           </div>
@@ -683,7 +711,7 @@ export const DashboardProfessor: React.FC<Props> = ({
             {profAssignments.map(a => (
               <div key={a.id} className="bg-stone-900 p-3 rounded border-l-4 border-blue-500">
                 <p className="font-bold text-white">{a.title}</p>
-                <p className="text-xs text-stone-400">Entrega: {a.due_date}</p>
+                <p className="text-xs text-stone-400">Entrega: {a.due_date.split('-').reverse().join('/')}</p>
                 {a.student_id && <p className="text-xs text-stone-500">Atribuído a: {myStudents.find(s => s.id === a.student_id)?.nickname || 'Aluno Desconhecido'}</p>}
               </div>
             ))}
@@ -833,7 +861,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                   myMonthlyPayments.map(payment => (
                     <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
                       <div>
-                        <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date})</p>
+                        <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date.split('-').reverse().join('/')})</p>
                         <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-2 sm:mt-0">

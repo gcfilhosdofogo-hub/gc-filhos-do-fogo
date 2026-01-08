@@ -235,9 +235,8 @@ function AppContent() {
   const generateMonthlyPayments = useCallback(async () => {
     if (!session || user?.role !== 'admin' || isGeneratingPayments) return;
 
-    const today = new Date();
-    // Only generate between day 5 and 15 to avoid unnecessary checks outside the window, 
-    // but the requirement is "every day 5". We'll check if a record for "current month" exists.
+    // Automatic generation disabled by user request. All payments must be manual.
+    return;
     if (today.getDate() < 5) return;
 
     const currentMonth = today.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
