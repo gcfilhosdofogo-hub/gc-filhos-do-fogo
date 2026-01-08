@@ -4022,91 +4022,88 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                        {/* ADD PAYMENT MODAL - Global Position */}
+                        {showAddPaymentModal && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                                <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
+                                    <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <PlusCircle className="text-green-500" />
+                                            Adicionar Novo Pagamento
+                                        </h3>
+                                        <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white">
+                                            <X size={24} />
+                                        </button>
+                                    </div>
+                                    <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                                        <div>
+                                            <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Aluno</label>
+                                            <select
+                                                id="student"
+                                                name="student"
+                                                value={newPaymentForm.studentId}
+                                                onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
+                                                className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                                required
+                                            >
+                                                <option value="">Selecione um aluno</option>
+                                                {managedUsers.filter(u => u.role === 'aluno').map(u => (
+                                                    <option key={u.id} value={u.id}>{u.nickname || u.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Referência (Mês/Ano)</label>
+                                            <input
+                                                type="text"
+                                                id="month"
+                                                name="month"
+                                                value={newPaymentForm.month}
+                                                onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
+                                                className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                                placeholder="Ex: Janeiro/2024"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Vencimento</label>
+                                            <input
+                                                type="date"
+                                                id="dueDate"
+                                                name="dueDate"
+                                                value={newPaymentForm.dueDate}
+                                                onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
+                                                className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
+                                            <input
+                                                type="number"
+                                                id="amount"
+                                                name="amount"
+                                                value={newPaymentForm.amount}
+                                                onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
+                                                className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                                placeholder="Ex: 100.00"
+                                                min="0"
+                                                step="0.01"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
+                                            <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                                            <Button type="submit">
+                                                <Plus size={18} /> Adicionar Pagamento
+                                            </Button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    </div>
-    )
-}
-{/* ADD PAYMENT MODAL - Global Position */ }
-{
-    showAddPaymentModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-            <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <PlusCircle className="text-green-500" />
-                        Adicionar Novo Pagamento
-                    </h3>
-                    <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white">
-                        <X size={24} />
-                    </button>
-                </div>
-                <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                    <div>
-                        <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Aluno</label>
-                        <select
-                            id="student"
-                            name="student"
-                            value={newPaymentForm.studentId}
-                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
-                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                            required
-                        >
-                            <option value="">Selecione um aluno</option>
-                            {managedUsers.filter(u => u.role === 'aluno').map(u => (
-                                <option key={u.id} value={u.id}>{u.nickname || u.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Referência (Mês/Ano)</label>
-                        <input
-                            type="text"
-                            id="month"
-                            name="month"
-                            value={newPaymentForm.month}
-                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
-                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                            placeholder="Ex: Janeiro/2024"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Vencimento</label>
-                        <input
-                            type="date"
-                            id="dueDate"
-                            name="dueDate"
-                            value={newPaymentForm.dueDate}
-                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
-                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
-                        <input
-                            type="number"
-                            id="amount"
-                            name="amount"
-                            value={newPaymentForm.amount}
-                            onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
-                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                            placeholder="Ex: 100.00"
-                            min="0"
-                            step="0.01"
-                            required
-                        />
-                    </div>
-                    <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                        <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
-                        <Button type="submit">
-                            <Plus size={18} /> Adicionar Pagamento
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    )
-}
-    );
+                );
 };
