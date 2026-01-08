@@ -778,10 +778,13 @@ function AppContent() {
               onAddAttendance={handleAddAttendance}
               monthlyPayments={monthlyPayments.filter(p => p.student_id === user.id)} // Pass professor's payments
               onUpdatePaymentRecord={handleUpdatePaymentRecord}
-              onUpdateOrderWithProof={handleUpdateOrderWithProof} // Reuse order proof logic if needed
-              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof} // For event payment proofs
+              onUpdateOrderWithProof={handleUpdateOrderWithProof}
+              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
+              onAddClassRecord={handleAddClassRecord}
+              allUsersProfiles={allUsersProfiles}
             />
           )}
+
           {user.role === 'admin' && (
             <DashboardAdmin
               user={user}

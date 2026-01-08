@@ -262,6 +262,23 @@ export const DashboardProfessor: React.FC<Props> = ({
   // Filter my orders
   const myOrders = uniformOrders.filter(o => o.user_id === user.id);
 
+  const UNIFORM_PRICES = {
+    combo: 190.00,
+    shirt: 75.00,
+    pants_roda: 110.00,
+    pants_train: 110.00
+  };
+
+  const getCurrentPrice = () => {
+    switch (orderForm.item) {
+      case 'shirt': return UNIFORM_PRICES.shirt;
+      case 'pants_roda': return UNIFORM_PRICES.pants_roda;
+      case 'pants_train': return UNIFORM_PRICES.pants_train;
+      case 'combo': return UNIFORM_PRICES.combo;
+      default: return 0;
+    }
+  };
+
   // Belt Bar Style with Ponta support
   const beltColors = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
@@ -344,11 +361,19 @@ export const DashboardProfessor: React.FC<Props> = ({
       session_id: selectedClassId,
       student_id: studentId,
       status: status,
-      justification: status === 'justified' ? justifications[studentId] : null
+      justification: status === 'justified' ? justifications[studentId] : null,
+      created_at: new Date().toISOString()
     }));
 
     try {
       await onAddAttendance(records);
+
+      // Update session status to completed
+      const session = myClasses.find(c => c.id === selectedClassId);
+      if (session) {
+        await onUpdateClassSession({ ...session, status: 'completed' });
+      }
+
       setShowSuccess(true);
       setTimeout(() => {
         setSelectedClassId(null);
@@ -384,22 +409,51 @@ export const DashboardProfessor: React.FC<Props> = ({
     onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
   };
 
+  const handleMusicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setMusicForm({ ...musicForm, file: e.target.files[0] });
+    }
+  };
+
   const handleSubmitMusic = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!musicForm.title || !musicForm.category || !musicForm.lyrics) {
-      alert('Por favor, preencha todos os campos da música.');
-      return;
+    setUploadingMusicFile(true);
+    let fileUrl = '';
+
+    try {
+      if (musicForm.file) {
+        const fileExt = musicForm.file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `acervo/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('music_files')
+          .upload(filePath, musicForm.file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: pub } = supabase.storage.from('music_files').getPublicUrl(filePath);
+        fileUrl = pub.publicUrl;
+      }
+
+      const newMusic: Omit<MusicItem, 'id' | 'created_at'> = {
+        title: musicForm.title,
+        category: musicForm.category,
+        lyrics: musicForm.lyrics,
+        audio_url: fileUrl,
+        created_by: user.id
+      };
+
+      await onAddMusic(newMusic as MusicItem);
+      setMusicForm({ title: '', category: '', lyrics: '', file: null });
+      onNotifyAdmin(`Adicionou música: ${musicForm.title}`, user);
+      alert('Música adicionada!');
+    } catch (err: any) {
+      console.error('Error adding music:', err);
+      alert('Erro ao adicionar música: ' + err.message);
+    } finally {
+      setUploadingMusicFile(false);
     }
-    const newMusicItem = {
-      title: musicForm.title,
-      category: musicForm.category,
-      lyrics: musicForm.lyrics,
-      created_by: user.id,
-    };
-    await onAddMusic(newMusicItem);
-    setMusicForm({ title: '', category: '', lyrics: '' });
-    onNotifyAdmin(`Adicionou música: ${musicForm.title}`, user);
-    alert('Música adicionada!');
   };
 
   const handleAddAssignment = async (e: React.FormEvent) => {
@@ -500,13 +554,14 @@ export const DashboardProfessor: React.FC<Props> = ({
       user_role: user.role,
       date: new Date().toLocaleDateString('pt-BR'),
       item: itemName,
-      shirt_size: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
-      pants_size: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
       total: price,
-      status: 'pending'
+      status: 'pending',
+      shirt_size: (orderForm.item === 'shirt' || orderForm.item === 'combo') ? orderForm.shirtSize : undefined,
+      pants_size: (orderForm.item !== 'shirt') ? orderForm.pantsSize : undefined,
     };
-    onAddOrder(newOrder);
-    alert('Pedido realizado! Aguarde a confirmação do Admin.');
+    onAddOrder(newOrder as UniformOrder);
+    onNotifyAdmin(`${user.role === 'admin' ? 'Admin' : 'Professor'} solicitou uniforme: ${itemName}`, user);
+    alert('Pedido registrado!');
     setOrderForm({ item: 'combo', shirtSize: '', pantsSize: '' });
   };
 
@@ -701,20 +756,35 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <option value="pants_train">Calça de Treino</option>
               </select>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Ex: M, G, GG"
-                  value={orderForm.shirtSize}
-                  onChange={(e) => setOrderForm({ ...orderForm, shirtSize: e.target.value })}
-                  className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white"
-                />
-                <input
-                  type="text"
-                  placeholder="Ex: 40, 42"
-                  value={orderForm.pantsSize}
-                  onChange={(e) => setOrderForm({ ...orderForm, pantsSize: e.target.value })}
-                  className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white"
-                />
+                {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                  <div>
+                    <label className="block text-sm text-stone-400 mb-1">Tamanho da Blusa</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: P, M, G, GG"
+                      value={orderForm.shirtSize}
+                      onChange={(e) => setOrderForm({ ...orderForm, shirtSize: e.target.value })}
+                      className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white"
+                      required={orderForm.item === 'shirt' || orderForm.item === 'combo'}
+                    />
+                  </div>
+                )}
+                {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                  <div>
+                    <label className="block text-sm text-stone-400 mb-1">Tamanho da Calça</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 38, 40, 42, 44"
+                      value={orderForm.pantsSize}
+                      onChange={(e) => setOrderForm({ ...orderForm, pantsSize: e.target.value })}
+                      className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white"
+                      required={orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo'}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="text-right text-white font-bold text-lg">
+                Total: R$ {getCurrentPrice().toFixed(2).replace('.', ',')}
               </div>
               <Button fullWidth type="submit">Fazer Pedido</Button>
             </form>
@@ -878,15 +948,56 @@ export const DashboardProfessor: React.FC<Props> = ({
       {profView === 'music_manager' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-          <h2 className="2xl font-bold text-white mb-6">Adicionar Música</h2>
-          <form onSubmit={handleSubmitMusic} className="space-y-4">
-            <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-            <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-            <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
-            <Button fullWidth type="submit">Salvar no Acervo</Button>
-          </form>
+          <h2 className="2xl font-bold text-white mb-6">Acervo Musical</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <form onSubmit={handleSubmitMusic} className="space-y-4">
+              <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
+              <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
+              <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
+
+              {/* Music File Upload */}
+              <div className="border-2 border-dashed border-stone-600 rounded-lg p-4 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
+                {uploadingMusicFile ? (
+                  <div className="text-center">
+                    <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
+                    <p className="text-white">Enviando arquivo...</p>
+                  </div>
+                ) : (
+                  <>
+                    <Mic2 size={32} className="text-stone-500 mb-2" />
+                    <label className="cursor-pointer">
+                      <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
+                        {musicForm.file ? musicForm.file.name : 'Selecionar Arquivo de Áudio'}
+                      </span>
+                      <input type="file" accept="audio/*" className="hidden" onChange={handleMusicFileChange} />
+                    </label>
+                    <p className="text-xs text-stone-500 mt-2">Opcional: MP3, WAV, etc. Máx 10MB.</p>
+                  </>
+                )}
+              </div>
+
+              <Button fullWidth type="submit" disabled={uploadingMusicFile}>
+                {uploadingMusicFile ? 'Enviando...' : 'Adicionar Música'}
+              </Button>
+            </form>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              <h3 className="text-white font-bold mb-2">Histórico de Músicas</h3>
+              {musicList.map(m => (
+                <div key={m.id} className="bg-stone-900 p-3 rounded border-l-2 border-orange-500 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-white font-bold">{m.title}</span>
+                    <span className="text-orange-400 text-[10px]">{m.category}</span>
+                  </div>
+                  {m.audio_url && (
+                    <audio src={m.audio_url} controls className="w-full h-8 mt-2" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
+
 
       {/* --- GRADES VIEW --- */}
       {profView === 'grades' && (
@@ -1440,9 +1551,9 @@ export const DashboardProfessor: React.FC<Props> = ({
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-              <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
+              <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas (Pendentes)</h3>
               <div className="space-y-4">
-                {myClasses.map(cls => (
+                {myClasses.filter(cls => cls.status !== 'completed').map(cls => (
                   <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
                     <div className="flex justify-between items-start mb-2">
                       <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.date} - {cls.time} - {cls.location}</p></div>
@@ -1511,6 +1622,70 @@ export const DashboardProfessor: React.FC<Props> = ({
               </div>
 
               <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Atribuir Trabalho a Aluno Específico */}
+      {showAssignToStudentModal && selectedAssignmentToAssign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-stone-900 border border-stone-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6">
+            <h3 className="text-xl font-bold text-white mb-2">Atribuir a Aluno</h3>
+            <p className="text-stone-400 text-sm mb-6">Trabalho: <span className="text-blue-400 font-semibold">{selectedAssignmentToAssign.title}</span></p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-stone-400 mb-2">Selecione o Aluno</label>
+                <div className="max-h-60 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {allUsersProfiles.filter(u => u.role === 'aluno').map(student => (
+                    <label key={student.id} className="flex items-center gap-3 p-3 rounded-lg bg-stone-800 border border-stone-700 hover:border-blue-500/50 cursor-pointer transition-colors group">
+                      <input
+                        type="radio"
+                        name="student_select"
+                        className="w-4 h-4 accent-blue-500"
+                        checked={selectedStudentForAssignment === student.id}
+                        onChange={() => setSelectedStudentForAssignment(student.id)}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{student.nickname || student.name}</p>
+                        <p className="text-[10px] text-stone-500">{student.professorName || 'Sem professor'}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowAssignToStudentModal(false);
+                    setSelectedAssignmentToAssign(null);
+                    setSelectedStudentForAssignment('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-blue-600 hover:bg-blue-500"
+                  disabled={!selectedStudentForAssignment}
+                  onClick={async () => {
+                    const payload: AssignmentType = {
+                      ...selectedAssignmentToAssign,
+                      student_id: selectedStudentForAssignment,
+                    };
+                    await onUpdateAssignment(payload);
+                    setShowAssignToStudentModal(false);
+                    setSelectedAssignmentToAssign(null);
+                    setSelectedStudentForAssignment('');
+                    alert(`Trabalho atribuído com sucesso!`);
+                  }}
+                >
+                  Confirmar Transferência
+                </Button>
+              </div>
             </div>
           </div>
         </div>
