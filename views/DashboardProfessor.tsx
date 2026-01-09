@@ -320,7 +320,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     const colorMap: Record<string, string> = {
       'verde': '#22c55e',
       'amarelo': '#FDD835',
-      'azul': '#3b82f6',
+      'azul': '#0033CC', // Azul Caneta (Darker Blue)
       'branco': '#ffffff',
       'cinza': '#9ca3af',
     };
@@ -329,17 +329,17 @@ export const DashboardProfessor: React.FC<Props> = ({
     let pontaColor: string | null = null;
 
     if (mainPart.includes('verde, amarelo, azul e branco')) {
-      mainColor = 'linear-gradient(to bottom,#22c55e,#FDD835,#3b82f6,#ffffff)';
+      mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 25%, #FDD835 25%, #FDD835 50%, #0033CC 50%, #0033CC 75%, #ffffff 75%, #ffffff 100%)';
     } else if (mainPart.includes('amarelo e azul')) {
-      mainColor = 'linear-gradient(to bottom,#FDD835,#3b82f6)';
+      mainColor = 'linear-gradient(to bottom, #FDD835 0%, #FDD835 50%, #0033CC 50%, #0033CC 100%)';
     } else if (mainPart.includes('verde e amarelo')) {
-      mainColor = 'linear-gradient(to bottom,#22c55e,#FDD835)';
+      mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #FDD835 50%, #FDD835 100%)';
     } else if (mainPart.includes('verde e branco')) {
-      mainColor = 'linear-gradient(to bottom,#22c55e,#ffffff)';
+      mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #ffffff 50%, #ffffff 100%)';
     } else if (mainPart.includes('amarelo e branco')) {
-      mainColor = 'linear-gradient(to bottom,#FDD835,#ffffff)';
+      mainColor = 'linear-gradient(to bottom, #FDD835 0%, #FDD835 50%, #ffffff 50%, #ffffff 100%)';
     } else if (mainPart.includes('azul e branco')) {
-      mainColor = 'linear-gradient(to bottom,#3b82f6,#ffffff)';
+      mainColor = 'linear-gradient(to bottom, #0033CC 0%, #0033CC 50%, #ffffff 50%, #ffffff 100%)';
     } else if (mainPart.includes('cinza')) {
       mainColor = '#9ca3af';
     } else if (mainPart.includes('verde')) {
@@ -347,14 +347,14 @@ export const DashboardProfessor: React.FC<Props> = ({
     } else if (mainPart.includes('amarelo')) {
       mainColor = '#FDD835';
     } else if (mainPart.includes('azul')) {
-      mainColor = '#3b82f6';
+      mainColor = '#0033CC';
     } else if (mainPart.includes('branco')) {
       mainColor = '#ffffff';
     }
 
     if (pontaPart) {
       if (pontaPart.includes('verde') && pontaPart.includes('amarelo')) {
-        pontaColor = 'linear-gradient(to bottom, #22c55e, #FDD835)';
+        pontaColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #FDD835 50%, #FDD835 100%)';
       } else if (pontaPart.includes('verde')) pontaColor = colorMap['verde'];
       else if (pontaPart.includes('amarelo')) pontaColor = colorMap['amarelo'];
       else if (pontaPart.includes('azul')) pontaColor = colorMap['azul'];
