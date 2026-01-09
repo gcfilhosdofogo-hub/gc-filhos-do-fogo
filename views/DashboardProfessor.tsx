@@ -73,7 +73,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   onUpdateOrderWithProof,
   onUpdateEventRegistrationWithProof,
   eventRegistrations,
-  onAddClassRecord = async () => { },
+  onAddClassRecord = async (record: { photo_url: string; created_by: string; description?: string }) => { },
   allUsersProfiles = [],
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
@@ -365,6 +365,11 @@ export const DashboardProfessor: React.FC<Props> = ({
       created_at: new Date().toISOString()
     }));
 
+    if (records.length === 0) {
+      alert('Não há alunos nesta chamada.');
+      return;
+    }
+
     try {
       await onAddAttendance(records);
 
@@ -383,8 +388,9 @@ export const DashboardProfessor: React.FC<Props> = ({
         setJustifications({});
         onNotifyAdmin('Realizou chamada de aula', user);
       }, 1500);
-    } catch (err) {
-      alert('Erro ao salvar chamada.');
+    } catch (err: any) {
+      console.error('Error saving attendance:', err);
+      alert('Erro ao salvar chamada: ' + (err.message || err.details || 'Erro desconhecido'));
     }
   };
 
@@ -440,7 +446,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         title: musicForm.title,
         category: musicForm.category,
         lyrics: musicForm.lyrics,
-        audio_url: fileUrl,
+        file_url: fileUrl,
         created_by: user.id
       };
 

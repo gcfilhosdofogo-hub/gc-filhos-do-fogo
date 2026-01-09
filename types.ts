@@ -21,6 +21,7 @@ export interface User {
 
 export interface ClassSession {
   id: string;
+  title?: string; // Descriptive title for the class
   date: string;
   time: string;
   instructor: string;

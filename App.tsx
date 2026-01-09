@@ -235,6 +235,7 @@ function AppContent() {
   const generateMonthlyPayments = useCallback(async () => {
     if (!session || user?.role !== 'admin' || isGeneratingPayments) return;
 
+    const today = new Date();
     // Automatic generation disabled by user request. All payments must be manual.
     return;
     if (today.getDate() < 5) return;
@@ -599,11 +600,27 @@ function AppContent() {
   };
 
   const handleAddAttendance = async (attendanceRecords: any[]) => {
-    if (!session) return;
-    const { error } = await supabase.from('attendance').insert(attendanceRecords);
-    if (error) {
-      console.error('Error adding attendance:', error);
-      throw error;
+    if (!session || attendanceRecords.length === 0) return;
+
+    const sessionIds = Array.from(new Set(attendanceRecords.map(r => r.session_id)));
+    const studentIds = attendanceRecords.map(r => r.student_id);
+
+    // Clear existing records for these students in these sessions to avoid duplicates
+    const { error: deleteError } = await supabase
+      .from('attendance')
+      .delete()
+      .in('session_id', sessionIds)
+      .in('student_id', studentIds);
+
+    if (deleteError) {
+      console.error('Error clearing old attendance:', deleteError);
+      // We continue even if delete fails, though it might lead to duplicates
+    }
+
+    const { error: insertError } = await supabase.from('attendance').insert(attendanceRecords);
+    if (insertError) {
+      console.error('Error adding attendance:', insertError);
+      throw insertError;
     }
   };
 
@@ -672,19 +689,26 @@ function AppContent() {
       if (!error && data) {
         const normalized: StudentGrade = {
           ...data,
-          student_id: data.student_id || payload.student_id,
+          student_id: data[idKey] || data.student_id || payload.student_id,
+          student_name: payload.student_name,
+          professor_id: data.professor_id || payload.professor_id,
+          professor_name: payload.professor_name,
           numeric: typeof data.numeric === 'number' ? data.numeric : Number(data.numeric),
           written: String(data.written ?? ''),
+          category: data.category as GradeCategory
         };
         setStudentGrades(prev => [normalized, ...prev]);
         return;
       }
       if (error) {
+        // If it's a "column doesn't exist" error, continue to next candidate
+        if ((error as any).code === '42703') continue;
         console.error('Error adding student grade:', error);
-        return;
+        throw error; // Let the caller handle major errors
       }
     }
   };
+
 
 
   const navigate = (view: string) => {

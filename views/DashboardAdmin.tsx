@@ -1189,9 +1189,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                 session_id: selectedClassId,
                 student_id: student.id,
                 status: isPresent ? 'present' : 'absent',
-                justification: !isPresent ? justifications[student.id] : null
+                justification: !isPresent ? justifications[student.id] : null,
+                created_at: new Date().toISOString()
             };
         });
+
+        if (records.length === 0) {
+            alert('Não há alunos vinculados a este professor para realizar a chamada.');
+            return;
+        }
 
         try {
             await onAddAttendance(records);
@@ -1210,9 +1216,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                 setJustifications({});
                 onNotifyAdmin('Realizou chamada de aula', user);
             }, 1500);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving attendance:', err);
-            alert('Erro ao salvar chamada no banco de dados.');
+            alert('Erro ao salvar chamada no banco de dados: ' + (err.message || err.details || 'Erro desconhecido'));
         }
     };
     const handleSaveNewClass = async (e: React.FormEvent) => {
@@ -2644,11 +2650,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 return acc;
                                             }, {} as Record<string, any[]>);
 
-                                            return Object.values(groupedByStudent).map(studentPayments => {
+                                            return Object.values(groupedByStudent).map((studentPayments: any[]) => {
                                                 // Sort by due date (assuming due_date is YYYY-MM-DD)
                                                 const sorted = studentPayments.sort((a, b) => a.due_date.localeCompare(b.due_date));
                                                 // Find first non-paid
                                                 const nextPending = sorted.find(p => p.status !== 'paid') || sorted[sorted.length - 1];
+
 
                                                 return (
                                                     <tr key={nextPending.id} className="hover:bg-stone-700/30">
