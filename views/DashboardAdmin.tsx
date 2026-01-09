@@ -48,10 +48,10 @@ interface Props {
 }
 
 const UNIFORM_PRICES = {
-    shirt: 30,
-    pants_roda: 80,
-    pants_train: 80,
-    combo: 110
+    shirt: 75.00,
+    pants_roda: 110.00,
+    pants_train: 110.00,
+    combo: 190.00
 };
 
 type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music';
@@ -96,7 +96,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const { session } = useSession();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
-    const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
+    const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('all');
 
     // Event Management State
     const [showEventForm, setShowEventForm] = useState(false);
@@ -107,12 +107,6 @@ export const DashboardAdmin: React.FC<Props> = ({
     // Uniform State
     const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
     const [costPixCopied, setCostPixCopied] = useState(false);
-    const UNIFORM_PRICES = {
-        combo: 190.00,
-        shirt: 75.00,
-        pants_roda: 110.00,
-        pants_train: 110.00
-    };
     const getCurrentPrice = () => {
         switch (orderForm.item) {
             case 'shirt': return UNIFORM_PRICES.shirt;
@@ -249,9 +243,6 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [studentName, setStudentName] = useState('');
     const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
     const [savingGrades, setSavingGrades] = useState(false);
-    const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('all');
-    const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '', studentId: '', file: null as File | null });
-    const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
 
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
