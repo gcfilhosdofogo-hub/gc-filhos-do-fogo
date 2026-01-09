@@ -2464,13 +2464,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <CalendarCheck size={16} /> <span className="hidden sm:inline">Gerar Mês</span>
                                         </Button>
                                         <Button
-                                            onClick={() => setProfView('music_manager')}
-                                            variant="secondary"
-                                            className="border border-purple-900/50 text-purple-400 hover:bg-purple-900/20 px-4 py-2 text-sm h-11"
-                                        >
-                                            <Music size={16} /> <span className="hidden sm:inline">Músicas</span>
-                                        </Button>
-                                        <Button
                                             onClick={() => setShowAddPaymentModal(true)}
                                             className="px-4 py-2 text-sm font-bold h-11 shadow-lg shadow-orange-900/20"
                                         >
@@ -2644,50 +2637,71 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-stone-700 text-sm">
-                                        {evaluationPayments.map((payment) => (
-                                            <tr key={payment.id} className="hover:bg-stone-700/30">
-                                                <td className="p-4 font-medium text-white">{payment.student_name}</td>
-                                                <td className="p-4 text-stone-300">{payment.month}</td>
-                                                <td className="p-4 text-stone-300">{payment.due_date.split('-').reverse().join('/')}</td>
-                                                <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
-                                                <td className="p-4">
-                                                    {payment.status === 'paid' && (
-                                                        <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                                            <CheckCircle size={12} /> Pago
-                                                        </span>
-                                                    )}
-                                                    {payment.status === 'pending' && (
-                                                        <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
-                                                            <Clock size={12} /> Pendente
-                                                        </span>
-                                                    )}
-                                                    {payment.status === 'overdue' && (
-                                                        <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
-                                                            <AlertCircle size={12} /> Atrasado
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        {payment.status !== 'paid' && (
-                                                            <button
-                                                                onClick={() => handleMarkAsPaid(payment.id)}
-                                                                className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
-                                                            >
-                                                                Confirmar
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleDeletePayment(payment.id)}
-                                                            className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                            title="Excluir"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {(() => {
+                                            // Group by student and find the next pending/overdue installment
+                                            const groupedByStudent = evaluationPayments.reduce((acc, curr) => {
+                                                if (!acc[curr.student_id]) acc[curr.student_id] = [];
+                                                acc[curr.student_id].push(curr);
+                                                return acc;
+                                            }, {} as Record<string, any[]>);
+
+                                            return Object.values(groupedByStudent).map(studentPayments => {
+                                                // Sort by due date (assuming due_date is YYYY-MM-DD)
+                                                const sorted = studentPayments.sort((a, b) => a.due_date.localeCompare(b.due_date));
+                                                // Find first non-paid
+                                                const nextPending = sorted.find(p => p.status !== 'paid') || sorted[sorted.length - 1];
+
+                                                return (
+                                                    <tr key={nextPending.id} className="hover:bg-stone-700/30">
+                                                        <td className="p-4 font-medium text-white">{nextPending.student_name}</td>
+                                                        <td className="p-4 text-stone-300">
+                                                            {nextPending.month}
+                                                            <div className="text-[10px] text-stone-500">
+                                                                {studentPayments.filter(p => p.status === 'paid').length}/{studentPayments.length} pagas
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-stone-300">{nextPending.due_date.split('-').reverse().join('/')}</td>
+                                                        <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {nextPending.amount.toFixed(2).replace('.', ',')}</td>
+                                                        <td className="p-4">
+                                                            {nextPending.status === 'paid' && (
+                                                                <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                                                    <CheckCircle size={12} /> Pago
+                                                                </span>
+                                                            )}
+                                                            {nextPending.status === 'pending' && (
+                                                                <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
+                                                                    <Clock size={12} /> Próxima: {nextPending.month.split('-')[0]}
+                                                                </span>
+                                                            )}
+                                                            {nextPending.status === 'overdue' && (
+                                                                <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
+                                                                    <AlertCircle size={12} /> Atrasado
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                {nextPending.status !== 'paid' && (
+                                                                    <button
+                                                                        onClick={() => handleMarkAsPaid(nextPending.id)}
+                                                                        className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
+                                                                    >
+                                                                        Confirmar
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => handleDeletePayment(nextPending.id)}
+                                                                    className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
+                                                                    title="Excluir"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
+                                        })()}
                                     </tbody>
                                 </table>
                                 {evaluationPayments.length === 0 && (
@@ -4061,6 +4075,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <BookOpen size={28} className="text-cyan-300" />
                                             <span className="text-sm font-bold">Trabalhos</span>
                                             <span className="text-xs text-cyan-200">Gerenciar</span>
+                                        </Button>
+                                        <Button onClick={() => setProfView('music_manager')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-900 to-purple-700 hover:from-purple-800 hover:to-purple-600 border border-purple-500/30">
+                                            <Music size={28} className="text-purple-300" />
+                                            <span className="text-sm font-bold">Músicas</span>
+                                            <span className="text-xs text-purple-200">Acervo</span>
                                         </Button>
                                     </div>
 

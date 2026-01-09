@@ -732,9 +732,48 @@ export const DashboardProfessor: React.FC<Props> = ({
             <GraduationCap size={16} /> Próxima Avaliação
           </p>
           <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+            {(() => {
+              const userInstallments = monthlyPayments.filter(p =>
+                p.student_id === user.id &&
+                p.month?.includes('Parcela')
+              );
+              const paidInstallments = userInstallments.filter(p => p.status === 'paid');
+              const pendingInstallments = userInstallments.filter(p => p.status !== 'paid');
+              const remainingValue = pendingInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+              const totalPaid = paidInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+              return (
+                <>
+                  {remainingValue > 0 ? (
+                    <>
+                      <p className="text-sm text-stone-400">Valor Restante:</p>
+                      <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                      <div className="flex gap-2 text-xs">
+                        <span className="text-green-400">{paidInstallments.length} pagas</span>
+                        <span className="text-stone-600">|</span>
+                        <span className="text-orange-400">{pendingInstallments.length} pendentes</span>
+                      </div>
+                      <div className="w-full bg-stone-700 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full transition-all"
+                          style={{ width: `${userInstallments.length > 0 ? (paidInstallments.length / userInstallments.length) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                      {totalPaid > 0 && (
+                        <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
+
             {user.nextEvaluationDate && (
-              <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
+              <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full mt-2">
                 Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
               </span>
             )}
