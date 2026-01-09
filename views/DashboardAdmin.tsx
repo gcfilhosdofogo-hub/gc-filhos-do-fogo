@@ -4072,8 +4072,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     // Check if button should be visible (during class time + 30 minutes)
                                                     const now = new Date();
                                                     const classDate = new Date(`${cls.date}T${cls.time}`);
-                                                    // Window: from class start until 30 minutes after class (assuming 1h class duration + 30min = 90min total)
-                                                    const classEndTime = new Date(classDate.getTime() + 90 * 60 * 1000);
+                                                    // Window: from class start until 30 minutes later
+                                                    const classEndTime = new Date(classDate.getTime() + 30 * 60 * 1000);
                                                     const isWithinClassWindow = now >= classDate && now <= classEndTime;
                                                     const isToday = cls.date === now.toISOString().split('T')[0];
 
