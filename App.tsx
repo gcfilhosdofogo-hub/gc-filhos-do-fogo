@@ -211,20 +211,31 @@ function AppContent() {
       ];
       const detectedWritten = writtenCandidates.find(k => allCols.includes(k));
       const writtenKey = detectedWritten || 'written';
-      const normalized = (gradesData || []).map((g: any) => ({
-        ...g,
-        student_id: g[detectedIdKey] ?? g.student_id ?? g.user_id ?? g.aluno_id ?? '',
-        written:
-          typeof g[writtenKey] === 'string'
-            ? g[writtenKey]
-            : g[writtenKey] !== null && g[writtenKey] !== undefined
-              ? String(g[writtenKey])
-              : '',
-        numeric:
-          typeof g[numericKey] === 'number'
-            ? g[numericKey]
-            : Number(g[numericKey]),
-      }));
+      const normalized = (gradesData || []).map((g: any) => {
+        const studentId = g[detectedIdKey] ?? g.student_id ?? g.user_id ?? g.aluno_id ?? '';
+        const profId = g.professor_id ?? '';
+        const student = mappedProfiles.find(p => p.id === studentId);
+        const professor = mappedProfiles.find(p => p.id === profId);
+
+        return {
+          ...g,
+          student_id: studentId,
+          student_name: student?.name || 'Aluno',
+          professor_id: profId,
+          professor_name: professor?.name || 'Professor',
+          written:
+            typeof g[writtenKey] === 'string'
+              ? g[writtenKey]
+              : g[writtenKey] !== null && g[writtenKey] !== undefined
+                ? String(g[writtenKey])
+                : '',
+          numeric:
+            typeof g[numericKey] === 'number'
+              ? g[numericKey]
+              : Number(g[numericKey]),
+        };
+      });
+
       setStudentGrades(normalized);
       if (detectedNumeric) setStudentNotesNumericField(detectedNumeric);
       if (detectedWritten) setStudentNotesWrittenField(writtenKey);

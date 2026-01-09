@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade } from '../types';
+import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award } from 'lucide-react'; // Import FileUp, Eye and Award
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
@@ -240,10 +240,18 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
     const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; url: string }>({ title: '', category: 'theory', lyrics: '', url: '' });
     const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
-    const [evalData, setEvalData] = useState({ theory: '', movement: '', musicality: '', positive: '', negative: '' });
+    const [evalData, setEvalData] = useState({
+        theory: { written: '', numeric: '' },
+        movement: { written: '', numeric: '' },
+        musicality: { written: '', numeric: '' }
+    });
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [studentName, setStudentName] = useState('');
     const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
+    const [savingGrades, setSavingGrades] = useState(false);
+    const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('all');
+    const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '', studentId: '', file: null as File | null });
+    const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
 
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
@@ -431,7 +439,9 @@ export const DashboardAdmin: React.FC<Props> = ({
         const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        const relevantGrades = studentGrades.filter(g => managedUsers.filter(u => u.role === 'aluno').some(s => s.id === g.student_id));
+        const relevantGrades = (studentGrades || []).filter(g =>
+            studentsForAttendance.some(s => s.id === g.student_id)
+        );
 
         const calcAvg = (grades: StudentGrade[]) => {
             if (grades.length === 0) return 0;
@@ -444,7 +454,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             monthly: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= oneMonthAgo)),
             annual: calcAvg(relevantGrades.filter(g => new Date(g.created_at) >= startOfYear))
         };
-    }, [studentGrades, managedUsers]);
+    }, [studentGrades, studentsForAttendance]);
 
     const financialMovements = useMemo(() => {
         const movements: any[] = [];
@@ -1247,61 +1257,59 @@ export const DashboardAdmin: React.FC<Props> = ({
             setStudentName(student.nickname || student.name);
         }
         setSelectedStudentForEval(studentId);
-        setEvalData({ theory: '', movement: '', musicality: '', positive: '', negative: '' }); // Reset all fields
+        setEvalData({
+            theory: { written: '', numeric: '' },
+            movement: { written: '', numeric: '' },
+            musicality: { written: '', numeric: '' }
+        });
         setProfView('evaluate');
     };
 
     const handleSaveEvaluation = async () => {
         if (!selectedStudentForEval) return;
 
+        const entries: { cat: GradeCategory; w: string; n: string }[] = [
+            { cat: 'theory', w: evalData.theory.written.trim(), n: evalData.theory.numeric },
+            { cat: 'movement', w: evalData.movement.written.trim(), n: evalData.movement.numeric },
+            { cat: 'musicality', w: evalData.musicality.written.trim(), n: evalData.musicality.numeric },
+        ];
+
+        const toSave = entries.filter(e => e.w.length > 0);
+        if (toSave.length === 0) {
+            alert('Preencha ao menos uma avaliação escrita.');
+            return;
+        }
+        if (toSave.some(e => !e.n || e.n.toString().trim() === '')) {
+            alert('Para cada avaliação escrita, informe a nota numérica.');
+            return;
+        }
+
+        setSavingGrades(true);
         try {
-            // Save Theory Grade
-            if (evalData.theory) {
-                await onAddStudentGrade({
-                    student_id: selectedStudentForEval,
-                    student_name: studentName,
-                    professor_id: user.id,
-                    professor_name: user.nickname || user.name,
-                    category: 'theory',
-                    written: evalData.positive,
-                    numeric: parseFloat(evalData.theory) || 0
-                });
-            }
-
-            // Save Movement Grade
-            if (evalData.movement) {
-                await onAddStudentGrade({
-                    student_id: selectedStudentForEval,
-                    student_name: studentName,
-                    professor_id: user.id,
-                    professor_name: user.nickname || user.name,
-                    category: 'movement',
-                    written: evalData.positive,
-                    numeric: parseFloat(evalData.movement) || 0
-                });
-            }
-
-            // Save Musicality Grade
-            if (evalData.musicality) {
-                await onAddStudentGrade({
-                    student_id: selectedStudentForEval,
-                    student_name: studentName,
-                    professor_id: user.id,
-                    professor_name: user.nickname || user.name,
-                    category: 'musicality',
-                    written: evalData.positive,
-                    numeric: parseFloat(evalData.musicality) || 0
-                });
-            }
+            await Promise.all(toSave.map(e => onAddStudentGrade({
+                student_id: selectedStudentForEval,
+                student_name: studentName,
+                professor_id: user.id,
+                professor_name: user.nickname || user.name,
+                category: e.cat,
+                written: e.w,
+                numeric: parseFloat(e.n),
+            })));
 
             alert("Avaliações salvas com sucesso!");
             setProfView('all_students');
             setSelectedStudentForEval(null);
-            setEvalData({ theory: '', movement: '', musicality: '', positive: '', negative: '' });
-            onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user);
-        } catch (error) {
-            console.error('Error saving evaluations:', error);
-            alert('Erro ao salvar algumas notas.');
+            setEvalData({
+                theory: { written: '', numeric: '' },
+                movement: { written: '', numeric: '' },
+                musicality: { written: '', numeric: '' }
+            });
+            onNotifyAdmin(`Avaliou notas do aluno: ${studentName}`, user);
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao salvar notas.');
+        } finally {
+            setSavingGrades(false);
         }
     };
 
@@ -3746,65 +3754,100 @@ export const DashboardAdmin: React.FC<Props> = ({
                         {/* --- PROF MODE: EVALUATE --- */}
                         {
                             profView === 'evaluate' && studentBeingEvaluated && (
-                                <div className="max-w-2xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
-                                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                                        <Award className="text-yellow-500" /> Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}
-                                    </h2>
+                                <div className="max-w-4xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                            <Award className="text-yellow-500" /> Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}
+                                        </h2>
+                                        <button onClick={() => setProfView('all_students')} className="text-stone-400 hover:text-white flex items-center gap-1 transition-colors">
+                                            <ArrowLeft size={18} /> Voltar
+                                        </button>
+                                    </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Teoria</label>
-                                            <input
-                                                type="number"
-                                                min="0" max="10" step="0.1"
-                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
-                                                value={evalData.theory}
-                                                onChange={e => setEvalData({ ...evalData, theory: e.target.value })}
-                                                placeholder="0.0"
-                                            />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                        {/* THEORY */}
+                                        <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Teórica</h3>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <textarea
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
+                                                    placeholder="Pontos positivos e observações..."
+                                                    value={evalData.theory.written}
+                                                    onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Nota (0-10)</label>
+                                                <input
+                                                    type="number" min="0" max="10" step="0.1"
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none transition-all"
+                                                    value={evalData.theory.numeric}
+                                                    onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, numeric: e.target.value } })}
+                                                    placeholder="0.0"
+                                                    disabled={!evalData.theory.written.trim()}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Movimentação</label>
-                                            <input
-                                                type="number"
-                                                min="0" max="10" step="0.1"
-                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
-                                                value={evalData.movement}
-                                                onChange={e => setEvalData({ ...evalData, movement: e.target.value })}
-                                                placeholder="0.0"
-                                            />
+
+                                        {/* MOVEMENT */}
+                                        <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Movimentação</h3>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <textarea
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
+                                                    placeholder="Pontos positivos e observações..."
+                                                    value={evalData.movement.written}
+                                                    onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, written: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Nota (0-10)</label>
+                                                <input
+                                                    type="number" min="0" max="10" step="0.1"
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none transition-all"
+                                                    value={evalData.movement.numeric}
+                                                    onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, numeric: e.target.value } })}
+                                                    placeholder="0.0"
+                                                    disabled={!evalData.movement.written.trim()}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Musicalidade</label>
-                                            <input
-                                                type="number"
-                                                min="0" max="10" step="0.1"
-                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
-                                                value={evalData.musicality}
-                                                onChange={e => setEvalData({ ...evalData, musicality: e.target.value })}
-                                                placeholder="0.0"
-                                            />
+
+                                        {/* MUSICALITY */}
+                                        <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Musicalidade</h3>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <textarea
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
+                                                    placeholder="Pontos positivos e observações..."
+                                                    value={evalData.musicality.written}
+                                                    onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, written: e.target.value } })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Nota (0-10)</label>
+                                                <input
+                                                    type="number" min="0" max="10" step="0.1"
+                                                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none transition-all"
+                                                    value={evalData.musicality.numeric}
+                                                    onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, numeric: e.target.value } })}
+                                                    placeholder="0.0"
+                                                    disabled={!evalData.musicality.written.trim()}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Pontos Positivos / Elogios</label>
-                                            <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white h-24" placeholder="Ex: Ótima evolução nos chutes..." value={evalData.positive} onChange={e => setEvalData({ ...evalData, positive: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Pontos a Melhorar</label>
-                                            <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white h-24" placeholder="Ex: Precisa focar mais na base..." value={evalData.negative} onChange={e => setEvalData({ ...evalData, negative: e.target.value })} />
-                                        </div>
-
-                                        <div className="pt-4 flex flex-col gap-3">
-                                            <Button fullWidth onClick={handleSaveEvaluation} className="h-12 text-lg font-bold">
-                                                Salvar Avaliação Completa
-                                            </Button>
-                                            <button onClick={() => setProfView('all_students')} className="text-stone-500 hover:text-stone-300 transition-colors">
-                                                Cancelar e Voltar
-                                            </button>
-                                        </div>
+                                    <div className="flex justify-end gap-3">
+                                        <Button variant="outline" onClick={() => setEvalData({ theory: { written: '', numeric: '' }, movement: { written: '', numeric: '' }, musicality: { written: '', numeric: '' } })}>
+                                            Limpar Campos
+                                        </Button>
+                                        <Button onClick={handleSaveEvaluation} disabled={savingGrades} className="px-8 bg-yellow-600 hover:bg-yellow-500">
+                                            {savingGrades ? 'Salvando...' : 'Salvar Avaliação'}
+                                        </Button>
                                     </div>
                                 </div>
                             )
@@ -4248,15 +4291,20 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         {(studentGrades || []).length > 0 ? (
                                             (studentGrades || []).map(g => {
                                                 const numericVal = typeof g.numeric === 'number' ? g.numeric : Number(g.numeric);
+                                                const student = allUsersProfiles.find(p => p.id === g.student_id);
+                                                const professor = allUsersProfiles.find(p => p.id === g.professor_id);
+                                                const studentDisplayName = student ? (student.nickname || student.name) : (g.student_name || 'Aluno');
+                                                const professorDisplayName = professor ? (professor.nickname || professor.name) : (g.professor_name || 'Professor');
+
                                                 return (
                                                     <tr key={g.id} className="border-b border-stone-800">
-                                                        <td className="py-2 text-white">{g.student_name}</td>
+                                                        <td className="py-2 text-white">{studentDisplayName}</td>
                                                         <td className="py-2 text-stone-300">
                                                             {g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}
                                                         </td>
                                                         <td className="py-2 text-white font-bold">{Number.isFinite(numericVal) ? numericVal.toFixed(1) : '-'}</td>
                                                         <td className="py-2 text-stone-400">{g.written}</td>
-                                                        <td className="py-2 text-stone-300">{g.professor_name}</td>
+                                                        <td className="py-2 text-stone-300">{professorDisplayName}</td>
                                                         <td className="py-2 text-stone-500">{formatDatePTBR(g.created_at)}</td>
                                                     </tr>
                                                 );
@@ -4269,6 +4317,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </tbody>
                                 </table>
                             </div>
+
                         </div>
                     </div>
                 )
@@ -4563,89 +4612,92 @@ export const DashboardAdmin: React.FC<Props> = ({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
             {/* ADD PAYMENT MODAL - Global Position */}
-            {showAddPaymentModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
-                        <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                <PlusCircle className="text-green-500" />
-                                Adicionar Novo Pagamento
-                            </h3>
-                            <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white">
-                                <X size={24} />
-                            </button>
+            {
+                showAddPaymentModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                        <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-md w-full p-6 relative flex flex-col max-h-[90vh]">
+                            <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <PlusCircle className="text-green-500" />
+                                    Adicionar Novo Pagamento
+                                </h3>
+                                <button onClick={() => setShowAddPaymentModal(false)} className="text-stone-400 hover:text-white">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                                <div>
+                                    <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Usuário</label>
+                                    <select
+                                        id="student"
+                                        name="student"
+                                        value={newPaymentForm.studentId}
+                                        onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                        required
+                                    >
+                                        <option value="">Selecione um usuário</option>
+                                        {managedUsers.filter(u => ['aluno', 'professor', 'admin'].includes(u.role)).map(u => (
+                                            <option key={u.id} value={u.id}>{u.nickname || u.name} ({u.role})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Referência (Mês/Ano)</label>
+                                    <input
+                                        type="text"
+                                        id="month"
+                                        name="month"
+                                        value={newPaymentForm.month}
+                                        onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                        placeholder="Ex: Janeiro/2024"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Vencimento</label>
+                                    <input
+                                        type="date"
+                                        id="dueDate"
+                                        name="dueDate"
+                                        value={newPaymentForm.dueDate}
+                                        onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
+                                    <input
+                                        type="number"
+                                        id="amount"
+                                        name="amount"
+                                        value={newPaymentForm.amount}
+                                        onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
+                                        className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                        placeholder="Ex: 100.00"
+                                        min="0"
+                                        step="0.01"
+                                        required
+                                    />
+                                </div>
+                                <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
+                                    <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                                    <Button type="submit">
+                                        <Plus size={18} /> Adicionar Pagamento
+                                    </Button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={handleAddPayment} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                            <div>
-                                <label htmlFor="student" className="block text-sm text-stone-400 mb-1">Usuário</label>
-                                <select
-                                    id="student"
-                                    name="student"
-                                    value={newPaymentForm.studentId}
-                                    onChange={(e) => setNewPaymentForm({ ...newPaymentForm, studentId: e.target.value })}
-                                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                    required
-                                >
-                                    <option value="">Selecione um usuário</option>
-                                    {managedUsers.filter(u => ['aluno', 'professor', 'admin'].includes(u.role)).map(u => (
-                                        <option key={u.id} value={u.id}>{u.nickname || u.name} ({u.role})</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label htmlFor="month" className="block text-sm text-stone-400 mb-1">Referência (Mês/Ano)</label>
-                                <input
-                                    type="text"
-                                    id="month"
-                                    name="month"
-                                    value={newPaymentForm.month}
-                                    onChange={(e) => setNewPaymentForm({ ...newPaymentForm, month: e.target.value })}
-                                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                    placeholder="Ex: Janeiro/2024"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="dueDate" className="block text-sm text-stone-400 mb-1">Vencimento</label>
-                                <input
-                                    type="date"
-                                    id="dueDate"
-                                    name="dueDate"
-                                    value={newPaymentForm.dueDate}
-                                    onChange={(e) => setNewPaymentForm({ ...newPaymentForm, dueDate: e.target.value })}
-                                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="amount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
-                                <input
-                                    type="number"
-                                    id="amount"
-                                    name="amount"
-                                    value={newPaymentForm.amount}
-                                    onChange={(e) => setNewPaymentForm({ ...newPaymentForm, amount: e.target.value })}
-                                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
-                                    placeholder="Ex: 100.00"
-                                    min="0"
-                                    step="0.01"
-                                    required
-                                />
-                            </div>
-                            <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                                <button type="button" onClick={() => setShowAddPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
-                                <Button type="submit">
-                                    <Plus size={18} /> Adicionar Pagamento
-                                </Button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
+                )
+            }
             {/* End of DashboardAdmin */}
-        </div>
+        </div >
     );
 };

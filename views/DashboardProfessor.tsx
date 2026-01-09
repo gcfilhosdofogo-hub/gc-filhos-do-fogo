@@ -131,6 +131,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   const myEvaluations = myFilteredPayments.filter(p => p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'));
   const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.id === user.id) : [];
 
+  const [myOrders, setMyOrders] = useState<UniformOrder[]>(uniformOrders.filter(o => o.user_id === user.id));
+
   const overdueStatus = useMemo(() => {
     const pending = myMonthlyPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
     return {
@@ -234,7 +236,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   useEffect(() => {
     setMyClasses(classSessions.filter(cs => cs.professor_id === user.id));
     setProfAssignments(assignments.filter(a => a.created_by === user.id));
-  }, [classSessions, assignments, user.id]);
+    setMyOrders(uniformOrders.filter(o => o.user_id === user.id));
+  }, [classSessions, assignments, uniformOrders, user.id]);
 
   // Calculate Grade Averages
   const gradeStats = useMemo(() => {
@@ -259,8 +262,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   }, [studentGrades, myStudents]);
 
 
-  // Filter my orders
-  const myOrders = uniformOrders.filter(o => o.user_id === user.id);
+  // Filter my orders - removed duplicate const to keep useState version
 
   const UNIFORM_PRICES = {
     combo: 190.00,
@@ -894,18 +896,10 @@ export const DashboardProfessor: React.FC<Props> = ({
                   />
                   <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>Meus Alunos ({allUsersProfiles.filter(u => u.professorName === (user.nickname || user.name)).length})</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="assign_target"
-                    checked={selectedAssignmentTarget === 'all'}
-                    onChange={() => setSelectedAssignmentTarget('all')}
-                    className="w-4 h-4 accent-orange-500"
-                  />
-                  <span className={`text-sm ${selectedAssignmentTarget === 'all' ? 'text-orange-400 font-bold' : 'text-stone-400'}`}>Todos os Alunos ({allUsersProfiles.filter(u => u.role === 'aluno').length})</span>
-                </label>
+                {/* REMOVED: Todos os Alunos radio to avoid confusion as requested */}
               </div>
             </div>
+
 
             <div>
               <label className="block text-sm text-stone-400 mb-1">Descrição / Instruções</label>
@@ -1357,6 +1351,33 @@ export const DashboardProfessor: React.FC<Props> = ({
                   ))
                 ) : (
                   <p className="text-stone-500 text-sm italic">Nenhuma inscrição.</p>
+                )}
+              </div>
+
+              <h4 className="text-sm font-bold text-white mb-2 mt-4">Meus Pedidos de Uniforme</h4>
+              <div className="space-y-3">
+                {myOrders.length > 0 ? (
+                  myOrders.map(order => (
+                    <div key={order.id} className={`bg-stone-900 p-3 rounded border-l-2 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
+                      <div>
+                        <p className="font-bold text-white text-sm">{order.item}</p>
+                        <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')}</p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        {order.status !== 'pending' ? (
+                          <span className="text-green-400 text-xs flex items-center gap-1">
+                            <Check size={12} /> Pago/Entregue
+                          </span>
+                        ) : (
+                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                            <Clock size={12} /> Aguardando Pagamento
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 text-sm italic">Nenhum pedido de uniforme registrado.</p>
                 )}
               </div>
             </div>
