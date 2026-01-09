@@ -690,7 +690,13 @@ export const DashboardAluno: React.FC<Props> = ({
         status: 'completed'
       };
 
+      // Call the parent update function
       await onUpdateAssignment(updatedAssignment);
+
+      // Since assignments prop comes from parent, we rely on parent update via onUpdateAssignment to reflect changes.
+      // However, for immediate feedback if parent doesn't auto-refresh quickly:
+      // (This part depends on how 'assignments' prop is managed in App.tsx - it seems to be state-driven)
+
       setUploadingAssignment(false);
       setSelectedAssignmentToSubmit(null);
       onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou trabalho: ${selectedAssignmentToSubmit.title}`, user);
