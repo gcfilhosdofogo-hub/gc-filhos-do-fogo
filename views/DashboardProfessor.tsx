@@ -38,6 +38,7 @@ interface AssignmentFormState {
   description: string;
   dueDate: string; // Changed to dueDate for consistency with Supabase
   studentId: string; // Added for specific student assignment
+  file: File | null; // Added for attachments
 }
 
 const UNIFORM_PRICES = {
@@ -89,7 +90,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   // Assignments
   const profAssignments = useMemo(() => assignments.filter(a => a.created_by === user.id), [assignments, user.id]);
-  const [newAssignment, setNewAssignment] = useState<AssignmentFormState>({ title: '', description: '', dueDate: '', studentId: '' }); // Added studentId
+  const [newAssignment, setNewAssignment] = useState<AssignmentFormState>({ title: '', description: '', dueDate: '', studentId: '', file: null }); // Added studentId and file
   const [showAssignToStudentModal, setShowAssignToStudentModal] = useState(false);
   const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<AssignmentType | null>(null);
   const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<string>('');
@@ -526,6 +527,25 @@ export const DashboardProfessor: React.FC<Props> = ({
       return;
     }
 
+    // Upload attachment if exists
+    let attachmentUrl = '';
+    let attachmentName = '';
+    if (newAssignment.file) {
+      try {
+        const file = newAssignment.file;
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${user.id}/assignments_source/${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('assignment_attachments').upload(filePath, file);
+        if (uploadError) throw uploadError;
+        const { data: pub } = supabase.storage.from('assignment_attachments').getPublicUrl(filePath);
+        attachmentUrl = pub.publicUrl;
+        attachmentName = file.name;
+      } catch (err: any) {
+        console.error('Error uploading assignment attachment:', err);
+        alert('Erro ao enviar anexo do trabalho. O trabalho será criado sem anexo.');
+      }
+    }
+
     if (newAssignment.studentId) {
       const assignmentPayload: Omit<AssignmentType, 'id' | 'created_at'> = {
         created_by: user.id,
@@ -534,6 +554,8 @@ export const DashboardProfessor: React.FC<Props> = ({
         due_date: newAssignment.dueDate,
         status: 'pending',
         student_id: newAssignment.studentId,
+        attachment_url: attachmentUrl,
+        attachment_name: attachmentName
       };
       await onAddAssignment(assignmentPayload);
     } else {
@@ -545,12 +567,14 @@ export const DashboardProfessor: React.FC<Props> = ({
           due_date: newAssignment.dueDate,
           status: 'pending',
           student_id: student.id,
+          attachment_url: attachmentUrl,
+          attachment_name: attachmentName
         };
         await onAddAssignment(assignmentPayload);
       }
     }
 
-    setNewAssignment({ title: '', description: '', dueDate: '', studentId: '' });
+    setNewAssignment({ title: '', description: '', dueDate: '', studentId: '', file: null });
     alert(`Trabalho "${newAssignment.title}" criado e enviado com sucesso!`);
     onNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
     setShowAssignToStudentModal(false);
@@ -1050,7 +1074,19 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <input type="date" required value={newAssignment.dueDate} onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })} className="bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" />
               </div>
               <textarea value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white h-24" placeholder="Descrição..." />
-              <div className="flex justify-end"><Button type="submit">Criar Trabalho</Button></div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="w-full">
+                  <label className="text-xs text-stone-500 block mb-1">Anexar Material (Opcional)</label>
+                  <input
+                    type="file"
+                    onChange={(e) => setNewAssignment({ ...newAssignment, file: e.target.files?.[0] || null })}
+                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white text-sm file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-stone-700 file:text-stone-300 hover:file:bg-stone-600"
+                  />
+                  {newAssignment.file && <p className="text-[10px] text-green-500 mt-1">✓ {newAssignment.file.name}</p>}
+                </div>
+                <div className="flex justify-end pt-5"><Button type="submit">Criar Trabalho</Button></div>
+              </div>
             </form>
           </div>
 
@@ -1060,10 +1096,32 @@ export const DashboardProfessor: React.FC<Props> = ({
               <h3 className="text-lg font-bold text-white mb-4">Meus Trabalhos Ativos</h3>
               <div className="space-y-4">
                 {profAssignments.map(assign => (
-                  <div key={assign.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h4 className="font-bold text-white">{assign.title}</h4>
-                    <p className="text-sm text-stone-400">{assign.description}</p>
-                    <span className="text-xs text-stone-500 block mt-2">Entrega: {assign.due_date}</span>
+                  <div key={assign.id} className={`bg-stone-900 p-4 rounded-lg border-l-4 ${assign.status === 'completed' ? 'border-green-500' : 'border-blue-500'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-bold text-white">{assign.title}</h4>
+                        <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest">
+                          Aluno: {allUsersProfiles.find(u => u.id === assign.student_id)?.nickname || allUsersProfiles.find(u => u.id === assign.student_id)?.name || 'Todos'}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase tracking-tighter ${assign.status === 'completed' ? 'bg-green-900/30 text-green-400 border border-green-500/30' : 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30'}`}>
+                        {assign.status === 'completed' ? 'Concluído' : 'Pendente'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-stone-400 mb-3">{assign.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {assign.attachment_url && (
+                        <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-stone-800 text-stone-300 px-2 py-1 rounded flex items-center gap-1 hover:bg-stone-700 transition-colors">
+                          <Paperclip size={10} /> Material
+                        </a>
+                      )}
+                      {assign.submission_url && (
+                        <a href={assign.submission_url} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-green-900/20 text-green-400 px-2 py-1 rounded flex items-center gap-1 hover:bg-green-900/40 transition-colors border border-green-500/20">
+                          <CheckCircle size={10} /> Ver Resposta
+                        </a>
+                      )}
+                    </div>
+                    <span className="text-[9px] text-stone-600 block mt-2 pt-2 border-t border-stone-800">Vence: {assign.due_date}</span>
                   </div>
                 ))}
                 {profAssignments.length === 0 && <p className="text-stone-500 text-sm">Nenhum trabalho criado.</p>}

@@ -84,8 +84,10 @@ export interface Assignment {
   description: string;
   due_date: string; // YYYY-MM-DD
   status: 'pending' | 'completed';
-  attachment_url?: string; // URL of student's submission
-  attachment_name?: string; // Name of student's submission
+  attachment_url?: string; // URL of professor's original material
+  attachment_name?: string; // Name of professor's original material
+  submission_url?: string; // NEW: URL of student's submission
+  submission_name?: string; // NEW: Name of student's submission
   student_id?: string; // If assignment is specific to a student
 }
 

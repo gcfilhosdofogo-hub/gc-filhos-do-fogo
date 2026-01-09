@@ -570,21 +570,31 @@ function AppContent() {
 
   const handleAddHomeTraining = async (newTraining: Omit<HomeTraining, 'id' | 'created_at'>) => {
     const { data, error } = await supabase.from('home_trainings').insert(newTraining).select().single();
-    if (error) console.error('Error adding home training:', error);
-    else setHomeTrainings(prev => [data, ...prev]);
+    if (error) {
+      console.error('Error adding home training:', error);
+      throw error;
+    } else {
+      setHomeTrainings(prev => [data, ...prev]);
+    }
   };
 
   const handleAddSchoolReport = async (newReport: Omit<SchoolReport, 'id' | 'created_at'>) => {
     const { data, error } = await supabase.from('school_reports').insert(newReport).select().single();
-    if (error) console.error('Error adding school report:', error);
-    else setSchoolReports(prev => [data, ...prev]);
+    if (error) {
+      console.error('Error adding school report:', error);
+      throw error;
+    } else {
+      setSchoolReports(prev => [data, ...prev]);
+    }
   };
 
   const handleAddAssignment = async (newAssignment: Omit<Assignment, 'id' | 'created_at'>) => {
     if (!session) return;
     const { data, error } = await supabase.from('assignments').insert({ ...newAssignment, created_by: session.user.id }).select().single();
-    if (error) console.error('Error adding assignment:', error);
-    else {
+    if (error) {
+      console.error('Error adding assignment:', error);
+      throw error;
+    } else {
       setAssignments(prev => [...prev, data]);
       if (user) handleNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
     }
@@ -592,20 +602,32 @@ function AppContent() {
 
   const handleUpdateAssignment = async (updatedAssignment: Assignment) => {
     const { data, error } = await supabase.from('assignments').update(updatedAssignment).eq('id', updatedAssignment.id).select().single();
-    if (error) console.error('Error updating assignment:', error);
-    else setAssignments(prev => prev.map(a => a.id === updatedAssignment.id ? data : a));
+    if (error) {
+      console.error('Error updating assignment:', error);
+      throw error;
+    } else {
+      setAssignments(prev => prev.map(a => a.id === updatedAssignment.id ? data : a));
+    }
   };
 
   const handleAddPaymentRecord = async (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => {
     const { data, error } = await supabase.from('monthly_payments').insert(newPayment).select().single();
-    if (error) console.error('Error adding payment record:', error);
-    else setMonthlyPayments(prev => [data, ...prev]);
+    if (error) {
+      console.error('Error adding payment record:', error);
+      throw error;
+    } else {
+      setMonthlyPayments(prev => [data, ...prev]);
+    }
   };
 
   const handleUpdatePaymentRecord = async (updatedPayment: PaymentRecord) => {
     const { data, error } = await supabase.from('monthly_payments').update(updatedPayment).eq('id', updatedPayment.id).select().single();
-    if (error) console.error('Error updating payment record:', error);
-    else setMonthlyPayments(prev => prev.map(p => p.id === updatedPayment.id ? data : p));
+    if (error) {
+      console.error('Error updating payment record:', error);
+      throw error;
+    } else {
+      setMonthlyPayments(prev => prev.map(p => p.id === updatedPayment.id ? data : p));
+    }
   };
 
   const handleAddClassSession = async (newSession: Omit<ClassSession, 'id' | 'created_at'>) => {
@@ -801,7 +823,7 @@ function AppContent() {
               schoolReports={schoolReports.filter(sr => sr.user_id === user.id)} // Pass only student's school reports
               onAddSchoolReport={handleAddSchoolReport}
               classSessions={classSessions}
-              assignments={assignments.filter(a => a.student_id === user.id || a.created_by === allUsersProfiles.find(p => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin'))?.id)} // Pass relevant assignments
+              assignments={assignments.filter(a => a.student_id === user.id)}
               onUpdateAssignment={handleUpdateAssignment}
               eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
               onAddEventRegistration={handleAddEventRegistration}

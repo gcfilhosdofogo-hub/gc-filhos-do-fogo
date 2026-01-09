@@ -3294,14 +3294,26 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                                                 return studentSpecificAssignments.length > 0 ? (
                                                                     studentSpecificAssignments.map(assign => (
-                                                                        <div key={assign.id} className="bg-stone-800 p-3 rounded border border-stone-700">
-                                                                            <p className="text-white font-medium">{assign.title}</p>
-                                                                            <p className="text-xs text-stone-500">Entrega: {assign.due_date} • Status: {assign.status === 'pending' ? 'Pendente' : 'Concluído'}</p>
-                                                                            {assign.attachment_url && (
-                                                                                <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-1 hover:underline">
-                                                                                    <Paperclip size={12} /> Ver Anexo
-                                                                                </a>
-                                                                            )}
+                                                                        <div key={assign.id} className={`bg-stone-800 p-3 rounded border border-stone-700 ${assign.status === 'completed' ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-yellow-500'}`}>
+                                                                            <div className="flex justify-between items-start">
+                                                                                <p className="text-white font-medium text-sm">{assign.title}</p>
+                                                                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${assign.status === 'completed' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
+                                                                                    {assign.status === 'completed' ? 'Ok' : '...'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-[10px] text-stone-500 mt-0.5">Vence: {assign.due_date}</p>
+                                                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                                                {assign.attachment_url && (
+                                                                                    <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-[10px] flex items-center gap-1 hover:underline">
+                                                                                        <Paperclip size={10} /> Material
+                                                                                    </a>
+                                                                                )}
+                                                                                {assign.submission_url && (
+                                                                                    <a href={assign.submission_url} target="_blank" rel="noopener noreferrer" className="text-green-400 text-[10px] flex items-center gap-1 hover:underline">
+                                                                                        <CheckCircle size={10} /> Resposta
+                                                                                    </a>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                     ))
                                                                 ) : (

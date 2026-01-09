@@ -119,6 +119,7 @@ export const DashboardAluno: React.FC<Props> = ({
   const myEventRegistrations = eventRegistrations.filter(reg => reg.user_id === user.id);
   const myRawPayments = monthlyPayments.filter(p => p.student_id === user?.id);
   const myMonthlyPayments = myRawPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
+  const myAssignments = assignments.filter(a => a.student_id === user.id);
   const evalPayment = useMemo(() => myRawPayments.find(p => (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'))), [myRawPayments]);
   const beltColors = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
@@ -350,7 +351,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
       const newVideo: Omit<HomeTraining, 'id' | 'created_at'> = {
         user_id: user.id,
-        date: now.toLocaleDateString('pt-BR'),
+        date: now.toISOString().split('T')[0], // Use ISO format for DB
         video_name: file.name,
         video_url: publicUrlData.publicUrl,
         expires_at: expires.toISOString()
@@ -391,7 +392,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
       const newReport: Omit<SchoolReport, 'id' | 'created_at'> = {
         user_id: user.id,
-        date: now.toLocaleDateString('pt-BR'),
+        date: now.toISOString().split('T')[0], // Use ISO format for DB
         file_name: file.name,
         file_url: fileUrl,
         period: 'Bimestre Atual', // Can be made dynamic if needed
@@ -580,7 +581,7 @@ export const DashboardAluno: React.FC<Props> = ({
       const filePath = `${user.id}/event_proofs/${selectedEventRegToProof.id}-${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('event_proofs')
+        .from('payment_proofs')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
@@ -692,19 +693,20 @@ export const DashboardAluno: React.FC<Props> = ({
       const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('assignments_files')
+        .from('assignment_submissions')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: publicUrlData } = supabase.storage
-        .from('assignments_files')
+        .from('assignment_submissions')
         .getPublicUrl(filePath);
 
       const updatedAssignment = {
         ...selectedAssignmentToSubmit,
         status: 'completed',
-        attachment_url: publicUrlData.publicUrl,
+        submission_url: publicUrlData.publicUrl,
+        submission_name: file.name,
         student_id: user.id
       };
 
@@ -1039,6 +1041,131 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: OVERVIEW --- */}
           {activeMainTab === 'overview' && (
             <div className="space-y-6 animate-fade-in">
+              {/* Graduation and Evaluation Card */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-stone-800 rounded-xl p-6 border-l-4 border-l-orange-500 shadow-lg relative overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
+                  {beltColors.pontaColor && (
+                    <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
+                  )}
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Sua Graduação</p>
+                  <p className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Award className="text-orange-500" size={24} />
+                    {user.belt || 'Cordel Cinza'}
+                  </p>
+                </div>
+
+                {/* Evaluation Info - Showing remaining installments value */}
+                {(() => {
+                  const evalPayments = monthlyPayments.filter(p =>
+                    p.student_id === user.id &&
+                    (p.type === 'evaluation' || p.month?.toLowerCase().includes('avalia') || p.month?.toLowerCase().includes('parcela'))
+                  );
+                  const paidInstallments = evalPayments.filter(p => p.status === 'paid');
+                  const pendingInstallments = evalPayments.filter(p => p.status !== 'paid');
+                  const remainingValue = pendingInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                  const totalPaid = paidInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                  const totalValue = evalPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                  const progress = totalValue > 0 ? (totalPaid / totalValue) * 100 : 0;
+
+                  return (
+                    <div className="bg-stone-800 rounded-xl p-6 border border-green-900/40 shadow-lg flex flex-col justify-center">
+                      <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                        <GraduationCap size={16} /> Próxima Avaliação
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {totalValue > 0 ? (
+                          <>
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-sm text-stone-400">Restante:</p>
+                                <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-green-400 text-xs font-bold">{paidInstallments.length} pagas</span>
+                                <p className="text-stone-500 text-[10px]">{pendingInstallments.length} pendentes</p>
+                              </div>
+                            </div>
+                            <div className="w-full bg-stone-900 rounded-full h-2 mt-2 border border-stone-700">
+                              <div
+                                className="bg-green-500 h-full rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-stone-500 text-sm italic">Nenhuma avaliação programada.</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Resumo de Atividades (Summary) */}
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Activity className="text-cyan-500" />
+                  Resumo de Atividades
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Pending Assignments */}
+                  <div
+                    onClick={() => setActiveMainTab('assignments')}
+                    className="bg-stone-900/50 p-4 rounded-xl border border-stone-700 hover:border-cyan-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-500">
+                        <BookOpen size={20} />
+                      </div>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Trabalhos</span>
+                    </div>
+                    <p className="text-2xl font-black text-white">
+                      {myAssignments.filter(a => a.status === 'pending').length}
+                    </p>
+                    <p className="text-[10px] text-stone-500 mt-1">Pendentes de entrega</p>
+                  </div>
+
+                  {/* Home Training Status */}
+                  <div
+                    onClick={() => setActiveMainTab('home_training')}
+                    className="bg-stone-900/50 p-4 rounded-xl border border-stone-700 hover:border-purple-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
+                        <Video size={20} />
+                      </div>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Treinos</span>
+                    </div>
+                    <p className="text-sm font-bold text-white">
+                      {myHomeTrainings.length > 0 ? (
+                        <span className="text-green-400 flex items-center gap-1"><Check size={14} /> Em dia</span>
+                      ) : (
+                        <span className="text-yellow-400 flex items-center gap-1"><AlertCircle size={14} /> Pendente</span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-stone-500 mt-1">Treino em casa hoje</p>
+                  </div>
+
+                  {/* Next Evaluate status */}
+                  <div
+                    onClick={() => setActiveMainTab('grades')}
+                    className="bg-stone-900/50 p-4 rounded-xl border border-stone-700 hover:border-orange-500/50 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500">
+                        <Award size={20} />
+                      </div>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Avaliação</span>
+                    </div>
+                    <p className="text-sm font-bold text-white">
+                      {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString('pt-BR') : 'A definir'}
+                    </p>
+                    <p className="text-[10px] text-stone-500 mt-1">Data prevista</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Suas Próximas Aulas (Specific Professor) */}
               <div className="bg-stone-800 rounded-xl p-6 border-2 border-orange-600/50 shadow-[0_0_15px_rgba(234,88,12,0.1)]">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -1346,7 +1473,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           )}
                           {reg.proof_url && (
                             <button
-                              onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'event_proofs')}
+                              onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'payment_proofs')}
                               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                             >
                               <Eye size={14} /> Ver
@@ -1411,7 +1538,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           )}
                           {order.proof_url && (
                             <button
-                              onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'uniform_proofs')}
+                              onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'payment_proofs')}
                               className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                             >
                               <Eye size={14} /> Ver
@@ -1482,8 +1609,8 @@ export const DashboardAluno: React.FC<Props> = ({
                   Trabalhos do Professor
                 </h3>
                 <div className="space-y-3">
-                  {assignments && assignments.length > 0 ? (
-                    assignments.map(assignment => (
+                  {myAssignments && myAssignments.length > 0 ? (
+                    myAssignments.map(assignment => (
                       <div key={assignment.id} className="bg-stone-900 p-4 rounded border-l-2 border-cyan-500">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex-1">
@@ -1503,13 +1630,25 @@ export const DashboardAluno: React.FC<Props> = ({
                             )}
                           </div>
                         </div>
-                        {assignment.attachment_url && assignment.status !== 'completed' && (
+                        {/* Material from Professor */}
+                        {assignment.attachment_url && (
                           <Button
                             variant="secondary"
-                            className="text-xs h-auto px-2 py-1 mt-2 w-full"
+                            className="text-[10px] h-auto px-2 py-1 mt-2 w-full border-cyan-500/30 text-cyan-400"
                             onClick={() => window.open(assignment.attachment_url, '_blank')}
                           >
-                            <Eye size={14} className="mr-1" /> Ver Material
+                            <Eye size={12} className="mr-1" /> Material do Professor
+                          </Button>
+                        )}
+
+                        {/* Student Submission */}
+                        {assignment.submission_url && (
+                          <Button
+                            variant="outline"
+                            className="text-[10px] h-auto px-2 py-1 mt-2 w-full border-green-500/30 text-green-400"
+                            onClick={() => window.open(assignment.submission_url, '_blank')}
+                          >
+                            <CheckCircle size={12} className="mr-1" /> Ver Minha Resposta
                           </Button>
                         )}
                         {/* Submission Button */}
@@ -1617,8 +1756,12 @@ export const DashboardAluno: React.FC<Props> = ({
 
           {/* --- TAB: TREINO EM CASA --- */}
           {activeMainTab === 'home_training' && (
-            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Video size={24} className="text-orange-500" /> Treino em Casa</h2>
+            <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in shadow-2xl">
+              <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                <ArrowLeft size={16} className="mr-2" />
+                Voltar ao Painel
+              </Button>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Video size={24} className="text-purple-500" /> Treino em Casa</h2>
 
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
                 <h3 className="text-lg font-bold text-white mb-3">Enviar Vídeo de Treino</h3>
