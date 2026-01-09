@@ -309,6 +309,31 @@ function AppContent() {
     }
   }, [user, generateMonthlyPayments]);
 
+  // Realtime subscription for Admin Notifications
+  useEffect(() => {
+    if (!session || user?.role !== 'admin') return;
+
+    const channel = supabase
+      .channel('admin_notifications_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'admin_notifications'
+        },
+        (payload) => {
+          const newNotif = payload.new as AdminNotification;
+          setAdminNotifications((prev) => [newNotif, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, user?.role]);
+
   // Função para buscar o perfil do usuário
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
@@ -453,6 +478,7 @@ function AppContent() {
           };
           setUser(fetchedUser);
           alert('Profile updated successfully!');
+          handleNotifyAdmin('Atualizou o perfil', fetchedUser); // Notify about profile update
           fetchData(); // Re-fetch all data after profile update
         }
       }
@@ -468,6 +494,7 @@ function AppContent() {
       return null;
     } else {
       setEvents(prev => [...prev, data]);
+      if (user) handleNotifyAdmin(`Criou evento: ${newEvent.title}`, user);
       return data;
     }
   };
@@ -515,6 +542,7 @@ function AppContent() {
     if (error) console.error('Error adding music:', error);
     else {
       setMusicList(prev => [...prev, data]);
+      if (user) handleNotifyAdmin(`Adicionou música: ${newMusic.title}`, user);
       fetchData(); // Re-fetch all data to ensure consistency across components
     }
   };
