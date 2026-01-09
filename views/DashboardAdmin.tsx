@@ -223,7 +223,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
-    const myClasses = useMemo(() => (classSessions || []).filter(cs => cs.professor_id === user.id && cs.status !== 'completed'), [classSessions, user.id]);
+    const myClasses = useMemo(() => (classSessions || []).filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
 
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
     const [attendanceData, setAttendanceData] = useState<Record<string, boolean>>({});
@@ -4227,7 +4227,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                                             <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
                                             <div className="space-y-4">
-                                                {myClasses.map(cls => {
+                                                {myClasses.filter(cls => cls.status !== 'completed').map(cls => {
                                                     // Check if button should be visible (during class time + 30 minutes)
                                                     const now = new Date();
                                                     const classDate = new Date(`${cls.date}T${cls.time}`);
