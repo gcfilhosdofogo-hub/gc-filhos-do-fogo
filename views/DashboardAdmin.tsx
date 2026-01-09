@@ -249,6 +249,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         const [mainPart, ...rest] = b.split('ponta');
         const pontaPart = rest.join('ponta');
 
+        // Main colors
         const colorMap: Record<string, string> = {
             'verde': '#22c55e',
             'amarelo': '#FDD835',
@@ -257,22 +258,31 @@ export const DashboardAdmin: React.FC<Props> = ({
             'cinza': '#9ca3af',
         };
 
+        // Ponta colors - lighter/brighter shades for highlight effect
+        const pontaColorMap: Record<string, string> = {
+            'verde': '#4ade80',    // Lighter green
+            'amarelo': '#FFEB3B',  // Brighter yellow
+            'azul': '#1E90FF',     // Lighter blue (Dodger Blue)
+            'branco': '#f0f0f0',   // Slightly off-white
+        };
+
         // Calculate mainColor from belt name - don't use beltColor as initial value
         let mainColor = '#fff';
         let pontaColor: string | null = null;
 
+        // Smooth gradients - colors blend together
         if (mainPart.includes('verde, amarelo, azul e branco')) {
-            mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 25%, #FDD835 25%, #FDD835 50%, #0033CC 50%, #0033CC 75%, #ffffff 75%, #ffffff 100%)';
+            mainColor = 'linear-gradient(to bottom, #22c55e, #FDD835, #0033CC, #ffffff)';
         } else if (mainPart.includes('amarelo e azul')) {
-            mainColor = 'linear-gradient(to bottom, #FDD835 0%, #FDD835 50%, #0033CC 50%, #0033CC 100%)';
+            mainColor = 'linear-gradient(to bottom, #FDD835, #0033CC)';
         } else if (mainPart.includes('verde e amarelo')) {
-            mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #FDD835 50%, #FDD835 100%)';
+            mainColor = 'linear-gradient(to bottom, #22c55e, #FDD835)';
         } else if (mainPart.includes('verde e branco')) {
-            mainColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #ffffff 50%, #ffffff 100%)';
+            mainColor = 'linear-gradient(to bottom, #22c55e, #ffffff)';
         } else if (mainPart.includes('amarelo e branco')) {
-            mainColor = 'linear-gradient(to bottom, #FDD835 0%, #FDD835 50%, #ffffff 50%, #ffffff 100%)';
+            mainColor = 'linear-gradient(to bottom, #FDD835, #ffffff)';
         } else if (mainPart.includes('azul e branco')) {
-            mainColor = 'linear-gradient(to bottom, #0033CC 0%, #0033CC 50%, #ffffff 50%, #ffffff 100%)';
+            mainColor = 'linear-gradient(to bottom, #0033CC, #ffffff)';
         } else if (mainPart.includes('cinza')) {
             mainColor = '#9ca3af';
         } else if (mainPart.includes('verde')) {
@@ -288,13 +298,14 @@ export const DashboardAdmin: React.FC<Props> = ({
             mainColor = user.beltColor;
         }
 
+        // Ponta uses highlighted (lighter) colors for visual distinction
         if (pontaPart) {
             if (pontaPart.includes('verde') && pontaPart.includes('amarelo')) {
-                pontaColor = 'linear-gradient(to bottom, #22c55e 0%, #22c55e 50%, #FDD835 50%, #FDD835 100%)';
-            } else if (pontaPart.includes('verde')) pontaColor = colorMap['verde'];
-            else if (pontaPart.includes('amarelo')) pontaColor = colorMap['amarelo'];
-            else if (pontaPart.includes('azul')) pontaColor = colorMap['azul'];
-            else if (pontaPart.includes('branco')) pontaColor = colorMap['branco'];
+                pontaColor = 'linear-gradient(to bottom, #4ade80, #FFEB3B)';
+            } else if (pontaPart.includes('verde')) pontaColor = pontaColorMap['verde'];
+            else if (pontaPart.includes('amarelo')) pontaColor = pontaColorMap['amarelo'];
+            else if (pontaPart.includes('azul')) pontaColor = pontaColorMap['azul'];
+            else if (pontaPart.includes('branco')) pontaColor = pontaColorMap['branco'];
         }
 
         return { mainColor, pontaColor };
