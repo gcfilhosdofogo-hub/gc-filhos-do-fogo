@@ -78,7 +78,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
-  const [myClasses, setMyClasses] = useState<ClassSession[]>(classSessions.filter(cs => cs.professor_id === user.id)); // Use real class sessions
+  const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '' });
 
   // Attendance State
@@ -88,7 +88,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Assignments
-  const [profAssignments, setProfAssignments] = useState<AssignmentType[]>(assignments.filter(a => a.created_by === user.id)); // Filter assignments created by this professor
+  const profAssignments = useMemo(() => assignments.filter(a => a.created_by === user.id), [assignments, user.id]);
   const [newAssignment, setNewAssignment] = useState<AssignmentFormState>({ title: '', description: '', dueDate: '', studentId: '' }); // Added studentId
   const [showAssignToStudentModal, setShowAssignToStudentModal] = useState(false);
   const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<AssignmentType | null>(null);
@@ -125,13 +125,15 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventFileInputRef = useRef<HTMLInputElement>(null);
+  const uniformFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingUniformProof, setUploadingUniformProof] = useState(false);
+  const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
 
   const myFilteredPayments = (monthlyPayments || []).filter(p => p.student_id === user.id);
   const myMonthlyPayments = myFilteredPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
   const myEvaluations = myFilteredPayments.filter(p => p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'));
-  const myEventRegistrations = eventRegistrations ? eventRegistrations.filter(r => r.id === user.id) : [];
-
-  const [myOrders, setMyOrders] = useState<UniformOrder[]>(uniformOrders.filter(o => o.user_id === user.id));
+  const myEventRegistrations = useMemo(() => eventRegistrations ? eventRegistrations.filter(r => r.user_id === user.id) : [], [eventRegistrations, user.id]);
+  const myOrders = useMemo(() => uniformOrders.filter(o => o.user_id === user.id), [uniformOrders, user.id]);
 
   const overdueStatus = useMemo(() => {
     const pending = myMonthlyPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
@@ -167,6 +169,38 @@ export const DashboardProfessor: React.FC<Props> = ({
       alert('Erro ao enviar comprovante: ' + error.message);
     } finally {
       setUploadingPaymentProof(false);
+    }
+  };
+
+  const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) return;
+    const file = e.target.files[0];
+    setUploadingUniformProof(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/uniform_proofs/${selectedOrderToProof.id}_${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payment_proofs')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('payment_proofs')
+        .getPublicUrl(filePath);
+
+      await onUpdateOrderWithProof(selectedOrderToProof.id, publicUrlData.publicUrl, file.name);
+
+      onNotifyAdmin(`Professor ${user.nickname || user.name} enviou comprovante de uniforme: ${selectedOrderToProof.item}`, user);
+      alert("Comprovante enviado com sucesso!");
+      setSelectedOrderToProof(null);
+    } catch (error: any) {
+      console.error('Error uploading uniform proof:', error);
+      alert("Erro ao enviar comprovante: " + error.message);
+    } finally {
+      setUploadingUniformProof(false);
+      if (uniformFileInputRef.current) uniformFileInputRef.current.value = '';
     }
   };
 
@@ -233,11 +267,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     fetchMyStudents();
   }, [user.nickname, user.first_name, user.name]);
 
-  useEffect(() => {
-    setMyClasses(classSessions.filter(cs => cs.professor_id === user.id));
-    setProfAssignments(assignments.filter(a => a.created_by === user.id));
-    setMyOrders(uniformOrders.filter(o => o.user_id === user.id));
-  }, [classSessions, assignments, uniformOrders, user.id]);
+  // Removed redundant useEffect for myClasses, profAssignments, and myOrders as they now use useMemo
 
   // Calculate Grade Averages
   const gradeStats = useMemo(() => {
@@ -912,9 +942,9 @@ export const DashboardProfessor: React.FC<Props> = ({
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button type="submit" disabled={selectedAssignmentTarget === 'all' ? allUsersProfiles.filter(u => u.role === 'aluno').length === 0 : allUsersProfiles.filter(u => u.professorName === (user.nickname || user.name)).length === 0}>
+              <Button type="submit" disabled={allUsersProfiles.filter(u => u.professorName === (user.nickname || user.name)).length === 0}>
                 <PlusCircle size={18} className="mr-1" />
-                {selectedAssignmentTarget === 'all' ? 'Passar para Todos' : 'Passar para Meus Alunos'}
+                Passar para Meus Alunos
               </Button>
             </div>
           </form>
@@ -1354,14 +1384,27 @@ export const DashboardProfessor: React.FC<Props> = ({
                 )}
               </div>
 
-              <h4 className="text-sm font-bold text-white mb-2 mt-4">Meus Pedidos de Uniforme</h4>
+              <h4 className="text-sm font-bold text-white mb-2 mt-4 flex items-center gap-2">
+                <Shirt className="text-orange-500" size={16} />
+                Meus Pedidos de Uniforme
+              </h4>
               <div className="space-y-3">
+                <Button
+                  fullWidth
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setProfView('uniform')}
+                  className="mb-2 border-dashed border-stone-600"
+                >
+                  <PlusCircle size={14} className="mr-1" /> Novo Pedido de Uniforme
+                </Button>
                 {myOrders.length > 0 ? (
                   myOrders.map(order => (
                     <div key={order.id} className={`bg-stone-900 p-3 rounded border-l-2 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
                       <div>
                         <p className="font-bold text-white text-sm">{order.item}</p>
                         <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')}</p>
+                        <p className="text-[10px] text-stone-600">{order.date}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-2 sm:mt-0">
                         {order.status !== 'pending' ? (
@@ -1369,16 +1412,48 @@ export const DashboardProfessor: React.FC<Props> = ({
                             <Check size={12} /> Pago/Entregue
                           </span>
                         ) : (
-                          <span className="text-yellow-400 text-xs flex items-center gap-1">
-                            <Clock size={12} /> Aguardando Pagamento
-                          </span>
+                          <>
+                            {!order.proof_url ? (
+                              <Button
+                                variant="secondary"
+                                className="text-[10px] h-auto px-2 py-1"
+                                onClick={() => {
+                                  setSelectedOrderToProof(order);
+                                  uniformFileInputRef.current?.click();
+                                }}
+                                disabled={uploadingUniformProof}
+                              >
+                                {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar</>}
+                              </Button>
+                            ) : (
+                              <span className="text-yellow-400 text-[10px] flex items-center gap-1">
+                                <Clock size={12} /> Enviado
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {order.proof_url && (
+                          <button
+                            onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Ver
+                          </button>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-stone-500 text-sm italic">Nenhum pedido de uniforme registrado.</p>
+                  <p className="text-stone-500 text-sm italic">Nenhum pedido registrado.</p>
                 )}
+                <input
+                  type="file"
+                  accept="image/*, application/pdf"
+                  className="hidden"
+                  ref={uniformFileInputRef}
+                  onChange={handleFileChangeForUniformProof}
+                  disabled={uploadingUniformProof}
+                />
               </div>
             </div>
           </div>
@@ -1675,19 +1750,61 @@ export const DashboardProfessor: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              {/* Attendance History */}
+              <div className="mt-6 border-t border-stone-700 pt-6">
+                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <CalendarCheck size={16} className="text-stone-400" /> Histórico de Chamadas
+                </h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {myClasses.filter(cls => cls.status === 'completed').length > 0 ? (
+                    myClasses.filter(cls => cls.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(cls => (
+                      <div key={cls.id} className="flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 border-stone-600">
+                        <span className="text-stone-300 font-medium">{cls.title}</span>
+                        <span className="text-stone-500 font-mono">{cls.date.split('-').reverse().join('/')}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-stone-500 text-[10px] italic">Nenhuma chamada realizada.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Evaluation History */}
+              <div className="mt-4 border-t border-stone-700 pt-4">
+                <h4 className="text-sm font-bold text-white mb-3">Histórico de Avaliações</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {studentGrades.filter(g => myStudents.some(s => s.id === g.student_id)).length > 0 ? (
+                    studentGrades.filter(g => myStudents.some(s => s.id === g.student_id))
+                      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+                      .slice(0, 5).map(g => (
+                        <div key={g.id} className="flex justify-between items-center bg-stone-900/30 p-2 rounded text-[10px] border-l-2 border-green-900/50">
+                          <div className="flex-1">
+                            <p className="text-stone-200 font-bold">{myStudents.find(s => s.id === g.student_id)?.nickname || 'Aluno'}</p>
+                            <p className="text-stone-500">{g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
+                          </div>
+                          <span className="text-green-400 font-black ml-2">{Number(g.numeric).toFixed(1)}</span>
+                        </div>
+                      ))
+                  ) : (
+                    <p className="text-stone-500 text-[10px] italic">Sem avaliações recentes.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest">Atalhos dos Alunos</h4>
                 {myStudents.slice(0, 3).map(s => (
                   <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                     <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
-                      {s.name.charAt(0)} {/* Revertido para a inicial do nome */}
+                      {s.name.charAt(0)}
                     </div>
                     <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
-                    <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
+                    <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => { setSelectedStudentForGrades(s.id); setProfView('grades'); }}>Avaliar</Button>
                   </div>
                 ))}
               </div>
 
-              <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
+              <button onClick={() => setProfView('all_students')} className="w-full text-center text-stone-500 text-[10px] mt-4 hover:text-white transition-colors">Ver todos os alunos</button>
             </div>
           </div>
         </div>

@@ -1199,20 +1199,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                 session_id: selectedClassId,
                 student_id: student.id,
                 status: isPresent ? 'present' : 'absent',
-                justification: !isPresent ? justifications[student.id] : null,
-                created_at: new Date().toISOString()
+                justification: !isPresent ? justifications[student.id] : null
             };
         });
 
-        if (records.length === 0) {
-            alert('Não há alunos vinculados a este professor para realizar a chamada.');
-            return;
-        }
+        if (records.length === 0) return;
 
         try {
             await onAddAttendance(records);
 
-            // Update session status to completed
             const session = myClasses.find(c => c.id === selectedClassId);
             if (session) {
                 await onUpdateClassSession({ ...session, status: 'completed' });
@@ -1225,10 +1220,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                 setShowSuccess(false);
                 setJustifications({});
                 onNotifyAdmin('Realizou chamada de aula', user);
-            }, 1500);
+            }, 1000);
         } catch (err: any) {
             console.error('Error saving attendance:', err);
-            alert('Erro ao salvar chamada no banco de dados: ' + (err.message || err.details || 'Erro desconhecido'));
+            alert('Erro ao salvar chamada no banco de dados.');
         }
     };
     const handleSaveNewClass = async (e: React.FormEvent) => {

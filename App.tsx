@@ -611,27 +611,11 @@ function AppContent() {
   };
 
   const handleAddAttendance = async (attendanceRecords: any[]) => {
-    if (!session || attendanceRecords.length === 0) return;
-
-    const sessionIds = Array.from(new Set(attendanceRecords.map(r => r.session_id)));
-    const studentIds = attendanceRecords.map(r => r.student_id);
-
-    // Clear existing records for these students in these sessions to avoid duplicates
-    const { error: deleteError } = await supabase
-      .from('attendance')
-      .delete()
-      .in('session_id', sessionIds)
-      .in('student_id', studentIds);
-
-    if (deleteError) {
-      console.error('Error clearing old attendance:', deleteError);
-      // We continue even if delete fails, though it might lead to duplicates
-    }
-
-    const { error: insertError } = await supabase.from('attendance').insert(attendanceRecords);
-    if (insertError) {
-      console.error('Error adding attendance:', insertError);
-      throw insertError;
+    if (attendanceRecords.length === 0) return;
+    const { error } = await supabase.from('attendance').insert(attendanceRecords);
+    if (error) {
+      console.error('Error adding attendance:', error);
+      throw error;
     }
   };
 
