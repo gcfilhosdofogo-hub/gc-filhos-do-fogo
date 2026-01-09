@@ -1207,7 +1207,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             setShowSuccess(true);
             setTimeout(() => {
                 setSelectedClassId(null);
-                setProfView('dashboard');
+                // setProfView('dashboard'); // Removed for consistency
                 setShowSuccess(false);
                 setJustifications({});
                 onNotifyAdmin('Realizou chamada de aula', user);
@@ -1233,7 +1233,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         };
         await onAddClassSession(newSessionPayload);
         setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
-        setProfView('dashboard');
+        // setProfView('dashboard'); // Removed for consistency
         onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
     };
 

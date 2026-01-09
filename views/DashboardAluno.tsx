@@ -1546,6 +1546,10 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
 
               <div className="relative z-10">
+                <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                  <ArrowLeft size={16} className="mr-2" />
+                  Voltar ao Painel
+                </Button>
                 <div className="flex items-center gap-4 mb-8">
                   <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
                     <Music size={32} />
@@ -1656,6 +1660,10 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: BOLETIM --- */}
           {activeMainTab === 'school_report' && (
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+              <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                <ArrowLeft size={16} className="mr-2" />
+                Voltar ao Painel
+              </Button>
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><GraduationCap size={24} className="text-orange-500" /> Boletim Escolar</h2>
 
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
@@ -1706,6 +1714,10 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: UNIFORME --- */}
           {activeMainTab === 'uniform' && (
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+              <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                <ArrowLeft size={16} className="mr-2" />
+                Voltar ao Painel
+              </Button>
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
                 <h3 className="text-lg font-bold text-white mb-3">Fazer Novo Pedido</h3>
                 <form onSubmit={handleOrderUniform} className="space-y-4">
