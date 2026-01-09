@@ -43,6 +43,7 @@ interface Props {
     onClearNotifications: () => void;
     onAddAttendance: (records: any[]) => Promise<void>;
     onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
+    onAddStudentGrade: (payload: any) => Promise<void>;
     allUsersProfiles: User[];
 }
 
@@ -89,6 +90,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     onClearNotifications = () => { },
     onAddAttendance,
     onAddClassRecord,
+    onAddStudentGrade,
     allUsersProfiles = [],
 }) => {
     const { session } = useSession();
@@ -126,7 +128,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     }, [uniformOrders, user.id]);
 
     // Assignments State
-    const [newAssignment, setNewAssignment] = useState({ title: '', description: '', dueDate: '', studentId: '' });
+    const [newAssignment, setNewAssignment] = useState<{ title: string, description: string, dueDate: string, studentId: string, file: File | null }>({ title: '', description: '', dueDate: '', studentId: '', file: null });
     const [showAssignToStudentModal, setShowAssignToStudentModal] = useState(false);
     const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<Assignment | null>(null);
     const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<string>('');
@@ -227,7 +229,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
-    const myClasses = useMemo(() => (classSessions || []).filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
+    const myClasses = useMemo(() => (classSessions || []).filter(cs => cs.professor_id === user.id && cs.status !== 'completed'), [classSessions, user.id]);
 
     const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
     const [attendanceData, setAttendanceData] = useState<Record<string, boolean>>({});
@@ -238,9 +240,10 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
     const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; url: string }>({ title: '', category: 'theory', lyrics: '', url: '' });
     const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
-    const [evalData, setEvalData] = useState({ positive: '', negative: '' });
+    const [evalData, setEvalData] = useState({ theory: '', movement: '', musicality: '', positive: '', negative: '' });
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [studentName, setStudentName] = useState('');
+    const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
 
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
@@ -1239,15 +1242,62 @@ export const DashboardAdmin: React.FC<Props> = ({
             setStudentName(student.nickname || student.name);
         }
         setSelectedStudentForEval(studentId);
-        setEvalData({ positive: '', negative: '' });
+        setEvalData({ theory: '', movement: '', musicality: '', positive: '', negative: '' }); // Reset all fields
         setProfView('evaluate');
     };
 
-    const handleSaveEvaluation = () => {
-        alert("Avaliação salva com sucesso!");
-        setProfView('all_students');
-        setSelectedStudentForEval(null);
-        onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user); // Added notification
+    const handleSaveEvaluation = async () => {
+        if (!selectedStudentForEval) return;
+
+        try {
+            // Save Theory Grade
+            if (evalData.theory) {
+                await onAddStudentGrade({
+                    student_id: selectedStudentForEval,
+                    student_name: studentName,
+                    professor_id: user.id,
+                    professor_name: user.nickname || user.name,
+                    category: 'theory',
+                    written: evalData.positive,
+                    numeric: parseFloat(evalData.theory) || 0
+                });
+            }
+
+            // Save Movement Grade
+            if (evalData.movement) {
+                await onAddStudentGrade({
+                    student_id: selectedStudentForEval,
+                    student_name: studentName,
+                    professor_id: user.id,
+                    professor_name: user.nickname || user.name,
+                    category: 'movement',
+                    written: evalData.positive,
+                    numeric: parseFloat(evalData.movement) || 0
+                });
+            }
+
+            // Save Musicality Grade
+            if (evalData.musicality) {
+                await onAddStudentGrade({
+                    student_id: selectedStudentForEval,
+                    student_name: studentName,
+                    professor_id: user.id,
+                    professor_name: user.nickname || user.name,
+                    category: 'musicality',
+                    written: evalData.positive,
+                    numeric: parseFloat(evalData.musicality) || 0
+                });
+            }
+
+            alert("Avaliações salvas com sucesso!");
+            setProfView('all_students');
+            setSelectedStudentForEval(null);
+            setEvalData({ theory: '', movement: '', musicality: '', positive: '', negative: '' });
+            onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user);
+        } catch (error) {
+            console.error('Error saving evaluations:', error);
+            alert('Erro ao salvar algumas notas.');
+        }
     };
 
     const handleMusicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1295,6 +1345,25 @@ export const DashboardAdmin: React.FC<Props> = ({
             return;
         }
 
+        // Upload attachment if exists
+        let attachmentUrl = '';
+        let attachmentName = '';
+        if (newAssignment.file) {
+            try {
+                const file = newAssignment.file;
+                const fileExt = file.name.split('.').pop();
+                const filePath = `${user.id}/assignments_source/${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('assignment_attachments').upload(filePath, file);
+                if (uploadError) throw uploadError;
+                const { data: pub } = supabase.storage.from('assignment_attachments').getPublicUrl(filePath);
+                attachmentUrl = pub.publicUrl;
+                attachmentName = file.name;
+            } catch (err: any) {
+                console.error('Error uploading assignment attachment:', err);
+                alert('Erro ao enviar anexo do trabalho. O trabalho será criado sem anexo.');
+            }
+        }
+
         if (newAssignment.studentId) {
             // Specific student from modal or selection
             const assignmentPayload: Omit<Assignment, 'id' | 'created_at'> = {
@@ -1304,6 +1373,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                 due_date: newAssignment.dueDate,
                 status: 'pending',
                 student_id: newAssignment.studentId,
+                attachment_url: attachmentUrl,
+                attachment_name: attachmentName
             };
             await onAddAssignment(assignmentPayload);
         } else {
@@ -1316,12 +1387,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                     due_date: newAssignment.dueDate,
                     status: 'pending',
                     student_id: student.id,
+                    attachment_url: attachmentUrl,
+                    attachment_name: attachmentName
                 };
                 await onAddAssignment(assignmentPayload);
             }
         }
 
-        setNewAssignment({ title: '', description: '', dueDate: '', studentId: '' });
+        setNewAssignment({ title: '', description: '', dueDate: '', studentId: '', file: null });
         alert(`Trabalho "${newAssignment.title}" criado e enviado com sucesso!`);
         onNotifyAdmin(`${user.role === 'admin' ? 'Admin' : 'Professor'} criou trabalho: ${newAssignment.title}`, user);
         setShowAssignToStudentModal(false);
@@ -1438,12 +1511,59 @@ export const DashboardAdmin: React.FC<Props> = ({
                     return { name: it.name, url: pub.publicUrl, created_at: it.created_at };
                 });
                 setClassRecords(withUrls);
-            } catch (err) {
-                console.error('Error listing class records:', err);
+            } catch (error) {
+                console.error('Error fetching class records:', error);
             }
         };
+
+        const fetchAttendanceHistory = async () => {
+            // Fetch real attendance records from DB
+            // We can check 'attendance_records' table
+            try {
+                const { data, error } = await supabase
+                    .from('attendance_records')
+                    .select(`
+                        id,
+                        created_at,
+                        status,
+                        student_id,
+                        session_id,
+                        class_sessions (
+                            date,
+                            time,
+                            location
+                        ),
+                        profiles:student_id (
+                            nickname,
+                            first_name,
+                            last_name
+                        )
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) throw error;
+                // Store attendance history in state for display
+                if (data) {
+                    const formattedHistory = data.map((record: any) => ({
+                        id: record.id,
+                        class_date: record.class_sessions?.date || record.created_at?.split('T')[0] || '',
+                        student_id: record.student_id,
+                        student_name: record.profiles?.nickname || record.profiles?.first_name || 'Aluno',
+                        status: record.status as 'present' | 'absent' | 'justified',
+                        justification: record.justification
+                    }));
+                    setAttendanceHistory(formattedHistory);
+                }
+            } catch (err) {
+                console.error("Error fetching attendance history", err);
+            }
+        };
+
         fetchClassRecords();
+        fetchAttendanceHistory();
     }, []);
+
 
     // --- Student Details Handlers ---
     const handleViewReport = async (fileUrl: string, fileName: string) => {
@@ -1633,20 +1753,58 @@ export const DashboardAdmin: React.FC<Props> = ({
                     </p>
                 </div>
 
-                {/* Evaluation Info (consolidated) */}
-                <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
-                    <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
-                        <GraduationCap size={16} /> Próxima Avaliação
-                    </p>
-                    <div className="flex flex-col items-center gap-2">
-                        <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
-                        {user.nextEvaluationDate && (
-                            <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full">
-                                Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
-                            </span>
-                        )}
-                    </div>
-                </div>
+                {/* Evaluation Info - Showing remaining installments value */}
+                {(() => {
+                    // Calculate remaining installments for the current user
+                    const userInstallments = monthlyPayments.filter(p =>
+                        p.student_id === user.id &&
+                        p.month?.includes('Parcela')
+                    );
+                    const paidInstallments = userInstallments.filter(p => p.status === 'paid');
+                    const pendingInstallments = userInstallments.filter(p => p.status !== 'paid');
+                    const remainingValue = pendingInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    const totalPaid = paidInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+                    return (
+                        <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
+                            <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                                <GraduationCap size={16} /> Próxima Avaliação
+                            </p>
+                            <div className="flex flex-col items-center gap-2">
+                                {remainingValue > 0 ? (
+                                    <>
+                                        <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
+                                        <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                                        <div className="flex gap-2 text-xs">
+                                            <span className="text-green-400">{paidInstallments.length} pagas</span>
+                                            <span className="text-stone-600">|</span>
+                                            <span className="text-orange-400">{pendingInstallments.length} pendentes</span>
+                                        </div>
+                                        {/* Progress bar */}
+                                        <div className="w-full bg-stone-700 rounded-full h-2 mt-2">
+                                            <div
+                                                className="bg-green-500 h-2 rounded-full transition-all"
+                                                style={{ width: `${userInstallments.length > 0 ? (paidInstallments.length / userInstallments.length) * 100 : 0}%` }}
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                                        {totalPaid > 0 && (
+                                            <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
+                                        )}
+                                    </>
+                                )}
+                                {user.nextEvaluationDate && (
+                                    <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full mt-2">
+                                        Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Tabs Navigation */}
@@ -2306,6 +2464,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <CalendarCheck size={16} /> <span className="hidden sm:inline">Gerar Mês</span>
                                         </Button>
                                         <Button
+                                            onClick={() => setProfView('music_manager')}
+                                            variant="secondary"
+                                            className="border border-purple-900/50 text-purple-400 hover:bg-purple-900/20 px-4 py-2 text-sm h-11"
+                                        >
+                                            <Music size={16} /> <span className="hidden sm:inline">Músicas</span>
+                                        </Button>
+                                        <Button
                                             onClick={() => setShowAddPaymentModal(true)}
                                             className="px-4 py-2 text-sm font-bold h-11 shadow-lg shadow-orange-900/20"
                                         >
@@ -2371,6 +2536,39 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             <AlertCircle size={12} /> Atrasado
                                                         </span>
                                                     )}
+                                                    {/* Upload Proof Button */}
+                                                    <div className="mt-2">
+                                                        <label className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300">
+                                                            <UploadCloud size={12} />
+                                                            {payment.proof_url ? 'Trocar Comprovante' : 'Enviar Comprovante'}
+                                                            <input
+                                                                type="file"
+                                                                className="hidden"
+                                                                accept="image/*,application/pdf"
+                                                                onChange={async (e) => {
+                                                                    if (e.target.files?.[0]) {
+                                                                        const file = e.target.files[0];
+                                                                        try {
+                                                                            const ext = file.name.split('.').pop();
+                                                                            const path = `payment_proofs/${payment.id}_${Date.now()}.${ext}`;
+                                                                            const { error } = await supabase.storage.from('payment_proofs').upload(path, file);
+                                                                            if (error) throw error;
+                                                                            const { data: pub } = supabase.storage.from('payment_proofs').getPublicUrl(path);
+
+                                                                            await onUpdatePaymentRecord({
+                                                                                ...payment,
+                                                                                proof_url: pub.publicUrl,
+                                                                                proof_name: file.name
+                                                                            });
+                                                                            alert('Comprovante enviado!');
+                                                                        } catch (err: any) {
+                                                                            alert('Erro upload: ' + err.message);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     {payment.proof_url ? (
@@ -2594,7 +2792,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </select>
                                         </div>
 
-                                        {userForm.role === 'aluno' && (
+                                        {/* Professor Responsável - shown for everyone except 'Anjo de Fogo' */}
+                                        {(editingUser?.nickname !== 'Anjo de Fogo' && userForm.nickname !== 'Anjo de Fogo') && (
                                             <div>
                                                 <label className="block text-sm text-stone-400 mb-1">Professor Responsável</label>
                                                 <select
@@ -2605,7 +2804,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                                 >
                                                     <option value="">Selecione um professor</option>
-                                                    {managedUsers.filter(u => u.role === 'professor' || u.role === 'admin').map(prof => (
+                                                    {managedUsers.filter(u => (u.role === 'professor' || u.role === 'admin') && u.nickname !== 'Anjo de Fogo').map(prof => (
                                                         <option key={prof.id} value={prof.nickname || prof.first_name || prof.name}>
                                                             {prof.nickname ? `${prof.nickname} (${prof.first_name || prof.name})` : prof.first_name || prof.name}
                                                         </option>
@@ -2760,15 +2959,23 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     <Edit2 size={12} />
                                                                 </button>
                                                             </p>
+                                                            {/* Enhanced Installment Display */}
                                                             {(() => {
-                                                                const userInstallments = monthlyPayments.filter(p => p.student_id === u.id && p.month.includes('Parcela'));
+                                                                // Use inclusive filtering for 'Avaliação' or 'Parcela'
+                                                                const userInstallments = monthlyPayments.filter(p =>
+                                                                    p.student_id === u.id &&
+                                                                    (p.month.includes('Parcela') || p.type === 'evaluation')
+                                                                );
                                                                 const totalInstallments = userInstallments.length;
 
                                                                 if (totalInstallments > 0) {
                                                                     const paidInstallments = userInstallments.filter(p => p.status === 'paid').length;
-                                                                    // Extract total count from first record string "Parcela X/Y"
-                                                                    const match = userInstallments[0].month.match(/\/(\d+)/);
-                                                                    const maxInstallments = match ? match[1] : totalInstallments;
+
+                                                                    // Try to determine max installments from the string "Parcela X/Y"
+                                                                    // Or fallback to total count found
+                                                                    let maxInstallmentsStr = totalInstallments.toString();
+                                                                    const match = userInstallments[0]?.month?.match(/\/(\d+)/);
+                                                                    if (match) maxInstallmentsStr = match[1];
 
                                                                     // Calculate remaining debt based on paid installments
                                                                     const paidAmount = userInstallments
@@ -2776,16 +2983,32 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         .reduce((sum, p) => sum + p.amount, 0);
 
                                                                     const originalDebt = u.graduationCost ?? 0;
-                                                                    const remainingDebt = Math.max(0, originalDebt - paidAmount);
+                                                                    // If original debt is 0 (some legacy cases), use sum of all installments
+                                                                    const totalDebt = originalDebt > 0 ? originalDebt : userInstallments.reduce((sum, p) => sum + p.amount, 0);
+
+                                                                    const remainingDebt = Math.max(0, totalDebt - paidAmount);
 
                                                                     return (
-                                                                        <div className="flex flex-col items-start">
-                                                                            <span className="text-[10px] text-blue-400 font-bold">
-                                                                                {paidInstallments}/{maxInstallments} Parcelas
-                                                                            </span>
-                                                                            {paidAmount > 0 && (
-                                                                                <span className="text-[10px] text-stone-400">
+                                                                        <div className="flex flex-col items-start mt-1 p-1 bg-stone-800 rounded border border-stone-700 w-full">
+                                                                            <div className="flex justify-between w-full">
+                                                                                <span className="text-[10px] text-blue-400 font-bold">
+                                                                                    {paidInstallments}/{maxInstallmentsStr} Pagas
+                                                                                </span>
+                                                                                {u.nextEvaluationDate && <span className="text-[9px] text-stone-500">{formatDatePTBR(u.nextEvaluationDate)}</span>}
+                                                                            </div>
+                                                                            <div className="w-full bg-stone-700 h-1.5 rounded-full mt-1 mb-1">
+                                                                                <div
+                                                                                    className="bg-blue-500 h-1.5 rounded-full transition-all"
+                                                                                    style={{ width: `${(paidInstallments / Number(maxInstallmentsStr)) * 100}%` }}
+                                                                                ></div>
+                                                                            </div>
+                                                                            {remainingDebt > 0 ? (
+                                                                                <span className="text-[10px] text-stone-300 font-mono">
                                                                                     Restante: R$ {remainingDebt.toFixed(2).replace('.', ',')}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[10px] text-green-400 font-bold flex items-center gap-1">
+                                                                                    <CheckCircle size={10} /> Quitado
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -2995,27 +3218,42 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         </div>
                                                     </div>
 
-                                                    {/* Assignments */}
+                                                    {/* Assignments - Filtered by professor */}
                                                     <div>
                                                         <h4 className="text-blue-400 font-bold text-sm mb-3 flex items-center gap-2">
                                                             <BookOpen size={16} /> Trabalhos e Tarefas
                                                         </h4>
                                                         <div className="space-y-2">
-                                                            {assignments.filter(assign => assign.student_id === student.id || assign.student_id === null).length > 0 ? (
-                                                                assignments.filter(assign => assign.student_id === student.id || assign.student_id === null).map(assign => (
-                                                                    <div key={assign.id} className="bg-stone-800 p-3 rounded border border-stone-700">
-                                                                        <p className="text-white font-medium">{assign.title}</p>
-                                                                        <p className="text-xs text-stone-500">Entrega: {assign.due_date} • Status: {assign.status === 'pending' ? 'Pendente' : 'Concluído'}</p>
-                                                                        {assign.attachment_url && (
-                                                                            <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-1 hover:underline">
-                                                                                <Paperclip size={12} /> Ver Anexo
-                                                                            </a>
-                                                                        )}
-                                                                    </div>
-                                                                ))
-                                                            ) : (
-                                                                <p className="text-stone-500 text-sm italic">Nenhum trabalho atribuído.</p>
-                                                            )}
+                                                            {(() => {
+                                                                const profIdentity = allUsersProfiles.find(p =>
+                                                                    (p.nickname || p.name) === student.professorName
+                                                                );
+
+                                                                const studentSpecificAssignments = assignments.filter(assign => {
+                                                                    const belongsToStudent = assign.student_id === student.id;
+                                                                    const createdByProfessor = profIdentity ? assign.created_by === profIdentity.id : false;
+
+                                                                    // Show if it belongs to student AND was created by their professor
+                                                                    // Also show assignments without student_id (global) IF created by their professor
+                                                                    return (belongsToStudent || (assign.student_id === null)) && createdByProfessor;
+                                                                });
+
+                                                                return studentSpecificAssignments.length > 0 ? (
+                                                                    studentSpecificAssignments.map(assign => (
+                                                                        <div key={assign.id} className="bg-stone-800 p-3 rounded border border-stone-700">
+                                                                            <p className="text-white font-medium">{assign.title}</p>
+                                                                            <p className="text-xs text-stone-500">Entrega: {assign.due_date} • Status: {assign.status === 'pending' ? 'Pendente' : 'Concluído'}</p>
+                                                                            {assign.attachment_url && (
+                                                                                <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-1 hover:underline">
+                                                                                    <Paperclip size={12} /> Ver Anexo
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <p className="text-stone-500 text-sm italic">Nenhum trabalho atribuído por seu professor.</p>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -3085,14 +3323,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             {/* Expanded Details */}
                                             {expandedProfessor === prof.professorId && (
                                                 <div className="border-t border-stone-700 bg-stone-900/50 p-4 animate-fade-in-down">
-
-                                                    {/* Content Section */}
-                                                    <div className="mb-6 bg-stone-800/50 p-4 rounded border border-stone-700">
-                                                        <h4 className="text-orange-400 font-bold text-sm mb-2 flex items-center gap-2">
-                                                            <BookOpen size={16} /> Conteúdo Sendo Ministrado
-                                                        </h4>
-                                                        <p className="text-stone-300 text-sm leading-relaxed">{prof.currentContent}</p>
-                                                    </div>
 
                                                     {/* Students Table */}
                                                     <h4 className="text-stone-400 font-bold text-xs uppercase mb-3">Desempenho e Custos de Graduação</h4>
@@ -3497,12 +3727,64 @@ export const DashboardAdmin: React.FC<Props> = ({
                         {
                             profView === 'evaluate' && studentBeingEvaluated && (
                                 <div className="max-w-2xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
-                                    <h2 className="text-2xl font-bold text-white mb-4">Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}</h2>
+                                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                                        <Award className="text-yellow-500" /> Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}
+                                    </h2>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Teoria</label>
+                                            <input
+                                                type="number"
+                                                min="0" max="10" step="0.1"
+                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
+                                                value={evalData.theory}
+                                                onChange={e => setEvalData({ ...evalData, theory: e.target.value })}
+                                                placeholder="0.0"
+                                            />
+                                        </div>
+                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Movimentação</label>
+                                            <input
+                                                type="number"
+                                                min="0" max="10" step="0.1"
+                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
+                                                value={evalData.movement}
+                                                onChange={e => setEvalData({ ...evalData, movement: e.target.value })}
+                                                placeholder="0.0"
+                                            />
+                                        </div>
+                                        <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                                            <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Musicalidade</label>
+                                            <input
+                                                type="number"
+                                                min="0" max="10" step="0.1"
+                                                className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white text-xl font-bold text-center"
+                                                value={evalData.musicality}
+                                                onChange={e => setEvalData({ ...evalData, musicality: e.target.value })}
+                                                placeholder="0.0"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="space-y-4">
-                                        <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white" placeholder="Pontos Positivos" value={evalData.positive} onChange={e => setEvalData({ ...evalData, positive: e.target.value })} />
-                                        <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white" placeholder="Pontos a Melhorar" value={evalData.negative} onChange={e => setEvalData({ ...evalData, negative: e.target.value })} />
-                                        <Button fullWidth onClick={handleSaveEvaluation}>Salvar Avaliação</Button>
-                                        <button onClick={() => setProfView('all_students')} className="block w-full text-center text-stone-500 mt-2">Cancelar</button>
+                                        <div>
+                                            <label className="block text-sm text-stone-400 mb-1">Pontos Positivos / Elogios</label>
+                                            <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white h-24" placeholder="Ex: Ótima evolução nos chutes..." value={evalData.positive} onChange={e => setEvalData({ ...evalData, positive: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-stone-400 mb-1">Pontos a Melhorar</label>
+                                            <textarea className="w-full bg-stone-900 border border-stone-600 rounded p-3 text-white h-24" placeholder="Ex: Precisa focar mais na base..." value={evalData.negative} onChange={e => setEvalData({ ...evalData, negative: e.target.value })} />
+                                        </div>
+
+                                        <div className="pt-4 flex flex-col gap-3">
+                                            <Button fullWidth onClick={handleSaveEvaluation} className="h-12 text-lg font-bold">
+                                                Salvar Avaliação Completa
+                                            </Button>
+                                            <button onClick={() => setProfView('all_students')} className="text-stone-500 hover:text-stone-300 transition-colors">
+                                                Cancelar e Voltar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )
@@ -3591,22 +3873,145 @@ export const DashboardAdmin: React.FC<Props> = ({
                             )
                         }
 
+
                         {/* --- PROF MODE: ALL STUDENTS --- */}
                         {
                             profView === 'all_students' && (
-                                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in p-6">
-                                    <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-                                    <h2 className="2xl font-bold text-white mb-6">Meus Alunos (Admin Class)</h2>
-                                    <div className="grid md:grid-cols-2 gap-4">
-                                        {studentsForAttendance.map(student => ( // Use real students here
-                                            <div key={student.id} className="bg-stone-900 p-4 rounded border border-stone-700 flex justify-between items-center">
-                                                <div><p className="text-white font-bold">{student.nickname || student.name}</p><p className="text-stone-500 text-sm">{student.belt}</p></div>
-                                                <div className="flex gap-2">
-                                                    <Button variant="secondary" className="text-xs h-8" onClick={() => handleOpenEvaluation(student.id)}>Avaliar</Button>
-                                                    <button onClick={() => handleWhatsApp(student.phone)} className="bg-green-600 text-white p-2 rounded hover:bg-green-500"><MessageCircle size={16} /></button>
+                                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+                                    <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar ao Painel</button>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-bold text-white">Meus Alunos ({studentsForAttendance.length})</h2>
+                                        <div className="bg-stone-900 px-3 py-1 rounded-full text-xs text-stone-400 border border-stone-700">
+                                            Total de Vídeos: {homeTrainings.filter(ht => studentsForAttendance.some(s => s.id === ht.user_id)).length}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-6">
+                                        {studentsForAttendance.map(student => {
+                                            const studentVideos = homeTrainings.filter(ht => ht.user_id === student.id);
+                                            const studentGradesList = studentGrades.filter(g => g.student_id === student.id);
+                                            const avgGrade = (studentGradesList.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGradesList.length || 1)).toFixed(1);
+
+                                            return (
+                                                <div key={student.id} className="bg-stone-900 p-6 rounded-xl border border-stone-700 flex flex-col gap-4">
+                                                    {/* Header Info */}
+                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-800 pb-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-16 h-16 rounded-full bg-stone-800 flex items-center justify-center text-2xl font-bold text-white border-2 border-stone-600 shadow-lg overflow-hidden shrink-0">
+                                                                {student.photo_url ? (
+                                                                    <img src={student.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <Logo className="w-8 h-8 opacity-50" />
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <h3 className="text-xl font-bold text-white">{student.nickname || student.name}</h3>
+                                                                <p className="text-stone-400 text-sm">{student.name}</p>
+                                                                <div className="flex flex-col gap-1 mt-1">
+                                                                    <span className="bg-stone-800 text-[10px] px-2 py-0.5 rounded border border-stone-700 text-stone-300 w-fit">{student.belt || 'Sem Graduação'}</span>
+                                                                    <div className="flex gap-2 items-center">
+                                                                        {student.nextEvaluationDate && (
+                                                                            <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                                                                <Calendar size={10} /> {new Date(student.nextEvaluationDate).toLocaleDateString()}
+                                                                            </span>
+                                                                        )}
+                                                                        {student.graduationCost !== undefined && student.graduationCost > 0 && (
+                                                                            <span className="text-[10px] text-green-400 font-mono">
+                                                                                R$ {student.graduationCost.toFixed(2).replace('.', ',')}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {student.phone && <span className="flex items-center gap-1 text-[10px] text-blue-400"><MessageCircle size={10} /> {student.phone}</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex flex-wrap items-center gap-4 bg-stone-950/30 p-4 rounded-xl border border-stone-800 w-full md:w-auto">
+                                                            <div className="flex flex-1 md:flex-initial divide-x divide-stone-800 items-center">
+                                                                <div className="text-center px-4">
+                                                                    <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Média</p>
+                                                                    <p className="text-2xl font-black text-green-500 leading-none">{avgGrade}</p>
+                                                                </div>
+                                                                <div className="text-center px-4">
+                                                                    <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Vídeos</p>
+                                                                    <p className="text-2xl font-black text-purple-500 leading-none">{studentVideos.length}</p>
+                                                                </div>
+                                                            </div>
+                                                            <Button
+                                                                variant="primary"
+                                                                className="flex-1 md:flex-initial shadow-lg shadow-purple-900/20 font-bold h-11 px-6"
+                                                                onClick={() => handleOpenEvaluation(student.id)}
+                                                            >
+                                                                <Award size={18} /> Avaliar
+                                                            </Button>
+                                                            <button
+                                                                onClick={() => handleWhatsApp(student.phone)}
+                                                                className="bg-green-600 text-white p-2 rounded hover:bg-green-500 transition-colors"
+                                                                title="WhatsApp"
+                                                            >
+                                                                <MessageCircle size={20} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Details Grid */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        {/* Videos Section */}
+                                                        <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                                                            <h4 className="text-indigo-400 font-bold mb-3 flex items-center gap-2"><Video size={16} /> Vídeos de Treino</h4>
+                                                            {studentVideos.length > 0 ? (
+                                                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                                                    {studentVideos.map((video: any) => (
+                                                                        <div key={video.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-indigo-500">
+                                                                            <div>
+                                                                                <p className="text-white font-medium truncate w-40">{video.video_name}</p>
+                                                                                <p className="text-xs text-stone-500">{video.date}</p>
+                                                                            </div>
+                                                                            <a href={video.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 p-1">
+                                                                                <PlayCircle size={18} />
+                                                                            </a>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-stone-600 text-sm italic py-2">Nenhum vídeo enviado.</p>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Grades Section */}
+                                                        <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                                                            <h4 className="text-green-400 font-bold mb-3 flex items-center gap-2"><Award size={16} /> Últimas Notas</h4>
+                                                            {studentGradesList.length > 0 ? (
+                                                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                                                    {studentGradesList.slice(0, 5).map(grade => (
+                                                                        <div key={grade.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-green-500">
+                                                                            <div>
+                                                                                <p className="text-stone-300 text-xs uppercase">{grade.category === 'theory' ? 'Teórica' : grade.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
+                                                                                <p className="text-stone-500 text-xs truncate w-40" title={grade.written}>{grade.written || '-'}</p>
+                                                                            </div>
+                                                                            <span className="font-bold text-white text-lg">
+                                                                                {Number.isFinite(typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric))
+                                                                                    ? (typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric)).toFixed(1)
+                                                                                    : '-'}
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-stone-600 text-sm italic py-2">Nenhuma nota registrada.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                            )
+                                        })}
+
+                                        {studentsForAttendance.length === 0 && (
+                                            <div className="text-center py-12 text-stone-500 bg-stone-900/50 rounded-xl border border-stone-800 border-dashed">
+                                                <Users size={48} className="mx-auto mb-4 opacity-50" />
+                                                <p>Nenhum aluno encontrado vinculado a este admin.</p>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
                             )
@@ -3663,14 +4068,41 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                                             <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas</h3>
                                             <div className="space-y-4">
-                                                {myClasses.map(cls => (
-                                                    <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.date} - {cls.time} - {cls.location}</p></div>
+                                                {myClasses.map(cls => {
+                                                    // Check if button should be visible (during class time + 30 minutes)
+                                                    const now = new Date();
+                                                    const classDate = new Date(`${cls.date}T${cls.time}`);
+                                                    // Window: from class start until 30 minutes after class (assuming 1h class duration + 30min = 90min total)
+                                                    const classEndTime = new Date(classDate.getTime() + 90 * 60 * 1000);
+                                                    const isWithinClassWindow = now >= classDate && now <= classEndTime;
+                                                    const isToday = cls.date === now.toISOString().split('T')[0];
+
+                                                    return (
+                                                        <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div>
+                                                                    <p className="font-bold text-white">{cls.title}</p>
+                                                                    <p className="text-stone-500 text-sm">{cls.date} - {cls.time} - {cls.location}</p>
+                                                                </div>
+                                                                {isToday && (
+                                                                    <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full font-bold">Hoje</span>
+                                                                )}
+                                                            </div>
+                                                            {isWithinClassWindow ? (
+                                                                <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>
+                                                                    <CalendarCheck size={16} /> Realizar Chamada
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="text-xs text-stone-500 text-center py-2 bg-stone-800 rounded">
+                                                                    <Clock size={14} className="inline mr-1" />
+                                                                    {classDate > now
+                                                                        ? `Chamada disponível às ${cls.time}`
+                                                                        : 'Janela de chamada encerrada'}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>Realizar Chamada</Button>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
 
@@ -3711,6 +4143,61 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </>
                             )
                         }
+                    </div>
+                )
+            }
+
+            {/* NEW SECTION: ATTENDANCE HISTORY inside My Classes Tab or separate? User asked for "Historico de chamadas" */
+                /* We can put it at the bottom of the 'dashboard' view in Prof Mode or inside 'my_classes' Tab if user is not in Prof Mode dashboard. */
+                /* Let's put it in the "Minhas Aulas" tab content, assuming user uses that tab. */
+            }
+            {
+                activeTab === 'my_classes' && (
+                    <div className="space-y-6 mt-8 p-6 bg-stone-800 rounded-xl border border-stone-700">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Clock className="text-stone-400" />
+                            Histórico de Chamadas
+                        </h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-stone-300">
+                                <thead>
+                                    <tr className="border-b border-stone-700 text-xs text-stone-500 uppercase">
+                                        <th className="p-2">Data Aula</th>
+                                        <th className="p-2">Aluno</th>
+                                        <th className="p-2">Status</th>
+                                        <th className="p-2">Justificativa</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {attendanceHistory.length > 0 ? (
+                                        attendanceHistory.map((rec: any) => (
+                                            <tr key={rec.id} className="border-b border-stone-800 hover:bg-stone-700/30">
+                                                <td className="p-2 text-white">
+                                                    {rec.class_sessions?.date ? formatDatePTBR(rec.class_sessions.date) : formatDatePTBR(rec.created_at)}
+                                                </td>
+                                                <td className="p-2 text-white">
+                                                    {rec.profiles?.nickname || rec.profiles?.first_name || 'Aluno'}
+                                                </td>
+                                                <td className="p-2">
+                                                    {rec.status === 'present'
+                                                        ? <span className="text-green-400 font-bold">Presente</span>
+                                                        : <span className="text-red-400 font-bold">Ausente</span>}
+                                                </td>
+                                                <td className="p-2 text-stone-500 italic">
+                                                    {rec.justification || '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="p-4 text-center text-stone-500 italic">
+                                                Nenhum histórico encontrado.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )
             }

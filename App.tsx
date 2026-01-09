@@ -817,6 +817,7 @@ function AppContent() {
               onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
               onNavigate={navigate} // Pass navigate function
               studentGrades={studentGrades}
+              onAddStudentGrade={handleAddStudentGrade}
               onAddAttendance={handleAddAttendance}
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
