@@ -4290,13 +4290,24 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     <CalendarCheck size={16} className="text-stone-400" /> Histórico de Chamadas
                                                 </h4>
                                                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                                    {myClasses.filter(cls => cls.status === 'completed').length > 0 ? (
-                                                        myClasses.filter(cls => cls.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(cls => (
-                                                            <div key={cls.id} className="flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 border-stone-600">
-                                                                <span className="text-stone-300 font-medium">{cls.title}</span>
-                                                                <span className="text-stone-500 font-mono">{cls.date.split('-').reverse().join('/')}</span>
-                                                            </div>
-                                                        ))
+                                                    {myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled')).length > 0 ? (
+                                                        myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled'))
+                                                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                            .slice(0, 5).map(cls => {
+                                                                const isCompleted = cls.status === 'completed';
+                                                                return (
+                                                                    <div key={cls.id} className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500' : 'border-stone-600'}`}>
+                                                                        <div>
+                                                                            <span className="text-stone-300 font-medium block">{cls.title}</span>
+                                                                            <span className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
+                                                                                {cls.date.split('-').reverse().join('/')}
+                                                                                {!isCompleted && <span className="text-orange-400 font-bold ml-1">(Pendente)</span>}
+                                                                            </span>
+                                                                        </div>
+                                                                        {isCompleted ? <Check size={12} className="text-green-500" /> : <Clock size={12} className="text-stone-500" />}
+                                                                    </div>
+                                                                );
+                                                            })
                                                     ) : (
                                                         <p className="text-stone-500 text-[10px] italic">Nenhuma chamada realizada.</p>
                                                     )}
@@ -4353,56 +4364,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 /* We can put it at the bottom of the 'dashboard' view in Prof Mode or inside 'my_classes' Tab if user is not in Prof Mode dashboard. */
                 /* Let's put it in the "Minhas Aulas" tab content, assuming user uses that tab. */
             }
-            {
-                activeTab === 'my_classes' && (
-                    <div className="space-y-6 mt-8 p-6 bg-stone-800 rounded-xl border border-stone-700">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Clock className="text-stone-400" />
-                            Histórico de Chamadas
-                        </h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-stone-300">
-                                <thead>
-                                    <tr className="border-b border-stone-700 text-xs text-stone-500 uppercase">
-                                        <th className="p-2">Data Aula</th>
-                                        <th className="p-2">Aluno</th>
-                                        <th className="p-2">Status</th>
-                                        <th className="p-2">Justificativa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {attendanceHistory.length > 0 ? (
-                                        attendanceHistory.map((rec: any) => (
-                                            <tr key={rec.id} className="border-b border-stone-800 hover:bg-stone-700/30">
-                                                <td className="p-2 text-white">
-                                                    {rec.class_sessions?.date ? formatDatePTBR(rec.class_sessions.date) : formatDatePTBR(rec.created_at)}
-                                                </td>
-                                                <td className="p-2 text-white">
-                                                    {rec.profiles?.nickname || rec.profiles?.first_name || 'Aluno'}
-                                                </td>
-                                                <td className="p-2">
-                                                    {rec.status === 'present'
-                                                        ? <span className="text-green-400 font-bold">Presente</span>
-                                                        : <span className="text-red-400 font-bold">Ausente</span>}
-                                                </td>
-                                                <td className="p-2 text-stone-500 italic">
-                                                    {rec.justification || '-'}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={4} className="p-4 text-center text-stone-500 italic">
-                                                Nenhum histórico encontrado.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Redundant History Removed */}
 
             {
                 activeTab === 'grades' && (

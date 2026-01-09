@@ -1833,13 +1833,25 @@ export const DashboardProfessor: React.FC<Props> = ({
                   <CalendarCheck size={16} className="text-stone-400" /> Histórico de Chamadas
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                  {myClasses.filter(cls => cls.status === 'completed').length > 0 ? (
-                    myClasses.filter(cls => cls.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(cls => (
-                      <div key={cls.id} className="flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 border-stone-600">
-                        <span className="text-stone-300 font-medium">{cls.title}</span>
-                        <span className="text-stone-500 font-mono">{cls.date.split('-').reverse().join('/')}</span>
-                      </div>
-                    ))
+                  {myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled')).length > 0 ? (
+                    myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled'))
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .slice(0, 5)
+                      .map(cls => {
+                        const isCompleted = cls.status === 'completed';
+                        return (
+                          <div key={cls.id} className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500' : 'border-stone-600'}`}>
+                            <div>
+                              <span className="text-stone-300 font-medium block">{cls.title}</span>
+                              <span className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
+                                {cls.date.split('-').reverse().join('/')}
+                                {!isCompleted && <span className="text-orange-400 font-bold ml-1">(Pendente)</span>}
+                              </span>
+                            </div>
+                            {isCompleted ? <Check size={12} className="text-green-500" /> : <Clock size={12} className="text-stone-500" />}
+                          </div>
+                        );
+                      })
                   ) : (
                     <p className="text-stone-500 text-[10px] italic">Nenhuma chamada realizada.</p>
                   )}
