@@ -708,12 +708,6 @@ export const DashboardProfessor: React.FC<Props> = ({
               Painel do Professor
             </h1>
             <p className="text-purple-200 mt-2">Olá, {user.nickname || user.name}!</p>
-            <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="inline-block mt-3">
-              <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none flex items-center gap-2 h-9 px-4 font-bold shadow-lg shadow-pink-900/20 hover:shadow-pink-900/40 transition-all text-xs">
-                <Instagram size={16} />
-                Siga @filhosdofogo2005
-              </Button>
-            </a>
           </div>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-purple-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -751,6 +745,11 @@ export const DashboardProfessor: React.FC<Props> = ({
           {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />}
           {pixCopied ? 'Copiado!' : 'Mensalidade'}
         </Button>
+        <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
+          <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none text-white">
+            <Instagram size={18} /> Instagram
+          </Button>
+        </a>
         <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
           <Button className="text-white border-none !bg-[#5865F2] hover:!bg-[#4752C4]" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
             <MessageCircle size={18} /> Discord

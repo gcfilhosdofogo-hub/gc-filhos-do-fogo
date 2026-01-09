@@ -1685,12 +1685,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                             Painel do Admin
                         </h1>
                         <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
-                        <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="inline-block mt-3">
-                            <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none flex items-center gap-2 h-9 px-4 font-bold shadow-lg shadow-pink-900/20 hover:shadow-pink-900/40 transition-all text-xs">
-                                <Instagram size={16} />
-                                Siga @filhosdofogo2005
-                            </Button>
-                        </a>
                     </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -1879,11 +1873,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                 >
                     <FileText size={16} /> Relatórios
                 </button>
-                <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer" className="ml-auto">
-                    <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2" style={{ backgroundColor: '#5865F2', borderColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
-                        <MessageCircle size={16} /> Discord
-                    </button>
-                </a>
+                <div className="ml-auto flex gap-2">
+                    <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
+                        <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2 bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-pink-600">
+                            <Instagram size={16} /> Instagram
+                        </button>
+                    </a>
+                    <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
+                        <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2" style={{ backgroundColor: '#5865F2', borderColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
+                            <MessageCircle size={16} /> Discord
+                        </button>
+                    </a>
+                </div>
             </div>
 
             {/* --- TAB: OVERVIEW --- */}
