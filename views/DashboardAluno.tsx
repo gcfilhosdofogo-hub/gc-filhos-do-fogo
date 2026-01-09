@@ -662,7 +662,7 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
-  const handleFileChangeForAssignment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAssignmentSubmission = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedAssignmentToSubmit) {
       setUploadingAssignment(false);
       return;
@@ -1519,7 +1519,7 @@ export const DashboardAluno: React.FC<Props> = ({
                               accept=".pdf,.doc,.docx,.jpg,.png"
                               className="hidden"
                               ref={assignmentFileInputRef}
-                              onChange={handleFileChangeForAssignment}
+                              onChange={handleAssignmentSubmission}
                               disabled={uploadingAssignment}
                             />
                           </>
