@@ -584,7 +584,10 @@ function AppContent() {
     if (!session) return;
     const { data, error } = await supabase.from('assignments').insert({ ...newAssignment, created_by: session.user.id }).select().single();
     if (error) console.error('Error adding assignment:', error);
-    else setAssignments(prev => [...prev, data]);
+    else {
+      setAssignments(prev => [...prev, data]);
+      if (user) handleNotifyAdmin(`Criou trabalho: ${newAssignment.title}`, user);
+    }
   };
 
   const handleUpdateAssignment = async (updatedAssignment: Assignment) => {
@@ -609,7 +612,10 @@ function AppContent() {
     if (!session) return;
     const { data, error } = await supabase.from('class_sessions').insert({ ...newSession, professor_id: session.user.id }).select().single();
     if (error) console.error('Error adding class session:', error);
-    else setClassSessions(prev => [...prev, data]);
+    else {
+      setClassSessions(prev => [...prev, data]);
+      if (user) handleNotifyAdmin(`Criou aula: ${newSession.title}`, user);
+    }
   };
 
   const handleUpdateClassSession = async (updatedSession: ClassSession) => {
@@ -644,6 +650,8 @@ function AppContent() {
     if (error) {
       console.error('Error adding attendance:', error);
       throw error;
+    } else {
+      if (user) handleNotifyAdmin(`Realizou chamada para ${attendanceRecords.length} alunos`, user);
     }
   };
 
@@ -653,6 +661,8 @@ function AppContent() {
     if (error) {
       console.error('Error adding class record:', error);
       throw error;
+    } else {
+      if (user) handleNotifyAdmin('Enviou registro fotográfico da aula', user);
     }
   };
 
@@ -721,6 +731,7 @@ function AppContent() {
           category: data.category as GradeCategory
         };
         setStudentGrades(prev => [normalized, ...prev]);
+        if (user) handleNotifyAdmin(`Avaliou aluno (Nota: ${payload.numeric})`, user);
         return;
       }
       if (error) {
