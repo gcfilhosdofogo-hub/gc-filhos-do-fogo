@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award } from 'lucide-react'; // Import FileUp, Eye and Award
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram } from 'lucide-react'; // Import FileUp, Eye, Award, Instagram
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -1685,6 +1685,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                             Painel do Admin
                         </h1>
                         <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
+                        <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="inline-block mt-3">
+                            <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none flex items-center gap-2 h-9 px-4 font-bold shadow-lg shadow-pink-900/20 hover:shadow-pink-900/40 transition-all text-xs">
+                                <Instagram size={16} />
+                                Siga @filhosdofogo2005
+                            </Button>
+                        </a>
                     </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -4181,7 +4187,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                                             <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
 
-                                            {/* Grade Stats - Same as Professor */}
+                                            {/* Grade Stats */}
                                             <div className="grid grid-cols-3 gap-2 mb-4">
                                                 <div className="bg-stone-900 p-2 rounded text-center">
                                                     <p className="text-[10px] text-stone-400 uppercase">Semanal</p>
@@ -4197,19 +4203,62 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3">
-                                                {studentsForAttendance.slice(0, 3).map(student => (
-                                                    <div key={student.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
+                                            {/* Attendance History */}
+                                            <div className="mt-6 border-t border-stone-700 pt-6">
+                                                <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                                    <CalendarCheck size={16} className="text-stone-400" /> Histórico de Chamadas
+                                                </h4>
+                                                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                                    {myClasses.filter(cls => cls.status === 'completed').length > 0 ? (
+                                                        myClasses.filter(cls => cls.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(cls => (
+                                                            <div key={cls.id} className="flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 border-stone-600">
+                                                                <span className="text-stone-300 font-medium">{cls.title}</span>
+                                                                <span className="text-stone-500 font-mono">{cls.date.split('-').reverse().join('/')}</span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-stone-500 text-[10px] italic">Nenhuma chamada realizada.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Evaluation History */}
+                                            <div className="mt-4 border-t border-stone-700 pt-4">
+                                                <h4 className="text-sm font-bold text-white mb-3">Histórico de Avaliações</h4>
+                                                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                                    {studentGrades.filter(g => studentsForAttendance.some(s => s.id === g.student_id)).length > 0 ? (
+                                                        studentGrades.filter(g => studentsForAttendance.some(s => s.id === g.student_id))
+                                                            .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+                                                            .slice(0, 5).map(g => (
+                                                                <div key={g.id} className="flex justify-between items-center bg-stone-900/30 p-2 rounded text-[10px] border-l-2 border-green-900/50">
+                                                                    <div className="flex-1">
+                                                                        <p className="text-stone-200 font-bold">{studentsForAttendance.find(s => s.id === g.student_id)?.nickname || 'Aluno'}</p>
+                                                                        <p className="text-stone-500">{g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
+                                                                    </div>
+                                                                    <span className="text-green-400 font-black ml-2">{Number(g.numeric).toFixed(1)}</span>
+                                                                </div>
+                                                            ))
+                                                    ) : (
+                                                        <p className="text-stone-500 text-[10px] italic">Sem avaliações recentes.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Student Shortcuts */}
+                                            <div className="mt-6 space-y-3">
+                                                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest">Atalhos dos Alunos</h4>
+                                                {studentsForAttendance.slice(0, 3).map(s => (
+                                                    <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                                                         <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
-                                                            {student.name?.charAt(0) || 'A'}
+                                                            {s.name?.charAt(0) || 'A'}
                                                         </div>
-                                                        <div className="flex-1"><p className="text-white text-sm font-bold">{student.nickname || student.name}</p></div>
-                                                        <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => setProfView('all_students')}>Avaliar</Button>
+                                                        <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
+                                                        <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => handleOpenEvaluation(s.id)}>Avaliar</Button>
                                                     </div>
                                                 ))}
                                             </div>
 
-                                            <button onClick={() => setProfView('all_students')} className="w-full text-center text-purple-400 text-sm mt-4 hover:underline">Ver todos os alunos</button>
+                                            <button onClick={() => setProfView('all_students')} className="w-full text-center text-stone-500 text-[10px] mt-4 hover:text-white transition-colors">Ver todos os alunos</button>
                                         </div>
                                     </div>
                                 </>
