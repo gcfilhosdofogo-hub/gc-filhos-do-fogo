@@ -3909,38 +3909,118 @@ export const DashboardAdmin: React.FC<Props> = ({
                         {/* --- PROF MODE: MUSIC --- */}
                         {
                             profView === 'music_manager' && (
-                                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-                                    <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-                                    <h2 className="2xl font-bold text-white mb-6">Acervo Musical</h2>
-                                    <div className="grid md:grid-cols-2 gap-6">
-                                        <form onSubmit={handleSubmitMusic} className="space-y-4">
-                                            <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-                                            <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-                                            <input type="text" placeholder="URL do Áudio (Ex: YouTube, Spotify, MP3 Direct Link)" value={musicForm.url} onChange={e => setMusicForm({ ...musicForm, url: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required />
-                                            <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white h-32" />
+                                <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
+                                    <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors relative z-20"><ArrowLeft size={16} /> Voltar ao Painel</button>
 
-                                            <Button fullWidth type="submit">
-                                                Adicionar Música
-                                            </Button>
-                                        </form>
-                                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            <h3 className="text-white font-bold mb-2">Histórico de Músicas</h3>
-                                            {musicList.length > 0 ? (
-                                                musicList.map(m => (
-                                                    <div key={m.id} className="bg-stone-900 p-3 rounded text-sm border-l-2 border-yellow-500">
-                                                        <p className="text-white font-bold">{m.title}</p>
-                                                        <p className="text-stone-500 text-xs">{m.category}</p>
-                                                        {m.lyrics && <p className="text-stone-300 text-xs mt-1 truncate">{m.lyrics}</p>}
-                                                        {m.file_url && (
-                                                            <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs flex items-center gap-1 mt-2 hover:underline">
-                                                                <PlayCircle size={14} /> Ouvir Áudio
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-stone-500 italic">Nenhuma música no acervo.</p>
-                                            )}
+                                    {/* Decorative Background Elements */}
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
+                                                <Music size={32} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Acervo Musical</h2>
+                                                <p className="text-stone-400 text-sm">Gerencie o repertório da aula</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid lg:grid-cols-5 gap-8">
+                                            <div className="lg:col-span-2">
+                                                <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700/50 sticky top-6">
+                                                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                                                        <PlusCircle size={20} className="text-yellow-500" />
+                                                        Nova Música
+                                                    </h3>
+                                                    <form onSubmit={handleSubmitMusic} className="space-y-4">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Título da Obra</label>
+                                                            <input type="text" placeholder="Ex: Capoeira é Luta" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
+                                                            <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Link do Áudio</label>
+                                                            <div className="relative group">
+                                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500 transition-colors group-focus-within:text-yellow-500">
+                                                                    <PlayCircle size={18} />
+                                                                </div>
+                                                                <input type="text" placeholder="YouTube, Spotify ou MP3" value={musicForm.url} onChange={e => setMusicForm({ ...musicForm, url: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl pl-11 pr-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Letra da Música</label>
+                                                            <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
+                                                        </div>
+
+                                                        <Button fullWidth type="submit" className="h-14 font-black uppercase tracking-tighter text-lg shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20">
+                                                            Lançar no Acervo
+                                                        </Button>
+                                                    </form>
+                                                </div>
+                                            </div>
+
+                                            <div className="lg:col-span-3 space-y-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                        <Activity size={20} className="text-yellow-500" />
+                                                        Músicas Registradas
+                                                    </h3>
+                                                    <span className="text-[10px] font-black bg-stone-900 border border-stone-700 px-3 py-1 rounded-full text-stone-400">
+                                                        {musicList.length} ITENS
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid sm:grid-cols-2 gap-4 max-h-[750px] overflow-y-auto pr-2 custom-scrollbar content-start">
+                                                    {musicList.length > 0 ? (
+                                                        musicList.map(m => (
+                                                            <div key={m.id} className="bg-stone-900/80 backdrop-blur-sm p-5 rounded-2xl border-2 border-stone-800 hover:border-yellow-500/30 transition-all group flex flex-col justify-between">
+                                                                <div>
+                                                                    <div className="flex justify-between items-start mb-3">
+                                                                        <div className="max-w-[80%]">
+                                                                            <p className="text-white font-black leading-tight group-hover:text-yellow-400 transition-colors">{m.title}</p>
+                                                                            <span className="text-[9px] font-black bg-stone-800 text-stone-500 px-2 py-0.5 rounded uppercase tracking-widest border border-stone-700 inline-block mt-1">
+                                                                                {m.category}
+                                                                            </span>
+                                                                        </div>
+                                                                        {m.file_url && (
+                                                                            <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-md">
+                                                                                <PlayCircle size={22} />
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                    {m.lyrics && (
+                                                                        <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
+                                                                            <p className="text-stone-400 text-[11px] leading-relaxed whitespace-pre-line line-clamp-4 font-medium italic">
+                                                                                {m.lyrics}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex justify-between items-center mt-4 pt-4 border-t border-stone-800">
+                                                                    <span className="text-[9px] font-bold text-stone-600 flex items-center gap-1">
+                                                                        <Clock size={10} /> {new Date(m.created_at || '').toLocaleDateString('pt-BR')}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button className="p-1.5 text-stone-600 hover:text-red-500 transition-colors" title="Remover">
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
+                                                            <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
+                                                            <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma música no acervo</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
