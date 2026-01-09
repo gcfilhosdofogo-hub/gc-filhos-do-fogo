@@ -596,49 +596,7 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
-  const handleFileChangeForAssignment = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !selectedAssignmentToSubmit) {
-      setUploadingAssignment(false);
-      return;
-    }
 
-    const file = e.target.files[0];
-    setUploadingAssignment(true);
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('assignments_files')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('assignments_files')
-        .getPublicUrl(filePath);
-
-      const updatedAssignment = {
-        ...selectedAssignmentToSubmit,
-        status: 'completed',
-        attachment_url: publicUrlData.publicUrl,
-        student_id: user.id
-      };
-
-      await onUpdateAssignment(updatedAssignment);
-
-      onNotifyAdmin(`Enviou resposta de trabalho: ${selectedAssignmentToSubmit.title}`, user);
-      alert('Trabalho enviado com sucesso!');
-      setSelectedAssignmentToSubmit(null);
-    } catch (error: any) {
-      console.error('Error uploading assignment:', error);
-      alert('Erro ao enviar trabalho: ' + error.message);
-    } finally {
-      setUploadingAssignment(false);
-      if (assignmentFileInputRef.current) assignmentFileInputRef.current.value = '';
-    }
-  };
 
   const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
     console.log('handleViewPaymentProof called in DashboardAluno');
@@ -715,44 +673,36 @@ export const DashboardAluno: React.FC<Props> = ({
 
     try {
       const fileExt = file.name.split('.').pop();
-      // Using 'school_reports_files' as a general document bucket if assignment_submissions doesn't exist
       const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('school_reports_files') // Fallback bucket that likely exists
+        .from('assignments_files')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const fileUrl = uploadData.path;
+      const { data: publicUrlData } = supabase.storage
+        .from('assignments_files')
+        .getPublicUrl(filePath);
 
-      // Update assignment with submission
       const updatedAssignment = {
         ...selectedAssignmentToSubmit,
-        attachment_url: fileUrl,  // Using attachment_url as submission url per types
-        attachment_name: file.name,
-        status: 'completed'
+        status: 'completed',
+        attachment_url: publicUrlData.publicUrl,
+        student_id: user.id
       };
 
-      // Call the parent update function
       await onUpdateAssignment(updatedAssignment);
 
-      // Since assignments prop comes from parent, we rely on parent update via onUpdateAssignment to reflect changes.
-      // However, for immediate feedback if parent doesn't auto-refresh quickly:
-      // (This part depends on how 'assignments' prop is managed in App.tsx - it seems to be state-driven)
-
-      setUploadingAssignment(false);
+      onNotifyAdmin(`Enviou resposta de trabalho: ${selectedAssignmentToSubmit.title}`, user);
+      alert('Trabalho enviado com sucesso!');
       setSelectedAssignmentToSubmit(null);
-      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou trabalho: ${selectedAssignmentToSubmit.title}`, user);
-      alert("Trabalho enviado com sucesso!");
     } catch (error: any) {
       console.error('Error uploading assignment:', error);
-      alert("Erro ao enviar trabalho: " + error.message);
-      setUploadingAssignment(false);
+      alert('Erro ao enviar trabalho: ' + error.message);
     } finally {
-      if (assignmentFileInputRef.current) {
-        assignmentFileInputRef.current.value = '';
-      }
+      setUploadingAssignment(false);
+      if (assignmentFileInputRef.current) assignmentFileInputRef.current.value = '';
     }
   };
 
