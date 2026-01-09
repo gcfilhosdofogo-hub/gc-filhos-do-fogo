@@ -133,7 +133,8 @@ export const DashboardAluno: React.FC<Props> = ({
       'cinza': '#9ca3af',
     };
 
-    let mainColor = user.beltColor || '#fff';
+    // Calculate mainColor from belt name - don't use beltColor as initial value
+    let mainColor = '#fff';
     let pontaColor: string | null = null;
 
     if (mainPart.includes('verde, amarelo, azul e branco')) {
@@ -158,6 +159,9 @@ export const DashboardAluno: React.FC<Props> = ({
       mainColor = '#0033CC';
     } else if (mainPart.includes('branco')) {
       mainColor = '#ffffff';
+    } else if (user.beltColor) {
+      // Only use beltColor as fallback if no match found
+      mainColor = user.beltColor;
     }
 
     if (pontaPart) {
