@@ -2843,7 +2843,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                                 >
                                                     <option value="">Selecione um professor</option>
-                                                    {managedUsers.filter(u => (u.role === 'professor' || u.role === 'admin') && u.nickname !== 'Anjo de Fogo').map(prof => (
+                                                    {managedUsers.filter(u => (u.role === 'professor' || u.role === 'admin') && u.id !== editingUser?.id).map(prof => (
                                                         <option key={prof.id} value={prof.nickname || prof.first_name || prof.name}>
                                                             {prof.nickname ? `${prof.nickname} (${prof.first_name || prof.name})` : prof.first_name || prof.name}
                                                         </option>
