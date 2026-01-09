@@ -1189,8 +1189,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 session_id: selectedClassId,
                 student_id: student.id,
                 status: isPresent ? 'present' : 'absent',
-                justification: !isPresent ? justifications[student.id] : null,
-                professor_id: user.id
+                justification: !isPresent ? justifications[student.id] : null
             };
         });
 
@@ -1521,7 +1520,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             // We can check 'attendance_records' table
             try {
                 const { data, error } = await supabase
-                    .from('attendance_records')
+                    .from('attendance')
                     .select(`
                         id,
                         created_at,

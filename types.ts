@@ -27,6 +27,7 @@ export interface ClassSession {
   location: string;
   level: string;
   professor_id?: string; // Link to professor's user ID
+  status?: 'pending' | 'completed' | 'cancelled'; // Match database
 }
 
 export interface NewsItem {
