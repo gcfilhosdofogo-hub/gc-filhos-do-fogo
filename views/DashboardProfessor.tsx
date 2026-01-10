@@ -109,8 +109,12 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [classPhoto, setClassPhoto] = useState<string | null>(null);
 
   // Evaluation
-  const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
-  const [evalData, setEvalData] = useState({ positive: '', negative: '' });
+  const [studentName, setStudentName] = useState('');
+  const [evalData, setEvalData] = useState({
+    theory: { written: '', numeric: '' },
+    movement: { written: '', numeric: '' },
+    musicality: { written: '', numeric: '' }
+  });
   const [selectedStudentForGrades, setSelectedStudentForGrades] = useState<string | null>(null);
   const [gradesForm, setGradesForm] = useState({
     theory: { written: '', numeric: '' },
@@ -622,6 +626,76 @@ export const DashboardProfessor: React.FC<Props> = ({
     setSelectedAssignmentTarget('mine');
   };
 
+  const handleWhatsApp = (phone?: string) => {
+    if (!phone) {
+      alert('Telefone não cadastrado.');
+      return;
+    }
+    window.open(`https://wa.me/${phone}`, '_blank');
+  };
+
+  const handleOpenEvaluation = (studentId: string) => {
+    const student = myStudents.find(u => u.id === studentId);
+    if (student) {
+      setStudentName(student.nickname || student.name);
+    }
+    setSelectedStudentForEval(studentId);
+    setEvalData({
+      theory: { written: '', numeric: '' },
+      movement: { written: '', numeric: '' },
+      musicality: { written: '', numeric: '' }
+    });
+    setProfView('grades');
+  };
+
+  const handleSaveEvaluation = async () => {
+    if (!selectedStudentForEval) return;
+
+    const entries: { cat: GradeCategory; w: string; n: string }[] = [
+      { cat: 'theory', w: evalData.theory.written.trim(), n: evalData.theory.numeric },
+      { cat: 'movement', w: evalData.movement.written.trim(), n: evalData.movement.numeric },
+      { cat: 'musicality', w: evalData.musicality.written.trim(), n: evalData.musicality.numeric },
+    ];
+
+    const toSave = entries.filter(e => e.w.length > 0);
+    if (toSave.length === 0) {
+      alert('Preencha ao menos uma avaliação escrita.');
+      return;
+    }
+    if (toSave.some(e => !e.n || e.n.toString().trim() === '')) {
+      alert('Para cada avaliação escrita, informe a nota numérica.');
+      return;
+    }
+
+    setSavingGrades(true);
+    try {
+      await Promise.all(toSave.map(e => onAddStudentGrade({
+        student_id: selectedStudentForEval,
+        student_name: studentName,
+        professor_id: user.id,
+        professor_name: user.nickname || user.name,
+        category: e.cat,
+        written: e.w,
+        numeric: parseFloat(e.n),
+      })));
+
+      alert("Avaliações salvas com sucesso!");
+      setProfView('all_students');
+      setSelectedStudentForEval(null);
+      setEvalData({
+        theory: { written: '', numeric: '' },
+        movement: { written: '', numeric: '' },
+        musicality: { written: '', numeric: '' }
+      });
+      onNotifyAdmin(`Avaliou notas do aluno: ${studentName}`, user);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar notas.');
+    } finally {
+      setSavingGrades(false);
+    }
+  };
+
   const handleCompleteAssignment = async (assignmentId: string, studentId: string, file: File) => {
     setUploadingMusicFile(true); // Reusing this state for any file upload
     try {
@@ -1028,26 +1102,143 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       {/* --- PROF VIEW: ALL STUDENTS --- */}
       {profView === 'all_students' && (
-        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors"><ArrowLeft size={16} /> Voltar ao Painel</button>
-          <h2 className="text-2xl font-bold text-white mb-6">Meus Alunos ({myStudents.length})</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {myStudents.map(student => (
-              <div key={student.id} className="bg-stone-900 p-4 rounded-xl border border-stone-700 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-stone-800 overflow-hidden border border-stone-600">
-                    {student.photo_url ? <img src={student.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-stone-400 font-bold">{student.name[0]}</div>}
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in text-left">
+          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors">
+            <ArrowLeft size={16} /> Voltar ao Painel
+          </button>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Meus Alunos ({myStudents.length})</h2>
+            <div className="bg-stone-900 px-3 py-1 rounded-full text-xs text-stone-400 border border-stone-700">
+              Total de Vídeos: {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            {myStudents.map(student => {
+              const studentVideos = homeTrainings.filter(ht => ht.user_id === student.id);
+              const studentGradesList = studentGrades.filter(g => g.student_id === student.id);
+              const avgGrade = (studentGradesList.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGradesList.length || 1)).toFixed(1);
+
+              return (
+                <div key={student.id} className="bg-stone-900 p-6 rounded-xl border border-stone-700 flex flex-col gap-4">
+                  {/* Header Info */}
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-800 pb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-stone-800 flex items-center justify-center text-2xl font-bold text-white border-2 border-stone-600 shadow-lg overflow-hidden shrink-0">
+                        {student.photo_url ? (
+                          <img src={student.photo_url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <Logo className="w-8 h-8 opacity-50" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">{student.nickname || student.name}</h3>
+                        <p className="text-stone-400 text-sm">{student.name}</p>
+                        <div className="flex flex-col gap-1 mt-1">
+                          <span className="bg-stone-800 text-[10px] px-2 py-0.5 rounded border border-stone-700 text-stone-300 w-fit">{student.belt || 'Sem Graduação'}</span>
+                          <div className="flex gap-2 items-center">
+                            {student.nextEvaluationDate && (
+                              <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                <Calendar size={10} /> {new Date(student.nextEvaluationDate).toLocaleDateString()}
+                              </span>
+                            )}
+                            {student.graduationCost !== undefined && student.graduationCost > 0 && (
+                              <span className="text-[10px] text-green-400 font-mono">
+                                R$ {student.graduationCost.toFixed(2).replace('.', ',')}
+                              </span>
+                            )}
+                          </div>
+                          {student.phone && <span className="flex items-center gap-1 text-[10px] text-blue-400"><MessageCircle size={10} /> {student.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 bg-stone-950/30 p-4 rounded-xl border border-stone-800 w-full md:w-auto">
+                      <div className="flex flex-1 md:flex-initial divide-x divide-stone-800 items-center">
+                        <div className="text-center px-4">
+                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Média</p>
+                          <p className="text-2xl font-black text-green-500 leading-none">{avgGrade}</p>
+                        </div>
+                        <div className="text-center px-4">
+                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Vídeos</p>
+                          <p className="text-2xl font-black text-purple-500 leading-none">{studentVideos.length}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="primary"
+                        className="flex-1 md:flex-initial shadow-lg shadow-purple-900/20 font-bold h-11 px-6"
+                        onClick={() => handleOpenEvaluation(student.id)}
+                      >
+                        <Award size={18} /> Avaliar
+                      </Button>
+                      <button
+                        onClick={() => handleWhatsApp(student.phone)}
+                        className="bg-green-600 text-white p-2 rounded hover:bg-green-500 transition-colors"
+                        title="WhatsApp"
+                      >
+                        <MessageCircle size={20} />
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-white font-bold">{student.nickname || student.name}</p>
-                    <p className="text-xs text-stone-500">{student.belt || 'Sem graduação'}</p>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Videos Section */}
+                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                      <h4 className="text-indigo-400 font-bold mb-3 flex items-center gap-2"><Video size={16} /> Vídeos de Treino</h4>
+                      {studentVideos.length > 0 ? (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {studentVideos.map((video: any) => (
+                            <div key={video.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-indigo-500">
+                              <div>
+                                <p className="text-white font-medium truncate w-40">{video.video_name}</p>
+                                <p className="text-xs text-stone-500">{video.date}</p>
+                              </div>
+                              <a href={video.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 p-1">
+                                <PlayCircle size={18} />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic py-2">Nenhum vídeo enviado.</p>
+                      )}
+                    </div>
+
+                    {/* Grades Section */}
+                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
+                      <h4 className="text-green-400 font-bold mb-3 flex items-center gap-2"><Award size={16} /> Últimas Notas</h4>
+                      {studentGradesList.length > 0 ? (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {studentGradesList.slice(0, 5).map(grade => (
+                            <div key={grade.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-green-500">
+                              <div>
+                                <p className="text-stone-300 text-xs uppercase">{grade.category === 'theory' ? 'Teórica' : grade.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
+                                <p className="text-stone-500 text-xs truncate w-40" title={grade.written}>{grade.written || '-'}</p>
+                              </div>
+                              <span className="font-bold text-white text-lg">
+                                {Number.isFinite(typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric))
+                                  ? (typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric)).toFixed(1)
+                                  : '-'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic py-2">Nenhuma nota registrada.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <Button variant="primary" size="sm" onClick={() => { setSelectedStudentForEval(student.id); setProfView('grades'); }}>
-                  <Award size={16} /> Avaliar
-                </Button>
+              );
+            })}
+
+            {myStudents.length === 0 && (
+              <div className="text-center py-12 text-stone-500 bg-stone-900/50 rounded-xl border border-stone-800 border-dashed">
+                <Users size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhum aluno encontrado vinculado a você.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -1068,20 +1259,20 @@ export const DashboardProfessor: React.FC<Props> = ({
             {/* THEORY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Teórica</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={gradesForm.theory.written} onChange={e => setGradesForm({ ...gradesForm, theory: { ...gradesForm.theory, written: e.target.value } })} />
-              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={gradesForm.theory.numeric} onChange={e => setGradesForm({ ...gradesForm, theory: { ...gradesForm.theory, numeric: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.theory.written} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })} />
+              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.theory.numeric} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, numeric: e.target.value } })} />
             </div>
             {/* MOVEMENT */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Movimentação</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={gradesForm.movement.written} onChange={e => setGradesForm({ ...gradesForm, movement: { ...gradesForm.movement, written: e.target.value } })} />
-              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={gradesForm.movement.numeric} onChange={e => setGradesForm({ ...gradesForm, movement: { ...gradesForm.movement, numeric: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.movement.written} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, written: e.target.value } })} />
+              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.movement.numeric} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, numeric: e.target.value } })} />
             </div>
             {/* MUSICALITY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Musicalidade</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={gradesForm.musicality.written} onChange={e => setGradesForm({ ...gradesForm, musicality: { ...gradesForm.musicality, written: e.target.value } })} />
-              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={gradesForm.musicality.numeric} onChange={e => setGradesForm({ ...gradesForm, musicality: { ...gradesForm.musicality, numeric: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.musicality.written} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, written: e.target.value } })} />
+              <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.musicality.numeric} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, numeric: e.target.value } })} />
             </div>
           </div>
 
