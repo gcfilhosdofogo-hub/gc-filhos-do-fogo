@@ -44,7 +44,7 @@ function AppContent() {
 
     // Fetch ALL profiles to determine professor IDs for filtering
     let mappedProfiles: User[] = []; // Declarar e inicializar aqui
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url, status');
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url, photo_url, status, belt, graduation_cost, next_evaluation_date, phone');
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
@@ -57,8 +57,12 @@ function AppContent() {
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
-        photo_url: p.avatar_url || undefined,
+        photo_url: p.photo_url || p.avatar_url || undefined,
         status: p.status as 'active' | 'blocked' | undefined,
+        belt: p.belt || undefined,
+        graduationCost: p.graduation_cost !== null ? parseFloat(p.graduation_cost.toString()) : 0,
+        nextEvaluationDate: p.next_evaluation_date || undefined,
+        phone: p.phone || undefined
       }));
       setAllUsersProfiles(mappedProfiles);
     }

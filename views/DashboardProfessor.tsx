@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
+import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, ALL_BELTS } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
@@ -32,6 +32,23 @@ interface Props {
   onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
   allUsersProfiles: User[];
 }
+
+const BELT_COLOR_MAPPING: Record<string, { main: string, ponta?: string }> = {
+  "Cordel Cinza": { main: "#808080" },
+  "Cordel Verde": { main: "#008000" },
+  "Cordel Verde ponta Amarelo": { main: "#008000", ponta: "#FFFF00" },
+  "Cordel Verde ponta Azul": { main: "#008000", ponta: "#0000FF" },
+  "Cordel Verde e Amarelo": { main: "#008000", ponta: "#FFFF00" },
+  "Cordel Verde e Amarelo ponta Verde": { main: "#FFFF00", ponta: "#008000" },
+  "Cordel Verde e Amarelo ponta Amarelo": { main: "#008000", ponta: "#FFFF00" },
+  "Cordel Verde e Amarelo ponta Azul": { main: "#008000", ponta: "#0000FF" },
+  "Cordel Amarelo": { main: "#FFFF00" },
+  "Cordel Amarelo ponta Verde": { main: "#FFFF00", ponta: "#008000" },
+  "Cordel Amarelo ponta Azul": { main: "#FFFF00", ponta: "#0000FF" },
+  "Cordel Amarelo e Azul (Instrutor)": { main: "#FFFF00", ponta: "#0000FF" },
+  "Cordel Azul (Professor)": { main: "#0000FF" },
+  "Cordel Branco (Grão-Mestre)": { main: "#FFFFFF" }
+};
 
 interface AssignmentFormState {
   title: string;
@@ -242,37 +259,13 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
 
-  // State for students managed by this professor
-  const [myStudents, setMyStudents] = useState<User[]>([]);
-
-  useEffect(() => {
-    const fetchMyStudents = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, nickname, belt, phone, graduation_cost, next_evaluation_date, avatar_url')
-        .eq('professor_name', user.nickname || user.first_name || user.name);
-
-      if (error) {
-        console.error('Error fetching students for professor:', error);
-      } else {
-        const students: User[] = data.map(p => ({
-          id: p.id,
-          name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Aluno',
-          nickname: p.nickname || undefined,
-          email: '', // Not fetched here
-          role: 'aluno', // Always aluno for these
-          belt: p.belt || undefined,
-          phone: p.phone || undefined,
-          graduationCost: p.graduation_cost !== null ? parseFloat(p.graduation_cost.toString()) : 0,
-          nextEvaluationDate: p.next_evaluation_date || undefined,
-          photo_url: p.avatar_url || undefined
-        }));
-        setMyStudents(students);
-      }
-    };
-
-    fetchMyStudents();
-  }, [user.nickname, user.first_name, user.name]);
+  // Filter students managed by this professor from allUsersProfiles prop
+  const myStudents = useMemo(() => {
+    return allUsersProfiles.filter(p =>
+      p.role === 'aluno' &&
+      p.professorName === (user.nickname || user.first_name || user.name)
+    );
+  }, [allUsersProfiles, user.nickname, user.first_name, user.name]);
 
   useEffect(() => {
     const fetchAttendanceHistory = async () => {
@@ -937,7 +930,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <>
                   {remainingValue > 0 ? (
                     <>
-                      <p className="text-sm text-stone-400">Valor Restante:</p>
+                      <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
                       <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
                       <div className="flex gap-2 text-xs">
                         <span className="text-green-400">{paidInstallments.length} pagas</span>
@@ -1096,143 +1089,225 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       {/* --- PROF VIEW: ALL STUDENTS --- */}
       {profView === 'all_students' && (
-        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in text-left">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors">
-            <ArrowLeft size={16} /> Voltar ao Painel
-          </button>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Meus Alunos ({myStudents.length})</h2>
-            <div className="bg-stone-900 px-3 py-1 rounded-full text-xs text-stone-400 border border-stone-700">
-              Total de Vídeos: {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length}
+        <div className="bg-stone-800 rounded-3xl p-8 border border-stone-700/50 animate-fade-in text-left shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+
+          <div className="relative z-10">
+            <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
+              <ArrowLeft size={16} /> Voltar ao Painel
+            </button>
+
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
+                  <Users className="text-indigo-500" size={32} />
+                  Meus Alunos
+                </h2>
+                <p className="text-stone-400 text-sm">{myStudents.length} alunos vinculados ao seu perfil</p>
+              </div>
+              <div className="flex items-center gap-3 bg-stone-900 border border-stone-700 px-4 py-2 rounded-2xl">
+                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                  <Video size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest">Total de Envios</p>
+                  <p className="text-lg font-black text-white leading-none">
+                    {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length} Vídeos
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-6">
-            {myStudents.map(student => {
-              const studentVideos = homeTrainings.filter(ht => ht.user_id === student.id);
-              const studentGradesList = studentGrades.filter(g => g.student_id === student.id);
-              const avgGrade = (studentGradesList.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGradesList.length || 1)).toFixed(1);
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {myStudents.map(student => {
+                const studentVideos = homeTrainings.filter(ht => ht.user_id === student.id);
+                const studentGradesList = studentGrades.filter(g => g.student_id === student.id);
+                const avgGrade = (studentGradesList.reduce((acc, curr) => acc + (typeof curr.numeric === 'number' ? curr.numeric : parseFloat(curr.numeric as any) || 0), 0) / (studentGradesList.length || 1)).toFixed(1);
 
-              return (
-                <div key={student.id} className="bg-stone-900 p-6 rounded-xl border border-stone-700 flex flex-col gap-4">
-                  {/* Header Info */}
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-800 pb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-stone-800 flex items-center justify-center text-2xl font-bold text-white border-2 border-stone-600 shadow-lg overflow-hidden shrink-0">
-                        {student.photo_url ? (
-                          <img src={student.photo_url} alt="Profile" className="w-full h-full object-cover" />
-                        ) : (
-                          <Logo className="w-8 h-8 opacity-50" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-white">{student.nickname || student.name}</h3>
-                        <p className="text-stone-400 text-sm">{student.name}</p>
-                        <div className="flex flex-col gap-1 mt-1">
-                          <span className="bg-stone-800 text-[10px] px-2 py-0.5 rounded border border-stone-700 text-stone-300 w-fit">{student.belt || 'Sem Graduação'}</span>
-                          <div className="flex gap-2 items-center">
-                            {student.nextEvaluationDate && (
-                              <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
-                                <Calendar size={10} /> {new Date(student.nextEvaluationDate).toLocaleDateString()}
-                              </span>
-                            )}
-                            {student.graduationCost !== undefined && student.graduationCost > 0 && (
-                              <span className="text-[10px] text-green-400 font-mono">
-                                R$ {student.graduationCost.toFixed(2).replace('.', ',')}
-                              </span>
+                // Visual belt color calculation
+                const getBeltColors = (beltName: string) => {
+                  const b = (beltName || '').toLowerCase();
+                  const [mainPart, ...rest] = b.split('ponta');
+                  const pontaPart = rest.join('ponta');
+
+                  const colorMap: Record<string, string> = {
+                    'verde': '#22c55e',
+                    'amarelo': '#FDD835',
+                    'azul': '#0033CC',
+                    'branco': '#ffffff',
+                    'cinza': '#9ca3af',
+                  };
+
+                  let main = '#444';
+                  let ponta = undefined;
+
+                  if (mainPart.includes('verde, amarelo, azul e branco')) main = 'linear-gradient(to right, #22c55e, #FDD835, #0033CC, #ffffff)';
+                  else if (mainPart.includes('amarelo e azul')) main = 'linear-gradient(to right, #FDD835, #0033CC)';
+                  else if (mainPart.includes('verde e amarelo')) main = 'linear-gradient(to right, #22c55e, #FDD835)';
+                  else if (mainPart.includes('verde e branco')) main = 'linear-gradient(to right, #22c55e, #ffffff)';
+                  else if (mainPart.includes('amarelo e branco')) main = 'linear-gradient(to right, #FDD835, #ffffff)';
+                  else if (mainPart.includes('azul e branco')) main = 'linear-gradient(to right, #0033CC, #ffffff)';
+                  else if (mainPart.includes('cinza')) main = '#9ca3af';
+                  else if (mainPart.includes('verde')) main = '#22c55e';
+                  else if (mainPart.includes('amarelo')) main = '#FDD835';
+                  else if (mainPart.includes('azul')) main = '#0033CC';
+                  else if (mainPart.includes('branco')) main = '#ffffff';
+
+                  if (pontaPart.includes('verde')) ponta = '#22c55e';
+                  else if (pontaPart.includes('amarelo')) ponta = '#FDD835';
+                  else if (pontaPart.includes('azul')) ponta = '#0033CC';
+                  else if (pontaPart.includes('branco')) ponta = '#ffffff';
+
+                  return { main, ponta };
+                };
+
+                const beltColors = getBeltColors(student.belt || "");
+
+                return (
+                  <div key={student.id} className="group bg-stone-900/40 hover:bg-stone-900/60 transition-all rounded-3xl border border-stone-700/50 hover:border-indigo-500/30 overflow-hidden shadow-xl">
+                    <div className="p-6">
+                      <div className="flex gap-5">
+                        {/* Student Avatar/Photo */}
+                        <div className="relative shrink-0">
+                          <div className="w-20 h-20 rounded-2xl bg-stone-800 border-2 border-stone-700 overflow-hidden shadow-inner group-hover:border-indigo-500/50 transition-colors">
+                            {student.photo_url ? (
+                              <img src={student.photo_url} alt={student.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-stone-600 bg-stone-800">
+                                <Users size={32} />
+                              </div>
                             )}
                           </div>
-                          {student.phone && <span className="flex items-center gap-1 text-[10px] text-blue-400"><MessageCircle size={10} /> {student.phone}</span>}
+                          {/* Online indicator or status */}
+                          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-green-500 border-4 border-stone-900 flex items-center justify-center">
+                            <Check size={10} className="text-white" />
+                          </div>
                         </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="truncate">
+                              <h3 className="text-xl font-black text-white truncate group-hover:text-indigo-400 transition-colors">
+                                {student.nickname || student.name}
+                              </h3>
+                              <p className="text-stone-500 text-xs font-medium truncate uppercase tracking-widest">{student.name}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleWhatsApp(student.phone)}
+                                className="p-2.5 bg-green-500/10 text-green-500 rounded-xl hover:bg-green-500 hover:text-white transition-all"
+                                title="WhatsApp"
+                              >
+                                <MessageCircle size={18} />
+                              </button>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="h-10 px-4 rounded-xl shadow-lg shadow-indigo-500/20"
+                                onClick={() => handleOpenEvaluation(student.id)}
+                              >
+                                <Award size={16} className="mr-2" /> Avaliar
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3">
+                            {/* Belt Visual */}
+                            <div className="bg-stone-950/40 p-3 rounded-2xl border border-stone-800/50">
+                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">Graduação</p>
+                              <div className="flex items-center gap-2">
+                                <div className="w-full h-2 rounded-full overflow-hidden flex border border-stone-800">
+                                  <div className="h-full flex-1" style={{ background: beltColors.main }}></div>
+                                  {beltColors.ponta && <div className="h-full w-4" style={{ backgroundColor: beltColors.ponta }}></div>}
+                                </div>
+                                <span className="text-[10px] font-bold text-stone-300 truncate">{student.belt || 'Sem Cordel'}</span>
+                              </div>
+                            </div>
+
+                            {/* Next Eval Visual */}
+                            <div className="bg-stone-950/40 p-3 rounded-2xl border border-stone-800/50">
+                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">Próxima Avaliação</p>
+                              <div className="flex items-center gap-2 text-orange-400">
+                                <Calendar size={12} />
+                                <span className="text-xs font-bold">
+                                  {student.nextEvaluationDate ? new Date(student.nextEvaluationDate).toLocaleDateString() : 'A definir'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex items-center justify-between border-t border-stone-800/50 pt-5 gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className="text-center">
+                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">Média</p>
+                            <p className="text-lg font-black text-green-500 leading-none">{avgGrade}</p>
+                          </div>
+                          <div className="w-px h-8 bg-stone-800"></div>
+                          <div className="text-center">
+                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">Vídeos</p>
+                            <p className="text-lg font-black text-purple-500 leading-none">{studentVideos.length}</p>
+                          </div>
+                        </div>
+
+                        {student.graduationCost !== undefined && student.graduationCost > 0 && (
+                          <div className="bg-emerald-500/5 border border-emerald-500/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                            <DollarSign size={12} className="text-emerald-500" />
+                            <span className="text-xs font-black text-emerald-400">R$ {student.graduationCost.toFixed(2).replace('.', ',')}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 bg-stone-950/30 p-4 rounded-xl border border-stone-800 w-full md:w-auto">
-                      <div className="flex flex-1 md:flex-initial divide-x divide-stone-800 items-center">
-                        <div className="text-center px-4">
-                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Média</p>
-                          <p className="text-2xl font-black text-green-500 leading-none">{avgGrade}</p>
+                    {/* Expandable Activity Section */}
+                    <div className="bg-stone-950/30 p-4 border-t border-stone-800/50">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <h4 className="text-[10px] uppercase font-black text-stone-500 flex items-center gap-2">
+                            <Video size={12} className="text-indigo-500" /> Últimos Vídeos
+                          </h4>
+                          <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                            {studentVideos.length > 0 ? studentVideos.slice(0, 3).map((v: any) => (
+                              <div key={v.id} className="flex items-center justify-between bg-stone-900/50 p-2 rounded-lg border border-stone-800">
+                                <span className="text-[10px] text-stone-300 truncate w-24">{v.video_name}</span>
+                                <a href={v.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-white transition-colors">
+                                  <PlayCircle size={14} />
+                                </a>
+                              </div>
+                            )) : <p className="text-[10px] text-stone-600 italic">Nenhum vídeo</p>}
+                          </div>
                         </div>
-                        <div className="text-center px-4">
-                          <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Vídeos</p>
-                          <p className="text-2xl font-black text-purple-500 leading-none">{studentVideos.length}</p>
+                        <div className="space-y-3">
+                          <h4 className="text-[10px] uppercase font-black text-stone-500 flex items-center gap-2">
+                            <Award size={12} className="text-green-500" /> Últimas Notas
+                          </h4>
+                          <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                            {studentGradesList.length > 0 ? studentGradesList.slice(0, 3).map(g => (
+                              <div key={g.id} className="flex items-center justify-between bg-stone-900/50 p-2 rounded-lg border border-stone-800">
+                                <span className="text-[10px] text-stone-400 truncate w-20">
+                                  {g.category === 'theory' ? 'Teo' : g.category === 'movement' ? 'Mov' : 'Mus'}
+                                </span>
+                                <span className="text-[10px] font-bold text-white bg-stone-800 px-1.5 py-0.5 rounded border border-stone-700">
+                                  {Number(g.numeric).toFixed(1)}
+                                </span>
+                              </div>
+                            )) : <p className="text-[10px] text-stone-600 italic">Nenhuma nota</p>}
+                          </div>
                         </div>
                       </div>
-                      <Button
-                        variant="primary"
-                        className="flex-1 md:flex-initial shadow-lg shadow-purple-900/20 font-bold h-11 px-6"
-                        onClick={() => handleOpenEvaluation(student.id)}
-                      >
-                        <Award size={18} /> Avaliar
-                      </Button>
-                      <button
-                        onClick={() => handleWhatsApp(student.phone)}
-                        className="bg-green-600 text-white p-2 rounded hover:bg-green-500 transition-colors"
-                        title="WhatsApp"
-                      >
-                        <MessageCircle size={20} />
-                      </button>
                     </div>
                   </div>
+                );
+              })}
 
-                  {/* Details Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Videos Section */}
-                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
-                      <h4 className="text-indigo-400 font-bold mb-3 flex items-center gap-2"><Video size={16} /> Vídeos de Treino</h4>
-                      {studentVideos.length > 0 ? (
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                          {studentVideos.map((video: any) => (
-                            <div key={video.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-indigo-500">
-                              <div>
-                                <p className="text-white font-medium truncate w-40">{video.video_name}</p>
-                                <p className="text-xs text-stone-500">{video.date}</p>
-                              </div>
-                              <a href={video.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 p-1">
-                                <PlayCircle size={18} />
-                              </a>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-stone-600 text-sm italic py-2">Nenhum vídeo enviado.</p>
-                      )}
-                    </div>
-
-                    {/* Grades Section */}
-                    <div className="bg-stone-950/50 rounded-lg p-4 border border-stone-800">
-                      <h4 className="text-green-400 font-bold mb-3 flex items-center gap-2"><Award size={16} /> Últimas Notas</h4>
-                      {studentGradesList.length > 0 ? (
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                          {studentGradesList.slice(0, 5).map(grade => (
-                            <div key={grade.id} className="flex justify-between items-center bg-stone-900 p-2 rounded text-sm border-l-2 border-green-500">
-                              <div>
-                                <p className="text-stone-300 text-xs uppercase">{grade.category === 'theory' ? 'Teórica' : grade.category === 'movement' ? 'Movimentação' : 'Musicalidade'}</p>
-                                <p className="text-stone-500 text-xs truncate w-40" title={grade.written}>{grade.written || '-'}</p>
-                              </div>
-                              <span className="font-bold text-white text-lg">
-                                {Number.isFinite(typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric))
-                                  ? (typeof grade.numeric === 'number' ? grade.numeric : Number(grade.numeric)).toFixed(1)
-                                  : '-'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-stone-600 text-sm italic py-2">Nenhuma nota registrada.</p>
-                      )}
-                    </div>
-                  </div>
+              {myStudents.length === 0 && (
+                <div className="col-span-full text-center py-20 text-stone-500 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center animate-pulse">
+                  <Users size={64} className="mb-4 opacity-20" />
+                  <p className="text-lg font-bold uppercase tracking-widest opacity-50">Nenhum aluno encontrado vinculado a você.</p>
                 </div>
-              );
-            })}
-
-            {myStudents.length === 0 && (
-              <div className="text-center py-12 text-stone-500 bg-stone-900/50 rounded-xl border border-stone-800 border-dashed">
-                <Users size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhum aluno encontrado vinculado a você.</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

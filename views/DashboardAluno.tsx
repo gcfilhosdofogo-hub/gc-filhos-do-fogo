@@ -881,7 +881,7 @@ export const DashboardAluno: React.FC<Props> = ({
                         <>
                           {remainingValue > 0 ? (
                             <>
-                              <p className="text-sm text-stone-400">Valor Restante:</p>
+                              <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
                               <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
                               <div className="flex gap-2 text-xs">
                                 <span className="text-green-400">{paidInstallments.length} pagas</span>
