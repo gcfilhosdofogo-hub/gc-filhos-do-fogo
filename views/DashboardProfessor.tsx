@@ -1070,22 +1070,78 @@ export const DashboardProfessor: React.FC<Props> = ({
             <h3 className="text-lg font-bold text-white mb-4">Passar Novo Trabalho</h3>
             <form onSubmit={handleAddAssignment} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" required value={newAssignment.title} onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })} className="bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" placeholder="Título" />
-                <input type="date" required value={newAssignment.dueDate} onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })} className="bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" />
+                <div>
+                  <label className="block text-sm text-stone-400 mb-1">Título do Trabalho</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAssignment.title}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white outline-none focus:border-blue-500"
+                    placeholder="Ex: História da Capoeira"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-stone-400 mb-1">Data de Entrega</label>
+                  <input
+                    type="date"
+                    required
+                    value={newAssignment.dueDate}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, dueDate: e.target.value })}
+                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white outline-none focus:border-blue-500 [color-scheme:dark]"
+                  />
+                </div>
               </div>
-              <textarea value={newAssignment.description} onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white h-24" placeholder="Descrição..." />
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="w-full">
-                  <label className="text-xs text-stone-500 block mb-1">Anexar Material (Opcional)</label>
+              <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
+                <label className="block text-sm text-stone-300 font-bold mb-3">Público Alvo</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="assign_target"
+                      checked={selectedAssignmentTarget === 'mine'}
+                      onChange={() => setSelectedAssignmentTarget('mine')}
+                      className="w-4 h-4 accent-blue-500"
+                    />
+                    <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>Meus Alunos</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="assign_target"
+                      checked={selectedAssignmentTarget === 'all'}
+                      onChange={() => setSelectedAssignmentTarget('all')}
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    <span className={`text-sm ${selectedAssignmentTarget === 'all' ? 'text-orange-400 font-bold' : 'text-stone-400'}`}>Todos do Grupo</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-stone-400 mb-1">Descrição / Instruções</label>
+                <textarea
+                  value={newAssignment.description}
+                  onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
+                  className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white h-24 outline-none focus:border-blue-500"
+                  placeholder="Detalhes sobre o que o aluno deve fazer..."
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-end justify-between gap-4 pt-2">
+                <div className="w-full sm:max-w-xs">
+                  <label className="text-[10px] text-stone-500 uppercase font-black mb-1 block">Anexar Material (Opcional)</label>
                   <input
                     type="file"
                     onChange={(e) => setNewAssignment({ ...newAssignment, file: e.target.files?.[0] || null })}
-                    className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white text-sm file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-stone-700 file:text-stone-300 hover:file:bg-stone-600"
+                    className="w-full bg-stone-900 border border-stone-600 rounded px-2 py-1.5 text-white text-xs file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-black file:bg-stone-700 file:text-stone-300 hover:file:bg-stone-600 cursor-pointer"
                   />
-                  {newAssignment.file && <p className="text-[10px] text-green-500 mt-1">✓ {newAssignment.file.name}</p>}
+                  {newAssignment.file && <p className="text-[10px] text-green-500 mt-1 font-bold italic">✓ Selecionado: {newAssignment.file.name}</p>}
                 </div>
-                <div className="flex justify-end pt-5"><Button type="submit">Criar Trabalho</Button></div>
+                <Button type="submit" className="w-full sm:w-auto h-10 px-8">
+                  <PlusCircle size={18} className="mr-2" /> Criar Trabalho
+                </Button>
               </div>
             </form>
           </div>
