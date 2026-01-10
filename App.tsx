@@ -44,7 +44,7 @@ function AppContent() {
 
     // Fetch ALL profiles to determine professor IDs for filtering
     let mappedProfiles: User[] = []; // Declarar e inicializar aqui
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url');
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url, status');
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
@@ -58,6 +58,7 @@ function AppContent() {
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
         photo_url: p.avatar_url || undefined,
+        status: p.status as 'active' | 'blocked' | undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
@@ -338,7 +339,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url')
+      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url, status')
       .eq('id', userId)
       .single();
 
@@ -361,6 +362,12 @@ function AppContent() {
         if (session) {
           const profileData = await fetchUserProfile(session.user.id);
 
+          if (profileData && profileData.status === 'blocked') {
+            await handleLogout();
+            alert('Sua conta está bloqueada.');
+            return;
+          }
+
           // MODIFICADO: Verifica se first_name existe e não é uma string vazia
           if (profileData && profileData.first_name && profileData.first_name.trim() !== '') {
             // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
@@ -381,6 +388,7 @@ function AppContent() {
               last_name: profileData.last_name || undefined,
               nextEvaluationDate: profileData.next_evaluation_date || undefined,
               photo_url: profileData.avatar_url || undefined,
+              status: profileData.status as 'active' | 'blocked' | undefined,
             };
             setUser(fetchedUser);
             setCurrentView('dashboard');
@@ -475,6 +483,7 @@ function AppContent() {
             last_name: updatedProfile.last_name || undefined,
             nextEvaluationDate: updatedProfile.next_evaluation_date || undefined,
             photo_url: updatedProfile.avatar_url || undefined,
+            status: updatedProfile.status as 'active' | 'blocked' | undefined,
           };
           setUser(fetchedUser);
           alert('Profile updated successfully!');
@@ -511,6 +520,19 @@ function AppContent() {
     const { error } = await supabase.from('group_events').update({ status: 'cancelled' }).eq('id', eventId);
     if (error) console.error('Error cancelling event:', error);
     else setEvents(prev => prev.map(event => event.id === eventId ? { ...event, status: 'cancelled' } : event));
+  };
+
+  const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
+    const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
+    if (error) {
+      console.error('Error toggling user block status:', error);
+      alert('Erro ao alterar status do usuário.');
+    } else {
+      setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      const targetUser = allUsersProfiles.find(u => u.id === userId);
+      handleNotifyAdmin(`${newStatus === 'blocked' ? 'Bloqueou' : 'Desbloqueou'} o usuário: ${targetUser?.nickname || targetUser?.name || userId}`, user!);
+    }
   };
 
   const handleNotifyAdmin = async (action: string, actor: User) => {
@@ -901,6 +923,7 @@ function AppContent() {
               onAddAttendance={handleAddAttendance}
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
+              onToggleBlockUser={handleToggleBlockUser}
             />
           )}
         </div>

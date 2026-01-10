@@ -539,7 +539,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         title: musicForm.title,
         category: musicForm.category,
         lyrics: musicForm.lyrics,
-        file_url: fileUrl || musicForm.url,
+        file_url: fileUrl,
         created_by: user.id
       };
 
@@ -639,7 +639,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     if (student) {
       setStudentName(student.nickname || student.name);
     }
-    setSelectedStudentForEval(studentId);
+    setSelectedStudentForGrades(studentId);
     setEvalData({
       theory: { written: '', numeric: '' },
       movement: { written: '', numeric: '' },
@@ -649,7 +649,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleSaveEvaluation = async () => {
-    if (!selectedStudentForEval) return;
+    if (!selectedStudentForGrades) return;
 
     const entries: { cat: GradeCategory; w: string; n: string }[] = [
       { cat: 'theory', w: evalData.theory.written.trim(), n: evalData.theory.numeric },
@@ -670,7 +670,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     setSavingGrades(true);
     try {
       await Promise.all(toSave.map(e => onAddStudentGrade({
-        student_id: selectedStudentForEval,
+        student_id: selectedStudentForGrades,
         student_name: studentName,
         professor_id: user.id,
         professor_name: user.nickname || user.name,
@@ -681,7 +681,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       alert("Avaliações salvas com sucesso!");
       setProfView('all_students');
-      setSelectedStudentForEval(null);
+      setSelectedStudentForGrades(null);
       setEvalData({
         theory: { written: '', numeric: '' },
         movement: { written: '', numeric: '' },
@@ -816,13 +816,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     }
   };
 
-  const handleSaveEvaluation = () => {
-    alert("Avaliação salva com sucesso!");
-    setProfView('all_students');
-    setSelectedStudentForEval(null);
-    const studentName = myStudents.find(s => s.id === selectedStudentForEval)?.name || 'Aluno';
-    onNotifyAdmin(`Avaliou o aluno: ${studentName}`, user); // Added notification
-  };
+
 
   const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
   const today = new Date().toISOString().split('T')[0];
@@ -1244,11 +1238,11 @@ export const DashboardProfessor: React.FC<Props> = ({
       )}
 
       {/* --- PROF VIEW: GRADES / EVALUATION --- */}
-      {profView === 'grades' && selectedStudentForEval && (
+      {profView === 'grades' && selectedStudentForGrades && (
         <div className="max-w-4xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Award className="text-yellow-500" /> Avaliar {myStudents.find(s => s.id === selectedStudentForEval)?.nickname || 'Aluno'}
+              <Award className="text-yellow-500" /> Avaliar {myStudents.find(s => s.id === selectedStudentForGrades)?.nickname || 'Aluno'}
             </h2>
             <button onClick={() => setProfView('all_students')} className="text-stone-400 hover:text-white flex items-center gap-1 transition-colors">
               <ArrowLeft size={18} /> Voltar
@@ -1431,8 +1425,14 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <h3 className="text-lg font-bold text-white mb-4">Nova Música</h3>
                 <form onSubmit={handleSubmitMusic} className="space-y-4">
                   <input type="text" placeholder="Título" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white" required />
-                  <input type="text" placeholder="Categoria" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white" required />
-                  <input type="text" placeholder="Link (YouTube/Spotify)" value={musicForm.url} onChange={e => setMusicForm({ ...musicForm, url: e.target.value })} className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white" required />
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
+                    <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Arquivo de Áudio</label>
+                    <input type="file" accept="audio/*" onChange={e => setMusicForm({ ...musicForm, file: e.target.files?.[0] || null })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-2 text-white text-xs" />
+                  </div>
                   <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white h-32" />
                   <Button fullWidth type="submit" disabled={uploadingMusicFile}>{uploadingMusicFile ? 'Enviando...' : 'Adicionar'}</Button>
                 </form>
