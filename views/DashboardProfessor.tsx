@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram } from 'lucide-react'; // Adicionado FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -118,6 +118,8 @@ export const DashboardProfessor: React.FC<Props> = ({
     musicality: { written: '', numeric: '' },
   });
   const [savingGrades, setSavingGrades] = useState(false);
+  const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; session_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
 
   // Financial & Uploads
   const [uploadingPaymentProof, setUploadingPaymentProof] = useState(false);
@@ -267,6 +269,45 @@ export const DashboardProfessor: React.FC<Props> = ({
 
     fetchMyStudents();
   }, [user.nickname, user.first_name, user.name]);
+
+  useEffect(() => {
+    const fetchAttendanceHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select(`
+            id,
+            status,
+            justification,
+            session_id,
+            profiles:student_id (
+              nickname,
+              first_name,
+              last_name
+            )
+          `)
+          .in('session_id', myClasses.map(c => c.id));
+
+        if (error) throw error;
+        if (data) {
+          const formatted = data.map((record: any) => ({
+            id: record.id,
+            session_id: record.session_id,
+            student_name: record.profiles?.nickname || record.profiles?.first_name || 'Aluno',
+            status: record.status as 'present' | 'absent' | 'justified',
+            justification: record.justification
+          }));
+          setAttendanceHistory(formatted);
+        }
+      } catch (err) {
+        console.error("Error fetching attendance history", err);
+      }
+    };
+
+    if (myClasses.length > 0) {
+      fetchAttendanceHistory();
+    }
+  }, [myClasses]);
 
   // Removed redundant useEffect for myClasses, profAssignments, and myOrders as they now use useMemo
 
@@ -1106,15 +1147,15 @@ export const DashboardProfessor: React.FC<Props> = ({
                     />
                     <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>Meus Alunos</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer group">
+                  <label className="flex items-center gap-2 cursor-not-allowed group opacity-50" title="Apenas administradores podem passar trabalhos para todo o grupo">
                     <input
                       type="radio"
                       name="assign_target"
+                      disabled
                       checked={selectedAssignmentTarget === 'all'}
-                      onChange={() => setSelectedAssignmentTarget('all')}
                       className="w-4 h-4 accent-orange-500"
                     />
-                    <span className={`text-sm ${selectedAssignmentTarget === 'all' ? 'text-orange-400 font-bold' : 'text-stone-400'}`}>Todos do Grupo</span>
+                    <span className="text-sm text-stone-500">Todos do Grupo (Bloqueado)</span>
                   </label>
                 </div>
               </div>
@@ -1376,19 +1417,68 @@ export const DashboardProfessor: React.FC<Props> = ({
                     {myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled')).length > 0 ? (
                       myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled'))
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                        .slice(0, 5)
-                        .map(cls => {
+                        .slice(0, 10).map(cls => {
                           const isCompleted = cls.status === 'completed';
+                          const isExpanded = expandedSessionId === cls.id;
+                          const sessionAttendance = attendanceHistory.filter(h => h.session_id === cls.id);
+
                           return (
-                            <div key={cls.id} className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500' : 'border-stone-600'}`}>
-                              <div>
-                                <span className="text-stone-300 font-medium block">{cls.title}</span>
-                                <span className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
-                                  {cls.date.split('-').reverse().join('/')}
-                                  {!isCompleted && <span className="text-orange-400 font-bold ml-1">(Pendente)</span>}
-                                </span>
+                            <div key={cls.id} className="space-y-1">
+                              <div
+                                onClick={() => isCompleted && setExpandedSessionId(isExpanded ? null : cls.id)}
+                                className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500 hover:bg-stone-900/60 cursor-pointer' : 'border-stone-600'} transition-all`}
+                              >
+                                <div className="flex-1">
+                                  <span className="text-stone-300 font-bold block">{cls.title}</span>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] text-stone-500 font-mono">
+                                      {cls.date.split('-').reverse().join('/')}
+                                    </span>
+                                    {!isCompleted && <span className="text-orange-400 text-[10px] font-bold">(Pendente)</span>}
+                                    {isCompleted && sessionAttendance.length > 0 && (
+                                      <span className="text-green-500/70 text-[10px]">{sessionAttendance.length} registros</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isCompleted ? (
+                                    <>
+                                      <Check size={12} className="text-green-500" />
+                                      {isExpanded ? <ChevronUp size={14} className="text-stone-500" /> : <ChevronDown size={14} className="text-stone-500" />}
+                                    </>
+                                  ) : (
+                                    <Clock size={12} className="text-stone-500" />
+                                  )}
+                                </div>
                               </div>
-                              {isCompleted ? <Check size={12} className="text-green-500" /> : <Clock size={12} className="text-stone-500" />}
+
+                              {isExpanded && isCompleted && (
+                                <div className="ml-2 pl-2 border-l border-stone-700 space-y-1 pb-2 animate-fade-in">
+                                  {sessionAttendance.length > 0 ? (
+                                    sessionAttendance.map(record => (
+                                      <div key={record.id} className="bg-stone-900/20 p-2 rounded flex flex-col gap-1">
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-stone-400 font-medium">{record.student_name}</span>
+                                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${record.status === 'present' ? 'bg-green-900/30 text-green-500' :
+                                            record.status === 'justified' ? 'bg-blue-900/30 text-blue-400' :
+                                              'bg-red-900/30 text-red-500'
+                                            }`}>
+                                            {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
+                                          </span>
+                                        </div>
+                                        {record.status === 'justified' && record.justification && (
+                                          <p className="text-[10px] text-stone-500 italic flex items-start gap-1">
+                                            <MessageCircle size={10} className="mt-0.5" />
+                                            "{record.justification}"
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-[10px] text-stone-600 italic p-2">Dados da chamada não carregados ou indisponíveis.</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })

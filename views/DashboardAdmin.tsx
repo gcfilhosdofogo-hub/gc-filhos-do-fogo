@@ -241,7 +241,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     });
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [studentName, setStudentName] = useState('');
-    const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
+    const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; session_id: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
+    const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const [savingGrades, setSavingGrades] = useState(false);
 
     const beltColors = useMemo(() => {
@@ -1545,7 +1546,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                         class_sessions (
                             date,
                             time,
-                            location
+                            location,
+                            title
                         ),
                         profiles:student_id (
                             nickname,
@@ -1562,6 +1564,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     const formattedHistory = data.map((record: any) => ({
                         id: record.id,
                         class_date: record.class_sessions?.date || record.created_at?.split('T')[0] || '',
+                        session_id: record.session_id,
                         student_id: record.student_id,
                         student_name: record.profiles?.nickname || record.profiles?.first_name || 'Aluno',
                         status: record.status as 'present' | 'absent' | 'justified',
@@ -4320,18 +4323,68 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     {myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled')).length > 0 ? (
                                                         myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled'))
                                                             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                                            .slice(0, 5).map(cls => {
+                                                            .slice(0, 10).map(cls => {
                                                                 const isCompleted = cls.status === 'completed';
+                                                                const isExpanded = expandedSessionId === cls.id;
+                                                                const sessionAttendance = attendanceHistory.filter(h => h.session_id === cls.id);
+
                                                                 return (
-                                                                    <div key={cls.id} className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500' : 'border-stone-600'}`}>
-                                                                        <div>
-                                                                            <span className="text-stone-300 font-medium block">{cls.title}</span>
-                                                                            <span className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
-                                                                                {cls.date.split('-').reverse().join('/')}
-                                                                                {!isCompleted && <span className="text-orange-400 font-bold ml-1">(Pendente)</span>}
-                                                                            </span>
+                                                                    <div key={cls.id} className="space-y-1">
+                                                                        <div
+                                                                            onClick={() => isCompleted && setExpandedSessionId(isExpanded ? null : cls.id)}
+                                                                            className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500 hover:bg-stone-900/60 cursor-pointer' : 'border-stone-600'} transition-all`}
+                                                                        >
+                                                                            <div className="flex-1">
+                                                                                <span className="text-stone-300 font-bold block">{cls.title}</span>
+                                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                                    <span className="text-[10px] text-stone-500 font-mono">
+                                                                                        {cls.date.split('-').reverse().join('/')}
+                                                                                    </span>
+                                                                                    {!isCompleted && <span className="text-orange-400 text-[10px] font-bold">(Pendente)</span>}
+                                                                                    {isCompleted && sessionAttendance.length > 0 && (
+                                                                                        <span className="text-green-500/70 text-[10px]">{sessionAttendance.length} registros</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                {isCompleted ? (
+                                                                                    <>
+                                                                                        <Check size={12} className="text-green-500" />
+                                                                                        {isExpanded ? <ChevronUp size={14} className="text-stone-500" /> : <ChevronDown size={14} className="text-stone-500" />}
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <Clock size={12} className="text-stone-500" />
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                        {isCompleted ? <Check size={12} className="text-green-500" /> : <Clock size={12} className="text-stone-500" />}
+
+                                                                        {isExpanded && isCompleted && (
+                                                                            <div className="ml-2 pl-2 border-l border-stone-700 space-y-1 pb-2 animate-fade-in">
+                                                                                {sessionAttendance.length > 0 ? (
+                                                                                    sessionAttendance.map(record => (
+                                                                                        <div key={record.id} className="bg-stone-900/20 p-2 rounded flex flex-col gap-1">
+                                                                                            <div className="flex justify-between items-center">
+                                                                                                <span className="text-stone-400 font-medium">{record.student_name}</span>
+                                                                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${record.status === 'present' ? 'bg-green-900/30 text-green-500' :
+                                                                                                    record.status === 'justified' ? 'bg-blue-900/30 text-blue-400' :
+                                                                                                        'bg-red-900/30 text-red-500'
+                                                                                                    }`}>
+                                                                                                    {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            {record.status === 'justified' && record.justification && (
+                                                                                                <p className="text-[10px] text-stone-500 italic flex items-start gap-1">
+                                                                                                    <MessageCircle size={10} className="mt-0.5" />
+                                                                                                    "{record.justification}"
+                                                                                                </p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <p className="text-[10px] text-stone-600 italic p-2">Dados da chamada não carregados ou indisponíveis.</p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 );
                                                             })
