@@ -416,6 +416,7 @@ function AppContent() {
     };
 
     setIsProfileChecked(false); // Reseta o status de verificação ao mudar a sessão/carregamento
+    setupUserAndProfile();
   }, [session, isLoading, fetchUserProfile]); // Dependências
 
   // Efeito para buscar dados do dashboard quando o usuário estiver definido
