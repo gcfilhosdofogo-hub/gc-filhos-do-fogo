@@ -854,7 +854,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         console.log('handleViewEventRegistrationProof called in DashboardAdmin');
         console.log('  filePath:', filePath);
         console.log('  proofName:', proofName);
-        const bucket = 'event_proofs'; // Explicitly define bucket here
+        const bucket = 'payment_proofs'; // Changed from 'event_proofs' to match student upload bucket
         console.log('  bucket:', bucket);
         try {
             const { data, error } = await supabase.storage
