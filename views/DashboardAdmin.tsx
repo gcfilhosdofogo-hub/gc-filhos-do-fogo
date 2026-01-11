@@ -168,8 +168,22 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [expandedProfessor, setExpandedProfessor] = useState<string | null>(null);
 
     // Users Management State
-    // managedUsers is declared below deriving from props
-    // const [managedUsers, setManagedUsers] = useState<User[]>([]); 
+    // --- USERS MANAGEMENT ---
+    // Instead of fetching again, derive from allUsersProfiles prop
+    const [managedUsers, setManagedUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        if (allUsersProfiles && allUsersProfiles.length > 0) {
+            const sorted = [...allUsersProfiles].sort((a, b) => {
+                const indexA = ALL_BELTS.indexOf(a.belt || 'Cordel Cinza');
+                const indexB = ALL_BELTS.indexOf(b.belt || 'Cordel Cinza');
+                return indexB - indexA;
+            });
+            setManagedUsers(sorted);
+        } else {
+            setManagedUsers([]);
+        }
+    }, [allUsersProfiles]);
     const [showUserModal, setShowUserModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userSearch, setUserSearch] = useState('');
@@ -325,22 +339,6 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
     const [studentDetailsSearch, setStudentDetailsSearch] = useState('');
 
-    // --- USERS MANAGEMENT ---
-    // Instead of fetching again, derive from allUsersProfiles prop
-    const [managedUsers, setManagedUsers] = useState<User[]>([]);
-
-    useEffect(() => {
-        if (allUsersProfiles && allUsersProfiles.length > 0) {
-            const sorted = [...allUsersProfiles].sort((a, b) => {
-                const indexA = ALL_BELTS.indexOf(a.belt || 'Cordel Cinza');
-                const indexB = ALL_BELTS.indexOf(b.belt || 'Cordel Cinza');
-                return indexB - indexA;
-            });
-            setManagedUsers(sorted);
-        } else {
-            setManagedUsers([]);
-        }
-    }, [allUsersProfiles]);
 
 
     // --- OVERDUE MONITORING LOGIC ---
