@@ -529,15 +529,17 @@ function AppContent() {
   const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
 
-    // Using upsert as a potential workaround for PGRST204 (Schema Cache Error)
+    // Using update now that column existence is confirmed. 
+    // Requires SQL RLS policy "Admins can update all profiles" to be active.
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: userId, status: newStatus });
+      .update({ status: newStatus })
+      .eq('id', userId);
 
     if (error) {
       console.error('Error toggling user block status:', error);
-      if (error.message?.includes('schema cache')) {
-        alert('Erro de Cache no Supabase: A coluna "status" não foi reconhecida pelo servidor. Por favor, acesse o painel do Supabase -> API Settings e clique em "Reload PostgREST config".');
+      if (error.message?.includes('row-level security')) {
+        alert('Erro de Permissão (RLS): O banco de dados não permitiu a alteração. Certifique-se de ter rodado o script SQL de permissões de Admin no painel do Supabase.');
       } else {
         alert(`Erro ao alterar status: ${error.message}`);
       }

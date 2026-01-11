@@ -921,7 +921,6 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
 
         const userDataToSave = {
-            id: editingUser.id,
             first_name: userForm.name.split(' ')[0] || null,
             last_name: userForm.name.split(' ').slice(1).join(' ') || null,
             nickname: userForm.nickname || null,
@@ -935,19 +934,21 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         const { error } = await supabase
             .from('profiles')
-            .upsert(userDataToSave);
+            .update(userDataToSave)
+            .eq('id', editingUser.id);
 
         if (error) {
             console.error('Error updating user:', error);
             if (error.message?.includes('schema cache')) {
                 alert('Erro de Cache no Supabase: A coluna "status" não foi reconhecida pelo servidor. Por favor, acesse o painel do Supabase -> API Settings e clique em "Reload PostgREST config".');
+            } else if (error.message?.includes('row-level security')) {
+                alert('Erro de Permissão (RLS): O banco de dados não permitiu a alteração. Rodar script SQL de Admin no Supabase.');
             } else {
                 alert('Erro ao atualizar usuário: ' + error.message);
             }
         } else {
             alert('Usuário atualizado com sucesso!');
             setShowUserModal(false);
-            // fetchManagedUsers(); // Removed as it was undefined, App.tsx should handle data refresh
             onNotifyAdmin(`Atualizou perfil do usuário: ${editingUser.nickname || editingUser.name}`, user);
         }
     };
