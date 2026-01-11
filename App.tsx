@@ -528,22 +528,18 @@ function AppContent() {
 
   const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
-    // Tentar forçar o reconhecimento da coluna status e retorno
-    const { data, error } = await supabase
+
+    // Using simple update without select to bypass potential Schema Cache issues (PGRST204)
+    const { error } = await supabase
       .from('profiles')
-      .update({ status: newStatus } as any) // Cast to any to bypass strict type checks if local types are outdated
-      .eq('id', userId)
-      .select('id, status');
+      .update({ status: newStatus })
+      .eq('id', userId);
 
     if (error) {
       console.error('Error toggling user block status:', error);
-      // Fallback: Se o erro for de cache (PGRST204), tentar ignorar e atualizar localmente se for "aparente" sucesso ou avisar
-      if (error.code === 'PGRST204') {
-        alert('Erro de Cache do Servidor (PGRST204). Tente recarregar a página e aguardar alguns minutos.');
-      } else {
-        alert(`Erro ao alterar status: ${error.message}`);
-      }
+      alert(`Erro ao alterar status: ${error.message}`);
     } else {
+      // Optimistic update since we didn't get data back
       setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       const targetUser = allUsersProfiles.find(u => u.id === userId);
       handleNotifyAdmin(`${newStatus === 'blocked' ? 'Bloqueou' : 'Desbloqueou'} o usuário: ${targetUser?.nickname || targetUser?.name || userId}`, user!);
@@ -698,9 +694,19 @@ function AppContent() {
   };
 
   const handleUpdateEventRegistrationWithProof = async (updatedRegistration: EventRegistration) => {
-    const { data, error } = await supabase.from('event_registrations').update(updatedRegistration).eq('id', updatedRegistration.id).select().single();
-    if (error) console.error('Error updating event registration with proof:', error);
-    else setEventRegistrations(prev => prev.map(reg => reg.id === updatedRegistration.id ? data : reg));
+    // Remove view-only fields that shouldn't be sent to the DB table
+    const { event_title, user_name, ...dbPayload } = updatedRegistration;
+
+    const { data, error } = await supabase.from('event_registrations').update(dbPayload).eq('id', updatedRegistration.id).select().single();
+    if (error) {
+      console.error('Error updating event registration with proof:', error);
+      alert('Erro ao atualizar comprovante no banco de dados. Tente novamente.');
+    }
+    else {
+      // Merge the returned DB data with the view-only fields we preserved
+      const completeData = { ...data, event_title, user_name };
+      setEventRegistrations(prev => prev.map(reg => reg.id === updatedRegistration.id ? completeData : reg));
+    }
   };
 
   const handleAddAttendance = async (attendanceRecords: any[]) => {

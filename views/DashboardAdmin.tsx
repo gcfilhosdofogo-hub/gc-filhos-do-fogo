@@ -2902,6 +2902,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <th className="p-4">Contato</th>
                                             <th className="p-4">Graduação</th>
                                             <th className="p-4">Próxima Avaliação</th> {/* New column */}
+                                            <th className="p-4">Status</th>
                                             <th className="p-4 rounded-tr-lg text-right">Ações</th>
                                         </tr>
                                     </thead>
