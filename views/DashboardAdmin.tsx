@@ -2037,10 +2037,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <div>
                                         <label className="block text-sm text-stone-400 mb-1">Data</label>
                                         <input
-                                            type="text"
+                                            type="date"
                                             value={eventFormData.date}
                                             onChange={e => setEventFormData({ ...eventFormData, date: e.target.value })}
-                                            className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
+                                            className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
                                             required
                                         />
                                     </div>
