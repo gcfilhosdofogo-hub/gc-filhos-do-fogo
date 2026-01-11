@@ -372,15 +372,15 @@ function AppContent() {
             return;
           }
 
-          // MODIFICADO: Verifica se first_name existe e não é uma string vazia
-          if (profileData && profileData.first_name && profileData.first_name.trim() !== '') {
-            // Perfil existe e tem o primeiro nome preenchido (considerado completo o suficiente)
-            const userRole: UserRole = profileData.role as UserRole;
+          // Simplified check: if we have a role, we consider the profile "established" enough
+          // to try and load the dashboard or let the user fix details there.
+          if (profileData && profileData.role) {
+            const userRole = profileData.role as UserRole;
             const fetchedUser: User = {
               id: session.user.id,
               name: profileData.first_name || session.user.email || 'User',
               nickname: profileData.nickname || undefined,
-              email: session.user.email || '', // Populated from session.user.email
+              email: session.user.email || '',
               role: userRole,
               belt: profileData.belt || undefined,
               beltColor: profileData.belt_color || undefined,
@@ -397,12 +397,12 @@ function AppContent() {
             setUser(fetchedUser);
             setCurrentView('dashboard');
           } else {
-            // Perfil não existe ou está incompleto (primeiro nome ausente ou vazio)
-            setUser(null); // Garante que o usuário seja nulo se o perfil estiver incompleto
+            // Profile missing or no role determined -> setup
+            setUser(null);
             setCurrentView('profile_setup');
           }
         } else {
-          // Não há sessão, volta para a tela inicial
+          // No session
           setUser(null);
           setCurrentView('home');
         }
@@ -411,12 +411,11 @@ function AppContent() {
         setUser(null);
         setCurrentView('home');
       } finally {
-        setIsProfileChecked(true); // Marca a verificação do perfil como completa
+        setIsProfileChecked(true);
       }
     };
 
     setIsProfileChecked(false); // Reseta o status de verificação ao mudar a sessão/carregamento
-    setupUserAndProfile();
   }, [session, isLoading, fetchUserProfile]); // Dependências
 
   // Efeito para buscar dados do dashboard quando o usuário estiver definido

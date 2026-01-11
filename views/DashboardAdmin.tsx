@@ -324,49 +324,23 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
     const [studentDetailsSearch, setStudentDetailsSearch] = useState('');
 
-    // --- SUPABASE USER MANAGEMENT ---
-    const fetchManagedUsers = useCallback(async () => {
-        const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url, status');
-        if (error) {
-            console.error('Error fetching managed users:', error);
-            // Optionally show a toast notification
-        } else {
-            const fetchedUsers: User[] = data.map(profile => {
-                return {
-                    id: profile.id,
-                    name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.nickname || 'Usuário',
-                    nickname: profile.nickname || undefined,
-                    email: '', // Email will be populated from auth.users if needed
-                    role: profile.role as UserRole, // This is where the role is read
-                    belt: profile.belt || undefined,
-                    beltColor: profile.belt_color || undefined,
-                    professorName: profile.professor_name || undefined,
-                    birthDate: profile.birth_date || undefined,
-                    // MODIFIED: Ensure 0 is kept as a number, or default to 0 if null
-                    graduationCost: profile.graduation_cost !== null ? Number(profile.graduation_cost) : 0,
-                    phone: profile.phone || undefined,
-                    first_name: profile.first_name || undefined,
-                    last_name: profile.last_name || undefined,
-                    nextEvaluationDate: profile.next_evaluation_date || undefined,
-                    photo_url: profile.avatar_url || undefined,
-                    status: profile.status || 'active'
-                };
-            });
-            // Sort by belt rank descending
-            fetchedUsers.sort((a, b) => {
+    // --- USERS MANAGEMENT ---
+    // Instead of fetching again, derive from allUsersProfiles prop
+    const [managedUsers, setManagedUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        if (allUsersProfiles && allUsersProfiles.length > 0) {
+            const sorted = [...allUsersProfiles].sort((a, b) => {
                 const indexA = ALL_BELTS.indexOf(a.belt || 'Cordel Cinza');
                 const indexB = ALL_BELTS.indexOf(b.belt || 'Cordel Cinza');
                 return indexB - indexA;
             });
-            setManagedUsers(fetchedUsers);
-
-            // Process for Pedagogy tab replaced by useMemo hook below
+            setManagedUsers(sorted);
+        } else {
+            setManagedUsers([]);
         }
-    }, [session]); // Add session to dependency array
+    }, [allUsersProfiles]);
 
-    useEffect(() => {
-        fetchManagedUsers();
-    }, [fetchManagedUsers]);
 
     // --- OVERDUE MONITORING LOGIC ---
     useEffect(() => {
