@@ -529,17 +529,20 @@ function AppContent() {
   const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
 
-    // Using simple update without select to bypass potential Schema Cache issues (PGRST204)
+    // Using upsert as a potential workaround for PGRST204 (Schema Cache Error)
     const { error } = await supabase
       .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', userId);
+      .upsert({ id: userId, status: newStatus });
 
     if (error) {
       console.error('Error toggling user block status:', error);
-      alert(`Erro ao alterar status: ${error.message}`);
+      if (error.message?.includes('schema cache')) {
+        alert('Erro de Cache no Supabase: A coluna "status" não foi reconhecida pelo servidor. Por favor, acesse o painel do Supabase -> API Settings e clique em "Reload PostgREST config".');
+      } else {
+        alert(`Erro ao alterar status: ${error.message}`);
+      }
     } else {
-      // Optimistic update since we didn't get data back
+      // Optimistic update
       setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       const targetUser = allUsersProfiles.find(u => u.id === userId);
       handleNotifyAdmin(`${newStatus === 'blocked' ? 'Bloqueou' : 'Desbloqueou'} o usuário: ${targetUser?.nickname || targetUser?.name || userId}`, user!);

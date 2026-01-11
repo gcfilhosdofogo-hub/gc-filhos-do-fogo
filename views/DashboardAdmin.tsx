@@ -195,7 +195,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         belt: ALL_BELTS[0],
         phone: '',
         professorName: '',
-        birthDate: ''
+        birthDate: '',
+        status: 'active' as 'active' | 'blocked'
     });
     // State for inline graduation cost editing
     const [editingGradCostId, setEditingGradCostId] = useState<string | null>(null);
@@ -899,7 +900,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                 belt: userToEdit.belt || ALL_BELTS[0],
                 phone: userToEdit.phone || '',
                 professorName: userToEdit.professorName || '',
-                birthDate: userToEdit.birthDate || ''
+                birthDate: userToEdit.birthDate || '',
+                status: userToEdit.status || 'active'
             });
             setShowUserModal(true);
         } else {
@@ -919,30 +921,33 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
 
         const userDataToSave = {
+            id: editingUser.id,
             first_name: userForm.name.split(' ')[0] || null,
             last_name: userForm.name.split(' ').slice(1).join(' ') || null,
             nickname: userForm.nickname || null,
-            // email is typically from auth.users, not updated here
             role: userForm.role,
             belt: userForm.belt || null,
             phone: userForm.phone || null,
             professor_name: userForm.professorName || null,
             birth_date: userForm.birthDate || null,
-            // updated_at: new Date().toISOString(), // Removed to prevent schema errors if column invalid
+            status: userForm.status
         };
 
         const { error } = await supabase
             .from('profiles')
-            .update(userDataToSave)
-            .eq('id', editingUser.id);
+            .upsert(userDataToSave);
 
         if (error) {
             console.error('Error updating user:', error);
-            alert('Erro ao atualizar usuário: ' + error.message);
+            if (error.message?.includes('schema cache')) {
+                alert('Erro de Cache no Supabase: A coluna "status" não foi reconhecida pelo servidor. Por favor, acesse o painel do Supabase -> API Settings e clique em "Reload PostgREST config".');
+            } else {
+                alert('Erro ao atualizar usuário: ' + error.message);
+            }
         } else {
             alert('Usuário atualizado com sucesso!');
             setShowUserModal(false);
-            fetchManagedUsers(); // Re-fetch to update the list
+            // fetchManagedUsers(); // Removed as it was undefined, App.tsx should handle data refresh
             onNotifyAdmin(`Atualizou perfil do usuário: ${editingUser.nickname || editingUser.name}`, user);
         }
     };
@@ -2845,6 +2850,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 </select>
                                             </div>
                                         )}
+
+                                        <div>
+                                            <label className="block text-sm text-stone-400 mb-1">Status da Conta</label>
+                                            <select
+                                                value={userForm.status}
+                                                onChange={(e) => setUserForm({ ...userForm, status: e.target.value as 'active' | 'blocked' })}
+                                                className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
+                                            >
+                                                <option value="active">Ativo (Acesso Liberado)</option>
+                                                <option value="blocked">Bloqueado (Acesso Negado)</option>
+                                            </select>
+                                        </div>
 
                                         {!editingUser && (
                                             <div className="bg-stone-900 p-3 rounded border border-stone-700 text-sm text-stone-400 flex items-center gap-2">
