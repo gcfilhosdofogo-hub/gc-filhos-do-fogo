@@ -42,25 +42,25 @@ function AppContent() {
     const userId = session.user.id;
     const userRole = user.role; // Use a role do usuário atual
 
-    // Fetch ALL profiles to determine professor IDs for filtering
-    let mappedProfiles: User[] = []; // Declarar e inicializar aqui
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('id, first_name, last_name, nickname, role, professor_name, avatar_url, photo_url, status, belt, graduation_cost, next_evaluation_date, phone');
+    // Fetch ALL profiles
+    let mappedProfiles: User[] = [];
+    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('*'); // Use * to be safe
     if (allProfilesError) {
       console.error('Error fetching all profiles:', allProfilesError);
     } else {
-      mappedProfiles = (allProfilesData || []).map(p => ({ // Atribuir aqui
+      mappedProfiles = (allProfilesData || []).map(p => ({
         id: p.id,
         name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
         nickname: p.nickname || undefined,
-        email: '', // Email will be populated from session.user.email later
+        email: '',
         role: p.role as UserRole,
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
-        photo_url: p.photo_url || p.avatar_url || undefined,
+        photo_url: p.avatar_url || p.photo_url || undefined, // Unify to favor avatar_url
         status: p.status as 'active' | 'blocked' | undefined,
         belt: p.belt || undefined,
-        graduationCost: p.graduation_cost !== null ? parseFloat(p.graduation_cost.toString()) : 0,
+        graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0, // Safe cast
         nextEvaluationDate: p.next_evaluation_date || undefined,
         phone: p.phone || undefined
       }));
@@ -343,7 +343,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('first_name, last_name, nickname, belt, belt_color, professor_name, birth_date, graduation_cost, phone, role, next_evaluation_date, avatar_url, status')
+      .select('*') // Use * to avoid errors if specific columns (like phone/graduation_cost) are missing
       .eq('id', userId)
       .single();
 
