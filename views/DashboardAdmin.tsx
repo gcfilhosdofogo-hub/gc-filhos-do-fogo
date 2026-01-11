@@ -168,7 +168,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [expandedProfessor, setExpandedProfessor] = useState<string | null>(null);
 
     // Users Management State
-    const [managedUsers, setManagedUsers] = useState<User[]>([]); // Initialize empty, will fetch from Supabase
+    // managedUsers is declared below deriving from props
+    // const [managedUsers, setManagedUsers] = useState<User[]>([]); 
     const [showUserModal, setShowUserModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userSearch, setUserSearch] = useState('');
