@@ -5,6 +5,7 @@ import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, 
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { Logo } from '../components/Logo';
+import heic2any from 'heic2any';
 
 interface Props {
   user: User;
@@ -30,6 +31,33 @@ interface Props {
   studentGrades: StudentGrade[];
   onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
 }
+
+/**
+ * Helper to convert HEIC/HEIF images (common on iPhones) to JPG
+ * and ensure standard formats are handled correctly.
+ */
+const convertToStandardImage = async (file: File): Promise<File> => {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension === 'heic' || extension === 'heif') {
+    try {
+      console.log('Detectado arquivo HEIC/HEIF. Convertendo para JPEG...');
+      const blob = await heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.7
+      });
+
+      const convertedBlob = Array.isArray(blob) ? blob[0] : blob;
+      const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+      return new File([convertedBlob], newFileName, { type: 'image/jpeg' });
+    } catch (err) {
+      console.error('Erro ao converter HEIC:', err);
+      return file; // Fallback to original
+    }
+  }
+  return file;
+};
 
 
 type MainTab = 'overview' | 'finance_resources' | 'grades' | 'assignments' | 'music' | 'home_training' | 'school_report' | 'uniform'; // Main tabs for student dashboard
@@ -540,14 +568,17 @@ export const DashboardAluno: React.FC<Props> = ({
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
-      setUploadingPaymentProof(false); // Ensure loading state is reset
+      setUploadingPaymentProof(false);
       return;
     }
 
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     setUploadingPaymentProof(true);
 
     try {
+      // Support for iPhone HEIC
+      file = await convertToStandardImage(file);
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/payment_proofs/${selectedPaymentToProof.id}-${Date.now()}.${fileExt}`;
 
@@ -555,7 +586,7 @@ export const DashboardAluno: React.FC<Props> = ({
         .from('payment_proofs')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError; // Throw error to be caught by catch block
+      if (uploadError) throw uploadError;
 
       const fileUrl = uploadData.path;
 
@@ -567,16 +598,18 @@ export const DashboardAluno: React.FC<Props> = ({
       };
 
       await onUpdatePaymentRecord(updatedPayment);
-      setUploadingPaymentProof(false);
-      setSelectedPaymentToProof(null); // Clear selected payment after upload
+
+      // Notify BEFORE clearing state to avoid crash
       onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para ${selectedPaymentToProof.month}`, user);
+
+      setUploadingPaymentProof(false);
+      setSelectedPaymentToProof(null);
       alert("Comprovante enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading payment proof:', error);
       alert("Erro ao enviar comprovante: " + error.message);
       setUploadingPaymentProof(false);
     } finally {
-      // Reset the file input value to allow re-uploading the same file if needed
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -589,10 +622,13 @@ export const DashboardAluno: React.FC<Props> = ({
       return;
     }
 
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     setUploadingEventProof(true);
 
     try {
+      // Support for iPhone HEIC
+      file = await convertToStandardImage(file);
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/event_proofs/${selectedEventRegToProof.id}-${Date.now()}.${fileExt}`;
 
@@ -606,17 +642,18 @@ export const DashboardAluno: React.FC<Props> = ({
 
       const updatedRegistration: EventRegistration = {
         ...selectedEventRegToProof,
-        proof_url: fileUrl, // Assuming EventRegistration has a proof_url field
-        proof_name: file.name, // Assuming EventRegistration has a proof_name field
-        status: 'pending', // Mark as pending for admin review
+        proof_url: fileUrl,
+        proof_name: file.name,
+        status: 'pending',
       };
 
-      // Call the new prop to update the event registration with proof
       await onUpdateEventRegistrationWithProof(updatedRegistration);
+
+      // Notify BEFORE clearing state
+      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para o evento ${selectedEventRegToProof.event_title}`, user);
 
       setUploadingEventProof(false);
       setSelectedEventRegToProof(null);
-      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para o evento ${selectedEventRegToProof.event_title}`, user);
       alert("Comprovante de evento enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading event proof:', error);
@@ -661,10 +698,13 @@ export const DashboardAluno: React.FC<Props> = ({
       return;
     }
 
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     setUploadingUniformProof(true);
 
     try {
+      // Support for iPhone HEIC
+      file = await convertToStandardImage(file);
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/uniform_proofs/${selectedOrderToProof.id}-${Date.now()}.${fileExt}`;
 
@@ -680,9 +720,11 @@ export const DashboardAluno: React.FC<Props> = ({
 
       await onUpdateOrderWithProof(selectedOrderToProof.id, publicUrlData.publicUrl, file.name);
 
+      // Notify BEFORE clearing state
+      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para uniforme: ${selectedOrderToProof.item}`, user);
+
       setUploadingUniformProof(false);
       setSelectedOrderToProof(null);
-      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para uniforme: ${selectedOrderToProof.item}`, user);
       alert("Comprovante enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading uniform proof:', error);
