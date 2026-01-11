@@ -639,12 +639,26 @@ function AppContent() {
   };
 
   const handleUpdateAssignment = async (updatedAssignment: Assignment) => {
-    const { data, error } = await supabase.from('assignments').update(updatedAssignment).eq('id', updatedAssignment.id).select().single();
+    // Destructure to separate ID and metadata from updateable fields
+    const {
+      id,
+      created_at,
+      created_by,
+      ...updatePayload
+    } = updatedAssignment as any;
+
+    const { data, error } = await supabase
+      .from('assignments')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
     if (error) {
       console.error('Error updating assignment:', error);
       throw error;
     } else {
-      setAssignments(prev => prev.map(a => a.id === updatedAssignment.id ? data : a));
+      setAssignments(prev => prev.map(a => a.id === id ? data : a));
     }
   };
 

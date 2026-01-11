@@ -708,8 +708,8 @@ export const DashboardProfessor: React.FC<Props> = ({
       const updatedAssignment: AssignmentType = {
         ...assignments.find(a => a.id === assignmentId)!,
         status: 'completed',
-        attachment_url: publicUrlData.publicUrl,
-        attachment_name: file.name,
+        submission_url: publicUrlData.publicUrl,
+        submission_name: file.name,
         student_id: studentId, // Ensure student_id is set for submission
       };
       await onUpdateAssignment(updatedAssignment);
