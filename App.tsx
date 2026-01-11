@@ -528,10 +528,21 @@ function AppContent() {
 
   const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
-    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
+    // Tentar forçar o reconhecimento da coluna status e retorno
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus } as any) // Cast to any to bypass strict type checks if local types are outdated
+      .eq('id', userId)
+      .select('id, status');
+
     if (error) {
       console.error('Error toggling user block status:', error);
-      alert('Erro ao alterar status do usuário.');
+      // Fallback: Se o erro for de cache (PGRST204), tentar ignorar e atualizar localmente se for "aparente" sucesso ou avisar
+      if (error.code === 'PGRST204') {
+        alert('Erro de Cache do Servidor (PGRST204). Tente recarregar a página e aguardar alguns minutos.');
+      } else {
+        alert(`Erro ao alterar status: ${error.message}`);
+      }
     } else {
       setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       const targetUser = allUsersProfiles.find(u => u.id === userId);

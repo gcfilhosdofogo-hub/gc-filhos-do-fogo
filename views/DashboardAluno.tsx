@@ -865,6 +865,78 @@ export const DashboardAluno: React.FC<Props> = ({
               {user.nickname && <p className="text-stone-400 text-sm">{user.name}</p>}
               <p className="text-stone-500 text-xs mb-4">{user.email}</p>
 
+              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 flex flex-col items-center justify-center space-y-4 mb-6">
+                <div className="w-full max-w-sm bg-stone-900 rounded-lg p-6 border-l-4 overflow-hidden relative flex flex-col items-center text-center">
+                  <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
+                  {beltColors.pontaColor && (
+                    <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
+                  )}
+                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Graduação Atual</p>
+                  <p className="text-2xl font-bold text-white flex items-center justify-center gap-2">
+                    <Award className="text-orange-500" size={24} />
+                    {user.belt || 'Cordel Cinza'}
+                  </p>
+                </div>
+
+                <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
+                  <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
+                    <GraduationCap size={16} /> Próxima Avaliação
+                  </p>
+                  <div className="flex flex-col items-center gap-2">
+                    {(() => {
+                      const userInstallments = monthlyPayments.filter(p =>
+                        p.student_id === user.id &&
+                        p.month?.includes('Parcela')
+                      );
+                      const paidInstallments = userInstallments.filter(p => p.status === 'paid');
+                      const pendingInstallments = userInstallments.filter(p => p.status !== 'paid');
+                      const remainingValue = pendingInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                      const totalPaid = paidInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+                      return (
+                        <>
+                          {remainingValue > 0 ? (
+                            <>
+                              <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
+                              <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                              <div className="flex gap-2 text-xs">
+                                <span className="text-green-400">{paidInstallments.length} pagas</span>
+                                <span className="text-stone-600">|</span>
+                                <span className="text-orange-400">{pendingInstallments.length} pendentes</span>
+                              </div>
+                              <div className="w-full bg-stone-700 rounded-full h-2 mt-2">
+                                <div
+                                  className="bg-green-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${userInstallments.length > 0 ? (paidInstallments.length / userInstallments.length) * 100 : 0}%` }}
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                              {totalPaid > 0 && (
+                                <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
+                              )}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+
+                    {user.nextEvaluationDate && (
+                      <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full mt-2">
+                        Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
+                      </span>
+                    )}
+                    {(user.graduationCost ?? 0) === 0 ? (
+                      <p className="text-[10px] text-stone-400 mt-1">Custo definido pela coordenação (Gratuito)</p>
+                    ) : (
+                      <p className="text-[10px] text-stone-400 mt-1">Valor definido pela coordenação</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
 
               {user.professorName && (
                 <div className="mb-4">
@@ -986,67 +1058,6 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: OVERVIEW --- */}
           {activeMainTab === 'overview' && (
             <div className="space-y-6 animate-fade-in">
-              {/* Graduation and Evaluation Card */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-stone-800 rounded-xl p-6 border-l-4 border-l-orange-500 shadow-lg relative overflow-hidden">
-                  <div className="absolute left-0 top-0 bottom-0 w-2" style={{ background: beltColors.mainColor }}></div>
-                  {beltColors.pontaColor && (
-                    <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
-                  )}
-                  <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Sua Graduação</p>
-                  <p className="text-2xl font-bold text-white flex items-center gap-2">
-                    <Award className="text-orange-500" size={24} />
-                    {user.belt || 'Cordel Cinza'}
-                  </p>
-                </div>
-
-                {/* Evaluation Info - Showing remaining installments value */}
-                {(() => {
-                  const evalPayments = monthlyPayments.filter(p =>
-                    p.student_id === user.id &&
-                    (p.type === 'evaluation' || p.month?.toLowerCase().includes('avalia') || p.month?.toLowerCase().includes('parcela'))
-                  );
-                  const paidInstallments = evalPayments.filter(p => p.status === 'paid');
-                  const pendingInstallments = evalPayments.filter(p => p.status !== 'paid');
-                  const remainingValue = pendingInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
-                  const totalPaid = paidInstallments.reduce((sum, p) => sum + (p.amount || 0), 0);
-                  const totalValue = evalPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-                  const progress = totalValue > 0 ? (totalPaid / totalValue) * 100 : 0;
-
-                  return (
-                    <div className="bg-stone-800 rounded-xl p-6 border border-green-900/40 shadow-lg flex flex-col justify-center">
-                      <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
-                        <GraduationCap size={16} /> Próxima Avaliação
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {totalValue > 0 ? (
-                          <>
-                            <div className="flex justify-between items-end">
-                              <div>
-                                <p className="text-sm text-stone-400">Restante:</p>
-                                <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
-                              </div>
-                              <div className="text-right">
-                                <span className="text-green-400 text-xs font-bold">{paidInstallments.length} pagas</span>
-                                <p className="text-stone-500 text-[10px]">{pendingInstallments.length} pendentes</p>
-                              </div>
-                            </div>
-                            <div className="w-full bg-stone-900 rounded-full h-2 mt-2 border border-stone-700">
-                              <div
-                                className="bg-green-500 h-full rounded-full transition-all duration-500"
-                                style={{ width: `${progress}%` }}
-                              ></div>
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-stone-500 text-sm italic">Nenhuma avaliação programada.</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
               {/* Resumo de Atividades (Summary) */}
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -1110,6 +1121,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   </div>
                 </div>
               </div>
+
 
               {/* Suas Próximas Aulas (Specific Professor) */}
               <div className="bg-stone-800 rounded-xl p-6 border-2 border-orange-600/50 shadow-[0_0_15px_rgba(234,88,12,0.1)]">
