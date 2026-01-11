@@ -4466,6 +4466,34 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                                 )}
                                                                             </div>
                                                                         )}
+
+                                                                        {isExpanded && isCompleted && (
+                                                                            <div className="ml-2 pl-2 border-l border-stone-700 space-y-1 pb-2 animate-fade-in">
+                                                                                {sessionAttendance.length > 0 ? (
+                                                                                    sessionAttendance.map(record => (
+                                                                                        <div key={record.id} className="bg-stone-900/20 p-2 rounded flex flex-col gap-1">
+                                                                                            <div className="flex justify-between items-center">
+                                                                                                <span className="text-stone-400 font-medium">{record.student_name}</span>
+                                                                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${record.status === 'present' ? 'bg-green-900/30 text-green-500' :
+                                                                                                    record.status === 'justified' ? 'bg-blue-900/30 text-blue-400' :
+                                                                                                        'bg-red-900/30 text-red-500'
+                                                                                                    }`}>
+                                                                                                    {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            {record.status === 'justified' && record.justification && (
+                                                                                                <p className="text-[10px] text-stone-500 italic flex items-start gap-1">
+                                                                                                    <MessageCircle size={10} className="mt-0.5" />
+                                                                                                    "{record.justification}"
+                                                                                                </p>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    ))
+                                                                                ) : (
+                                                                                    <p className="text-[10px] text-stone-600 italic p-2">Dados da chamada não carregados ou indisponíveis.</p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 );
                                                             })
