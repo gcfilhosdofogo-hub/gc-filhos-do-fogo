@@ -148,7 +148,8 @@ export const DashboardAluno: React.FC<Props> = ({
   const myRawPayments = monthlyPayments.filter(p => p.student_id === user?.id);
   const myMonthlyPayments = myRawPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia'));
   const myAssignments = assignments.filter(a => a.student_id === user.id);
-  const evalPayment = useMemo(() => myRawPayments.find(p => (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'))), [myRawPayments]);
+  const myEvaluations = useMemo(() => myRawPayments.filter(p => (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia'))), [myRawPayments]);
+  const evalPayment = myEvaluations[0]; // for backward compatibility if needed elsewhere
   const beltColors = useMemo(() => {
     const b = (user.belt || '').toLowerCase();
     const [mainPart, ...rest] = b.split('ponta');
@@ -1294,290 +1295,237 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: FINANCEIRO --- */}
           {activeMainTab === 'finance_resources' && (
             <div className="space-y-6 animate-fade-in">
-              {/* Back button */}
-              <button onClick={() => setActiveMainTab('overview')} className="text-stone-400 flex items-center gap-2 hover:text-white transition-colors">
-                <ArrowLeft size={16} /> Voltar ao Painel
-              </button>
+              <Button variant="ghost" className="mb-2 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                <ArrowLeft size={16} className="mr-2" />
+                Voltar ao Painel
+              </Button>
 
-              {/* Monthly Payments List */}
-              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <Wallet className="text-orange-500" />
-                  Minhas Mensalidades
-                </h3>
-                <div className="mb-4">
-                  <Button
-                    fullWidth
-                    variant="outline"
-                    onClick={handleCopyPix}
-                    className={pixCopied ? "border-green-500 text-green-500" : "border-orange-500 text-orange-400"}
-                  >
-                    {pixCopied ? <Check size={18} /> : <Copy size={18} />}
-                    {pixCopied ? 'Chave Copiada!' : 'PIX Mensalidade'}
-                  </Button>
-                  <p className="text-xs text-stone-500 mt-2 text-center">soufilhodofogo@gmail.com</p>
-                </div>
-                <div className="space-y-3">
-                  {myMonthlyPayments.length > 0 ? (
-                    myMonthlyPayments.map(payment => (
-                      <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
-                        <div>
-                          <p className="font-bold text-white text-sm">{payment.month} ({payment.due_date.split('-').reverse().join('/')})</p>
-                          <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                          {payment.status === 'paid' && (
-                            <span className="text-green-400 text-xs flex items-center gap-1">
-                              <Check size={12} /> Pago
-                            </span>
-                          )}
-                          {payment.status === 'pending' && !payment.proof_url && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                className="text-xs h-auto px-2 py-1"
-                                onClick={() => {
-                                  setSelectedPaymentToProof(payment);
-                                  fileInputRef.current?.click();
-                                }}
-                                disabled={uploadingPaymentProof}
-                              >
-                                {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
-                              </Button>
-                              <input
-                                type="file"
-                                accept="image/*, application/pdf"
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleFileChangeForPaymentProof}
-                                disabled={uploadingPaymentProof}
-                              />
-                            </>
-                          )}
-                          {payment.status === 'pending' && payment.proof_url && (
-                            <span className="text-yellow-400 text-xs flex items-center gap-1">
-                              <Clock size={12} /> Enviado
-                            </span>
-                          )}
-                          {payment.proof_url && (
-                            <button
-                              onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
-                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                            >
-                              <Eye size={14} /> Ver
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-stone-500 text-sm italic">Nenhuma mensalidade registrada.</p>
-                  )}
-                </div>
-              </div>
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Mensalidades Card */}
+                <div className="space-y-6">
+                  <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                      <Wallet className="text-orange-500" />
+                      Minhas Mensalidades
+                    </h3>
 
-              {/* Eventos e Avaliações */}
-              <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <DollarSign className="text-orange-500" />
-                  Eventos e Avaliações
-                </h3>
-                <Button
-                  fullWidth
-                  variant="outline"
-                  onClick={handleCopyCostPix}
-                  className={costPixCopied ? "border-green-500 text-green-500" : "border-orange-500 text-orange-400"}
-                >
-                  {costPixCopied ? <Check size={18} /> : <Copy size={18} />}
-                  {costPixCopied ? 'Chave Copiada!' : 'Copiar Chave PIX (Eventos/Avaliação)'}
-                </Button>
+                    <div className="mb-6 space-y-3">
+                      <Button
+                        fullWidth
+                        variant="outline"
+                        onClick={handleCopyPix}
+                        className={`h-12 border-2 transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-orange-500/30 text-orange-400 hover:border-orange-500 hover:bg-orange-500/5"}`}
+                      >
+                        {pixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                        {pixCopied ? 'Chave Copiada!' : 'Copiar PIX Mensalidade'}
+                      </Button>
+                      <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">Chave: soufilhodofogo@gmail.com</p>
+                    </div>
 
-                {/* Avaliações */}
-                <h4 className="text-sm font-bold text-white mb-2 mt-6">Avaliações</h4>
-                <div className="space-y-3 mb-6">
-                  {(() => {
-                    const evalPayments = monthlyPayments.filter(p => p.student_id === user.id && (p.type === 'evaluation' || p.month?.includes('Avaliação') || p.month?.includes('Parcela')));
-                    return evalPayments.length > 0 ? (
-                      evalPayments.map(payment => (
-                        <div key={payment.id} className={`bg-stone-900 p-3 rounded border-l-2 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
-                          <div>
-                            <p className="font-bold text-white text-sm">{payment.month}</p>
-                            <p className="text-stone-500 text-xs">R$ {payment.amount.toFixed(2).replace('.', ',')}</p>
-                          </div>
-                          <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                            {payment.status === 'paid' && (
-                              <span className="text-green-400 text-xs flex items-center gap-1">
-                                <Check size={12} /> Pago
-                              </span>
-                            )}
-                            {payment.status === 'pending' && !payment.proof_url && (
-                              <>
-                                <Button
-                                  variant="secondary"
-                                  className="text-xs h-auto px-2 py-1"
-                                  onClick={() => {
-                                    setSelectedPaymentToProof(payment);
-                                    fileInputRef.current?.click();
-                                  }}
-                                  disabled={uploadingPaymentProof}
-                                >
-                                  {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
-                                </Button>
-                              </>
-                            )}
-                            {payment.status === 'pending' && payment.proof_url && (
-                              <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                <Clock size={12} /> Enviado
-                              </span>
-                            )}
-                            {payment.proof_url && (
-                              <button
-                                onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
-                                className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                              >
-                                <Eye size={14} /> Ver
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-stone-500 text-sm italic">Nenhuma avaliação pendente.</p>
-                    );
-                  })()}
-                </div>
-
-                {/* Inscrições em Eventos */}
-                <h4 className="text-sm font-bold text-white mb-2">Inscrições em Eventos</h4>
-                <div className="space-y-3">
-                  {myEventRegistrations.length > 0 ? (
-                    myEventRegistrations.map(reg => (
-                      <div key={reg.id} className={`bg-stone-900 p-3 rounded border-l-2 ${reg.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
-                        <div>
-                          <p className="font-bold text-white text-sm">{reg.event_title}</p>
-                          <p className="text-stone-500 text-xs">R$ {reg.amount_paid.toFixed(2).replace('.', ',')}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                          {reg.status === 'paid' && (
-                            <span className="text-green-400 text-xs flex items-center gap-1">
-                              <Check size={12} /> Pago
-                            </span>
-                          )}
-                          {reg.status === 'pending' && !reg.proof_url && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                className="text-xs h-auto px-2 py-1"
-                                onClick={() => {
-                                  setSelectedEventRegToProof(reg);
-                                  eventFileInputRef.current?.click();
-                                }}
-                                disabled={uploadingEventProof}
-                              >
-                                {uploadingEventProof && selectedEventRegToProof?.id === reg.id ? 'Enviando...' : <><FileUp size={14} className="mr-1" /> Enviar Comprovante</>}
-                              </Button>
-                              <input
-                                type="file"
-                                accept="image/*, application/pdf"
-                                className="hidden"
-                                ref={eventFileInputRef}
-                                onChange={handleFileChangeForEventProof}
-                                disabled={uploadingEventProof}
-                              />
-                            </>
-                          )}
-                          {reg.status === 'pending' && reg.proof_url && (
-                            <span className="text-yellow-400 text-xs flex items-center gap-1">
-                              <Clock size={12} /> Enviado
-                            </span>
-                          )}
-                          {reg.proof_url && (
-                            <button
-                              onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'payment_proofs')}
-                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                            >
-                              <Eye size={14} /> Ver
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-stone-500 text-sm italic">Nenhuma inscrição.</p>
-                  )}
-                </div>
-
-                {/* Meus Pedidos de Uniforme */}
-                <h4 className="text-sm font-bold text-white mb-2 mt-6 flex items-center gap-2">
-                  <Shirt className="text-orange-500" size={16} />
-                  Meus Pedidos de Uniforme
-                </h4>
-                <div className="space-y-3">
-                  <Button
-                    fullWidth
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveMainTab('uniform')}
-                    className="mb-2 border-dashed border-orange-500 text-orange-400"
-                  >
-                    <PlusCircle size={14} className="mr-1" /> Novo Pedido de Uniforme
-                  </Button>
-                  {uniformOrders.filter(o => o.user_id === user.id).length > 0 ? (
-                    uniformOrders.filter(o => o.user_id === user.id).map(order => (
-                      <div key={order.id} className={`bg-stone-900 p-3 rounded border-l-2 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center`}>
-                        <div>
-                          <p className="font-bold text-white text-sm">{order.item}</p>
-                          <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')}</p>
-                          <p className="text-[10px] text-stone-600">{order.date}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                          {order.status !== 'pending' ? (
-                            <span className="text-green-400 text-xs flex items-center gap-1">
-                              <Check size={12} /> Pago/Entregue
-                            </span>
-                          ) : (
-                            <>
-                              {!order.proof_url ? (
-                                <Button
-                                  variant="secondary"
-                                  className="text-[10px] h-auto px-2 py-1"
-                                  onClick={() => {
-                                    setSelectedOrderToProof(order);
-                                    uniformFileInputRef.current?.click();
-                                  }}
-                                  disabled={uploadingUniformProof}
-                                >
-                                  {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar</>}
-                                </Button>
+                    <div className="space-y-3">
+                      {myMonthlyPayments.length > 0 ? (
+                        myMonthlyPayments.map(payment => (
+                          <div key={payment.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md`}>
+                            <div>
+                              <p className="font-bold text-white text-sm uppercase tracking-tight">{payment.month}</p>
+                              <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • Venc: {payment.due_date?.split('-').reverse().join('/')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {payment.status === 'paid' ? (
+                                <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">Pago</span>
                               ) : (
-                                <span className="text-yellow-400 text-[10px] flex items-center gap-1">
-                                  <Clock size={12} /> Enviado
-                                </span>
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    className="text-[10px] h-auto px-2 py-1 bg-stone-800 border-stone-700"
+                                    onClick={() => {
+                                      setSelectedPaymentToProof(payment);
+                                      fileInputRef.current?.click();
+                                    }}
+                                    disabled={uploadingPaymentProof}
+                                  >
+                                    {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                                  </Button>
+                                  <input
+                                    type="file"
+                                    accept="image/*, application/pdf"
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChangeForPaymentProof}
+                                    disabled={uploadingPaymentProof}
+                                  />
+                                </>
                               )}
-                            </>
-                          )}
-                          {order.proof_url && (
-                            <button
-                              onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'payment_proofs')}
-                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                            >
-                              <Eye size={14} /> Ver
-                            </button>
+                              {payment.proof_url && (
+                                <button
+                                  onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
+                                  className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-400/5 transition-all"
+                                  title="Ver Comprovante"
+                                >
+                                  <Eye size={18} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">Nenhuma mensalidade registrada.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Eventos e Avaliações Card */}
+                <div className="space-y-6">
+                  <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                      <DollarSign className="text-yellow-500" />
+                      Outros Pagamentos
+                    </h3>
+
+                    <Button
+                      fullWidth
+                      variant="outline"
+                      onClick={handleCopyCostPix}
+                      className={`h-12 border-2 transition-all mb-6 ${costPixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-yellow-500/30 text-yellow-400 hover:border-yellow-500 hover:bg-yellow-500/5"}`}
+                    >
+                      {costPixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                      {costPixCopied ? 'Chave Copiada!' : 'PIX Eventos/Avaliação'}
+                    </Button>
+
+                    <div className="space-y-6">
+                      {/* Avaliações Section */}
+                      <div>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Avaliações</h4>
+                        <div className="space-y-3">
+                          {myEvaluations.length > 0 ? (
+                            myEvaluations.map(payment => (
+                              <div key={payment.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                                <div>
+                                  <p className="text-sm font-bold text-white">{payment.month}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono">VALOR: R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {payment.status === 'paid' ? (
+                                    <CheckCircle className="text-green-500" size={20} />
+                                  ) : (
+                                    <button
+                                      onClick={() => { setSelectedPaymentToProof(payment); fileInputRef.current?.click(); }}
+                                      className="text-[10px] font-black uppercase text-yellow-500 hover:text-yellow-400 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20"
+                                    >
+                                      {payment.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                    </button>
+                                  )}
+                                  {payment.proof_url && (
+                                    <button
+                                      onClick={() => handleViewPaymentProof(payment.proof_url!, payment.month || 'Comprovante', 'payment_proofs')}
+                                      className="text-blue-400 hover:text-blue-300 transition-all"
+                                      title="Ver Comprovante"
+                                    >
+                                      <Eye size={18} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma avaliação pendente.</p>
                           )}
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-stone-500 text-sm italic">Nenhum pedido registrado.</p>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*, application/pdf"
-                    className="hidden"
-                    ref={uniformFileInputRef}
-                    onChange={handleFileChangeForUniformProof}
-                    disabled={uploadingUniformProof}
-                  />
+
+                      {/* EventRegistrations Section */}
+                      <div>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Eventos</h4>
+                        <div className="space-y-3">
+                          {myEventRegistrations.length > 0 ? (
+                            myEventRegistrations.map(reg => (
+                              <div key={reg.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                                <div>
+                                  <p className="text-sm font-bold text-white truncate max-w-[150px]">{reg.event_title}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? 'Pago' : 'Pendente'}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {reg.status === 'paid' ? (
+                                    <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setSelectedEventRegToProof(reg); eventFileInputRef.current?.click(); }}
+                                      className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
+                                    >
+                                      {reg.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                    </button>
+                                  )}
+                                  {reg.proof_url && (
+                                    <button
+                                      onClick={() => handleViewPaymentProof(reg.proof_url!, reg.event_title + ' Comprovante', 'payment_proofs')}
+                                      className="text-blue-400 hover:text-blue-300 transition-all"
+                                      title="Ver Comprovante"
+                                    >
+                                      <Eye size={18} />
+                                    </button>
+                                  )}
+                                  <input type="file" ref={eventFileInputRef} className="hidden" onChange={handleFileChangeForEventProof} />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma inscrição.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Uniform Orders Selection */}
+                      <div>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Uniformes Adquiridos</h4>
+                        <div className="space-y-3">
+                          <Button
+                            fullWidth
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActiveMainTab('uniform')}
+                            className="mb-2 border-dashed border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 transition-all text-[10px] h-8"
+                          >
+                            <PlusCircle size={14} className="mr-1" /> Novo Pedido de Uniforme
+                          </Button>
+                          {uniformOrders.filter(o => o.user_id === user.id).length > 0 ? (
+                            uniformOrders.filter(o => o.user_id === user.id).map(order => (
+                              <div key={order.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                                <div>
+                                  <p className="text-sm font-bold text-white">{order.item}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono uppercase">Status: {order.status === 'pending' ? 'Pendente' : 'Confirmado'}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {order.status !== 'pending' ? (
+                                    <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setSelectedOrderToProof(order); uniformFileInputRef.current?.click(); }}
+                                      className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20"
+                                    >
+                                      {order.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                    </button>
+                                  )}
+                                  {order.proof_url && (
+                                    <button
+                                      onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'payment_proofs')}
+                                      className="text-blue-400 hover:text-blue-300 transition-all"
+                                      title="Ver Comprovante"
+                                    >
+                                      <Eye size={18} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-stone-500 text-[10px] italic ml-1">Nenhum pedido registrado.</p>
+                          )}
+                          <input type="file" ref={uniformFileInputRef} className="hidden" onChange={handleFileChangeForUniformProof} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
