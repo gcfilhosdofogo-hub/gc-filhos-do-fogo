@@ -1618,14 +1618,33 @@ export const DashboardProfessor: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                 <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas (Pendentes)</h3>
                 <div className="space-y-4">
-                  {myClasses.filter(cls => cls.status !== 'completed').map(cls => (
-                    <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
-                      <div className="flex justify-between items-start mb-2">
-                        <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.date} - {cls.time} - {cls.location}</p></div>
+                  {myClasses.filter(cls => cls.status !== 'completed').map(cls => {
+                    const now = new Date();
+                    const classDate = new Date(`${cls.date}T${cls.time}`);
+                    // Window: from class start until 30 minutes later
+                    const classEndTime = new Date(classDate.getTime() + 30 * 60 * 1000);
+                    const isWithinClassWindow = now >= classDate && now <= classEndTime;
+
+                    return (
+                      <div key={cls.id} className="bg-stone-900 p-4 rounded border-l-2 border-purple-500">
+                        <div className="flex justify-between items-start mb-2">
+                          <div><p className="font-bold text-white">{cls.title}</p><p className="text-stone-500 text-sm">{cls.date} - {cls.time} - {cls.location}</p></div>
+                        </div>
+                        {isWithinClassWindow ? (
+                          <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>
+                            <CalendarCheck size={16} className="mr-2" /> Realizar Chamada
+                          </Button>
+                        ) : (
+                          <div className="text-xs text-stone-500 text-center py-2 bg-stone-800 rounded">
+                            <Clock size={14} className="inline mr-1" />
+                            {classDate > now
+                              ? `Chamada disponível às ${cls.time}`
+                              : 'Janela de chamada encerrada'}
+                          </div>
+                        )}
                       </div>
-                      <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>Realizar Chamada</Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

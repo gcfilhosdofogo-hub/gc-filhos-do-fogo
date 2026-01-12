@@ -640,12 +640,25 @@ function AppContent() {
 
   const handleUpdateAssignment = async (updatedAssignment: Assignment) => {
     // Destructure to separate ID and metadata from updateable fields
-    const {
+    let {
       id,
       created_at,
       created_by,
       ...updatePayload
     } = updatedAssignment as any;
+
+    // RLS PROTECTION: If user is a student, only allow updating specific fields
+    // to avoid RLS violation on other columns (like title, description, etc)
+    if (user && user.role === 'aluno') {
+      const allowedFields = ['status', 'submission_url', 'submission_name', 'student_id'];
+      const filteredPayload: any = {};
+      allowedFields.forEach(field => {
+        if (updatePayload[field] !== undefined) {
+          filteredPayload[field] = updatePayload[field];
+        }
+      });
+      updatePayload = filteredPayload;
+    }
 
     const { data, error } = await supabase
       .from('assignments')
