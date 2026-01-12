@@ -456,6 +456,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleViewReport = async (fileUrl: string, fileName: string) => {
+    // Open window immediately to avoid pop-up blocking on mobile
+    const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from('school_reports_files')
@@ -463,15 +465,20 @@ export const DashboardAluno: React.FC<Props> = ({
 
       if (error) throw error;
 
-      window.open(data.signedUrl, '_blank');
+      if (newWindow) {
+        newWindow.location.href = data.signedUrl;
+      }
       onNotifyAdmin(`Visualizou boletim: ${fileName}`, user); // Added notification
     } catch (error: any) {
+      if (newWindow) newWindow.close();
       console.error('Error generating signed URL:', error);
       alert('Erro ao visualizar o arquivo: ' + error.message);
     }
   };
 
   const handleViewAssignment = async (fileUrl: string, fileName: string) => {
+    // Open window immediately to avoid pop-up blocking on mobile
+    const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from('assignment_submissions')
@@ -479,9 +486,12 @@ export const DashboardAluno: React.FC<Props> = ({
 
       if (error) throw error;
 
-      window.open(data.signedUrl, '_blank');
+      if (newWindow) {
+        newWindow.location.href = data.signedUrl;
+      }
       onNotifyAdmin(`Visualizou resposta de trabalho: ${fileName}`, user);
     } catch (error: any) {
+      if (newWindow) newWindow.close();
       console.error('Error generating signed URL for assignment:', error);
       alert('Erro ao visualizar o arquivo: ' + error.message);
     }
@@ -686,24 +696,26 @@ export const DashboardAluno: React.FC<Props> = ({
 
 
   const handleViewPaymentProof = async (filePath: string, proofName: string, bucket: string) => {
-    console.log('handleViewPaymentProof called in DashboardAluno');
-    console.log('  filePath:', filePath);
-    console.log('  proofName:', proofName);
-    console.log('  bucket:', bucket);
+    // Open window immediately to avoid pop-up blocking on mobile
+    const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from(bucket)
         .createSignedUrl(filePath, 60); // URL valid for 60 seconds
 
       if (error) {
+        if (newWindow) newWindow.close();
         console.error('Error generating signed URL in DashboardAluno:', error);
         alert('Erro ao visualizar o comprovante: ' + error.message);
         return;
       }
-      console.log('  Signed URL generated in DashboardAluno:', data.signedUrl);
-      window.open(data.signedUrl, '_blank');
+
+      if (newWindow) {
+        newWindow.location.href = data.signedUrl;
+      }
       onNotifyAdmin(`Visualizou comprovante de pagamento: ${proofName}`, user);
     } catch (error: any) {
+      if (newWindow) newWindow.close();
       console.error('Caught error in handleViewPaymentProof (DashboardAluno):', error);
       alert('Erro ao visualizar o comprovante: ' + error.message);
     }

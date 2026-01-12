@@ -690,6 +690,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleViewAssignment = async (fileUrl: string, fileName: string) => {
+    // Open window immediately to avoid pop-up blocking on mobile
+    const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from('assignment_submissions')
@@ -697,9 +699,12 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       if (error) throw error;
 
-      window.open(data.signedUrl, '_blank');
+      if (newWindow) {
+        newWindow.location.href = data.signedUrl;
+      }
       onNotifyAdmin(`Visualizou resposta de trabalho: ${fileName}`, user);
     } catch (error: any) {
+      if (newWindow) newWindow.close();
       console.error('Error generating signed URL for assignment:', error);
       alert('Erro ao visualizar o arquivo: ' + error.message);
     }
