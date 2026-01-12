@@ -648,9 +648,8 @@ function AppContent() {
     } = updatedAssignment as any;
 
     // RLS PROTECTION: If user is a student, only allow updating specific fields
-    // to avoid RLS violation on other columns (like title, description, due_date, student_id, etc)
     if (user && user.role === 'aluno') {
-      const allowedFields = ['status', 'submission_url', 'submission_name'];
+      const allowedFields = ['status', 'submission_url', 'submission_name', 'student_id'];
       const filteredPayload: any = {};
       allowedFields.forEach(field => {
         if (updatePayload[field] !== undefined) {
@@ -664,15 +663,20 @@ function AppContent() {
       .from('assignments')
       .update(updatePayload)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
 
     if (error) {
       console.error('Error updating assignment:', error);
       throw error;
-    } else {
-      setAssignments(prev => prev.map(a => a.id === id ? data : a));
     }
+
+    if (!data || data.length === 0) {
+      console.error('No assignment updated. RLS or invalid ID?', { id, role: user?.role });
+      throw new Error('Não foi possível atualizar o trabalho. Verifique suas permissões ou se o trabalho ainda existe.');
+    }
+
+    const updatedRow = data[0];
+    setAssignments(prev => prev.map(a => a.id === id ? updatedRow : a));
   };
 
   const handleAddPaymentRecord = async (newPayment: Omit<PaymentRecord, 'id' | 'created_at'>) => {
