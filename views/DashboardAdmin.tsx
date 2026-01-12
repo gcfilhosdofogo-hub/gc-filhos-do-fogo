@@ -140,9 +140,18 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
     const [showBeltConfig, setShowBeltConfig] = useState(false);
     const [overdueSummary, setOverdueSummary] = useState<{ id: string; name: string; months: number }[]>([]);
-    const [liberatedUsers, setLiberatedUsers] = useState<string[]>(() => {
+    const [liberatedUsers, setLiberatedUsers] = useState<Record<string, number>>(() => {
         const saved = localStorage.getItem('liberated_overdue_users');
-        return saved ? JSON.parse(saved) : [];
+        if (!saved) return {};
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                const obj: Record<string, number> = {};
+                parsed.forEach((id: string) => { obj[id] = 3; });
+                return obj;
+            }
+            return parsed;
+        } catch { return {}; }
     });
     const [beltPrices, setBeltPrices] = useState<Record<string, number>>(() => {
         // Initialize with some default values mock
@@ -352,9 +361,26 @@ export const DashboardAdmin: React.FC<Props> = ({
     // --- OVERDUE MONITORING LOGIC ---
     useEffect(() => {
         const checkOverdue = () => {
+            let liberationChanged = false;
+            const newLiberated = { ...liberatedUsers };
+
             const usersWithSignificantOverdue = managedUsers.filter(u => {
-                // Already liberated/dismissed by admin for this session/localstorage
-                if (liberatedUsers.includes(u.id)) return false;
+                // Calculate pending/overdue monthly payments
+                const unpaid = monthlyPayments.filter(p =>
+                    p.student_id === u.id &&
+                    (p.status === 'pending' || p.status === 'overdue') &&
+                    (!p.type || p.type === 'Mensalidade')
+                );
+
+                const currentCount = unpaid.length;
+
+                // Cleanup: If debt is less than 3, they are no longer in "acknowledged liberation"
+                if (currentCount < 3 && newLiberated[u.id]) {
+                    delete newLiberated[u.id];
+                    liberationChanged = true;
+                }
+
+                if (currentCount < 3) return false;
 
                 // Check age if student
                 let isTarget = true;
@@ -369,19 +395,21 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                 if (!isTarget) return false;
 
-                // Calculate pending/overdue monthly payments
-                const unpaid = monthlyPayments.filter(p =>
-                    p.student_id === u.id &&
-                    (p.status === 'pending' || p.status === 'overdue') &&
-                    (!p.type || p.type === 'Mensalidade')
-                );
-
-                return unpaid.length >= 3;
+                // TRIGGER ALERT IF:
+                // 1. User is not in the liberated list
+                // 2. OR currentCount is GREATER than what was last acknowledged/liberated
+                const lastAcknowledgedCount = liberatedUsers[u.id] || 0;
+                return currentCount > lastAcknowledgedCount;
             }).map(u => ({
                 id: u.id,
                 name: u.nickname || u.name,
                 months: monthlyPayments.filter(p => p.student_id === u.id && (p.status === 'pending' || p.status === 'overdue') && (!p.type || p.type === 'Mensalidade')).length
             }));
+
+            if (liberationChanged) {
+                setLiberatedUsers(newLiberated);
+                localStorage.setItem('liberated_overdue_users', JSON.stringify(newLiberated));
+            }
 
             setOverdueSummary(usersWithSignificantOverdue);
         };
@@ -392,13 +420,23 @@ export const DashboardAdmin: React.FC<Props> = ({
     }, [managedUsers, monthlyPayments, liberatedUsers]);
 
     const handleLiberateUser = (userId: string) => {
-        const updated = [...liberatedUsers, userId];
+        const unpaidCount = monthlyPayments.filter(p =>
+            p.student_id === userId &&
+            (p.status === 'pending' || p.status === 'overdue') &&
+            (!p.type || p.type === 'Mensalidade')
+        ).length;
+
+        const updated = { ...liberatedUsers, [userId]: unpaidCount };
         setLiberatedUsers(updated);
         localStorage.setItem('liberated_overdue_users', JSON.stringify(updated));
     };
 
     const handleBlockUser = (userId: string) => {
-        alert(`O acesso do usuário ${managedUsers.find(u => u.id === userId)?.name} foi bloqueado temporariamente.`);
+        const foundUser = managedUsers.find(u => u.id === userId);
+        if (foundUser && foundUser.status !== 'blocked') {
+            onToggleBlockUser(userId, foundUser.status || 'active');
+        }
+        alert(`O acesso do usuário ${foundUser?.nickname || foundUser?.name || userId} foi bloqueado temporariamente.`);
         handleLiberateUser(userId); // Also clear it from the popup
     };
 
