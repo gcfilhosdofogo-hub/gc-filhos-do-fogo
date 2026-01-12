@@ -648,9 +648,9 @@ function AppContent() {
     } = updatedAssignment as any;
 
     // RLS PROTECTION: If user is a student, only allow updating specific fields
-    // to avoid RLS violation on other columns (like title, description, etc)
+    // to avoid RLS violation on other columns (like title, description, due_date, student_id, etc)
     if (user && user.role === 'aluno') {
-      const allowedFields = ['status', 'submission_url', 'submission_name', 'student_id'];
+      const allowedFields = ['status', 'submission_url', 'submission_name'];
       const filteredPayload: any = {};
       allowedFields.forEach(field => {
         if (updatePayload[field] !== undefined) {

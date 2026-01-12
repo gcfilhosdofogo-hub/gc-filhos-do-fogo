@@ -1534,23 +1534,134 @@ export const DashboardProfessor: React.FC<Props> = ({
       {/* --- PROF VIEW: UNIFORM --- */}
       {profView === 'uniform' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors"><ArrowLeft size={16} /> Voltar ao Painel</button>
-          <h2 className="text-2xl font-bold text-white mb-6">Pedidos de Uniforme</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <form onSubmit={handleOrderUniform} className="space-y-4">
-              <select value={orderForm.item} onChange={e => setOrderForm({ ...orderForm, item: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white">
-                <option value="combo">Combo</option>
-                <option value="shirt">Blusa</option>
-                <option value="pants_roda">Calça Roda</option>
-                <option value="pants_train">Calça de Treino</option>
-              </select>
-              {/* Simplified Inputs */}
-              <div className="text-right text-white font-bold text-lg">Total: R$ {getCurrentPrice().toFixed(2).replace('.', ',')}</div>
-              <Button fullWidth type="submit">Fazer Pedido</Button>
-            </form>
-            <div className="bg-stone-900 p-4 rounded text-sm text-stone-400">
-              <h3 className="text-white font-bold mb-2">Meus Pedidos</h3>
-              {myOrders.map(o => <div key={o.id} className="py-1 border-b border-stone-800">{o.item} - {o.status}</div>)}
+          <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
+            <ArrowLeft size={16} className="mr-2" />
+            Voltar ao Painel
+          </Button>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-stone-900 p-6 rounded-xl border border-stone-700 shadow-xl">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <PlusCircle className="text-emerald-500" /> Fazer Novo Pedido
+              </h3>
+              <form onSubmit={handleOrderUniform} className="space-y-4">
+                <div>
+                  <label htmlFor="item" className="block text-sm text-stone-400 mb-1">Item</label>
+                  <select
+                    id="item"
+                    value={orderForm.item}
+                    onChange={e => setOrderForm({ ...orderForm, item: e.target.value })}
+                    className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                  >
+                    <option value="combo">Combo (Blusa + Calça)</option>
+                    <option value="shirt">Blusa Oficial</option>
+                    <option value="pants_roda">Calça de Roda</option>
+                    <option value="pants_train">Calça de Treino</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                    <div>
+                      <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho Blusa</label>
+                      <input
+                        id="shirtSize"
+                        type="text"
+                        placeholder="Ex: P, M, G..."
+                        value={orderForm.shirtSize}
+                        onChange={(e) => setOrderForm({ ...orderForm, shirtSize: e.target.value })}
+                        className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                        required={orderForm.item === 'shirt' || orderForm.item === 'combo'}
+                      />
+                    </div>
+                  )}
+                  {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                    <div>
+                      <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho Calça</label>
+                      <input
+                        id="pantsSize"
+                        type="text"
+                        placeholder="Ex: 38, 40..."
+                        value={orderForm.pantsSize}
+                        onChange={(e) => setOrderForm({ ...orderForm, pantsSize: e.target.value })}
+                        className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                        required={orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo'}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between items-center bg-stone-800 p-4 rounded-xl border border-stone-700 mt-2">
+                  <span className="text-stone-400 text-sm font-bold">Total a pagar:</span>
+                  <span className="text-xl font-black text-white">R$ {getCurrentPrice().toFixed(2).replace('.', ',')}</span>
+                </div>
+                <Button fullWidth type="submit" className="h-12 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
+                  <ShoppingBag size={18} className="mr-2" /> Finalizar Pedido
+                </Button>
+              </form>
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <ShoppingBag className="text-emerald-400" /> Meus Pedidos
+              </h3>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                {myOrders.length > 0 ? (
+                  myOrders.map(order => (
+                    <div key={order.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col gap-3 shadow-lg`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-white">{order.item}</p>
+                          <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
+                          {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
+                          {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        {order.status === 'pending' && !order.proof_url && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              className="text-[10px] h-auto px-2 py-1 flex-1 bg-stone-800 border-stone-700"
+                              onClick={() => {
+                                setSelectedOrderToProof(order);
+                                uniformFileInputRef.current?.click();
+                              }}
+                              disabled={uploadingUniformProof}
+                            >
+                              {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar/Enviar Comprovante</>}
+                            </Button>
+                            <input
+                              type="file"
+                              accept="image/*, application/pdf"
+                              className="hidden"
+                              ref={uniformFileInputRef}
+                              onChange={handleFileChangeForUniformProof}
+                              disabled={uploadingUniformProof}
+                            />
+                          </>
+                        )}
+                        {order.status === 'pending' && order.proof_url && (
+                          <span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic">
+                            <Clock size={12} /> Comprovante em análise
+                          </span>
+                        )}
+                        {order.proof_url && (
+                          <button
+                            onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium bg-blue-400/5 px-2 py-1 rounded border border-blue-400/20"
+                          >
+                            <Eye size={12} /> Ver Comprovante
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">Nenhum pedido registrado.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1559,18 +1670,170 @@ export const DashboardProfessor: React.FC<Props> = ({
       {/* --- PROF VIEW: FINANCIAL (Self) --- */}
       {profView === 'financial' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors"><ArrowLeft size={16} /> Voltar ao Painel</button>
-          <h2 className="text-2xl font-bold text-white mb-6">Meu Financeiro</h2>
-          <div className="space-y-4">
-            {myMonthlyPayments.length > 0 ? myMonthlyPayments.map(p => (
-              <div key={p.id} className="bg-stone-900 p-4 rounded-xl border border-stone-800 flex justify-between items-center">
-                <div>
-                  <p className="text-white font-bold">{p.month}</p>
-                  <p className="text-xs text-stone-500">Status: {p.status}</p>
+          <Button variant="ghost" className="mb-6 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
+            <ArrowLeft size={16} className="mr-2" />
+            Voltar ao Painel
+          </Button>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Mensalidades Card */}
+            <div className="space-y-6">
+              <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Wallet className="text-orange-500" />
+                  Minhas Mensalidades
+                </h3>
+
+                <div className="mb-6 space-y-3">
+                  <Button
+                    fullWidth
+                    variant="outline"
+                    onClick={handleCopyPix}
+                    className={`h-12 border-2 transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-orange-500/30 text-orange-400 hover:border-orange-500 hover:bg-orange-500/5"}`}
+                  >
+                    {pixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                    {pixCopied ? 'Chave Copiada!' : 'Copiar PIX Mensalidade'}
+                  </Button>
+                  <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">Chave: soufilhodofogo@gmail.com</p>
                 </div>
-                <p className="text-white font-mono">R$ {p.amount?.toFixed(2)}</p>
+
+                <div className="space-y-3">
+                  {myMonthlyPayments.length > 0 ? (
+                    myMonthlyPayments.map(payment => (
+                      <div key={payment.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md`}>
+                        <div>
+                          <p className="font-bold text-white text-sm uppercase tracking-tight">{payment.month}</p>
+                          <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • Venc: {payment.due_date?.split('-').reverse().join('/')}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {payment.status === 'paid' ? (
+                            <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">Pago</span>
+                          ) : (
+                            <>
+                              <Button
+                                variant="secondary"
+                                className="text-[10px] h-auto px-2 py-1 bg-stone-800 border-stone-700"
+                                onClick={() => {
+                                  setSelectedPaymentToProof(payment);
+                                  fileInputRef.current?.click();
+                                }}
+                                disabled={uploadingPaymentProof}
+                              >
+                                {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                              </Button>
+                              <input
+                                type="file"
+                                accept="image/*, application/pdf"
+                                className="hidden"
+                                ref={fileInputRef}
+                                onChange={handleFileChangeForPaymentProof}
+                                disabled={uploadingPaymentProof}
+                              />
+                            </>
+                          )}
+                          {payment.proof_url && (
+                            <button
+                              onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                              className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-400/5 transition-all"
+                              title="Ver Comprovante"
+                            >
+                              <Eye size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">Nenhuma mensalidade registrada.</p>
+                  )}
+                </div>
               </div>
-            )) : <p className="text-stone-500">Nenhum registro financeiro encontrado.</p>}
+            </div>
+
+            {/* Eventos e Avaliações Card */}
+            <div className="space-y-6">
+              <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <DollarSign className="text-yellow-500" />
+                  Eventos e Avaliações
+                </h3>
+
+                <Button
+                  fullWidth
+                  variant="outline"
+                  onClick={handleCopyCostPix}
+                  className={`h-12 border-2 transition-all mb-6 ${costPixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-yellow-500/30 text-yellow-400 hover:border-yellow-500 hover:bg-yellow-500/5"}`}
+                >
+                  {costPixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                  {costPixCopied ? 'Chave Copiada!' : 'PIX Eventos/Avaliação'}
+                </Button>
+
+                <div className="space-y-6">
+                  {/* Avaliações Section */}
+                  <div>
+                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Avaliações de Cordel</h4>
+                    <div className="space-y-3">
+                      {myEvaluations.length > 0 ? (
+                        myEvaluations.map(payment => (
+                          <div key={payment.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                            <div>
+                              <p className="text-sm font-bold text-white">{payment.month}</p>
+                              <p className="text-[10px] text-stone-500 font-mono">VALOR: R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {payment.status === 'paid' ? (
+                                <CheckCircle className="text-green-500" size={20} />
+                              ) : (
+                                <button
+                                  onClick={() => { setSelectedPaymentToProof(payment); fileInputRef.current?.click(); }}
+                                  className="text-[10px] font-black uppercase text-yellow-500 hover:text-yellow-400 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20"
+                                >
+                                  {payment.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma avaliação registrada.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* EventRegistrations Section */}
+                  <div>
+                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Eventos Inscritos</h4>
+                    <div className="space-y-3">
+                      {myEventRegistrations.length > 0 ? (
+                        myEventRegistrations.map(reg => (
+                          <div key={reg.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                            <div>
+                              <p className="text-sm font-bold text-white truncate max-w-[150px]">{reg.event_title}</p>
+                              <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? 'Inscrição Confirmada' : 'Aguardando Pagamento'}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {reg.status === 'paid' ? (
+                                <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
+                              ) : (
+                                <button
+                                  onClick={() => { setSelectedEventRegToProof(reg); eventFileInputRef.current?.click(); }}
+                                  className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
+                                >
+                                  {reg.proof_url ? 'Novo Comprovante' : 'Enviar PIX'}
+                                </button>
+                              )}
+                              <input type="file" ref={eventFileInputRef} className="hidden" onChange={handleFileChangeForEventProof} />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma inscrição em eventos.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -781,8 +781,7 @@ export const DashboardAluno: React.FC<Props> = ({
         id: selectedAssignmentToSubmit.id, // Only send identification
         status: 'completed' as const,     // and the fields to be updated
         submission_url: publicUrlData.publicUrl,
-        submission_name: file.name,
-        student_id: user.id
+        submission_name: file.name
       };
 
       console.log('Updating assignment via App.tsx handler...');
