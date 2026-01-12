@@ -1394,7 +1394,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             } as any); // Type assertion to bypass strict Props check if needed, though simpler is better. App.tsx expects Omit<MusicItem, 'id'>
 
             onNotifyAdmin(`Admin adicionou nova música: ${musicForm.title}`, user);
-            setMusicForm({ title: '', category: 'theory', lyrics: '', url: '' });
+            setMusicForm({ title: '', category: '', lyrics: '', url: '' });
             alert('Música adicionada!');
         } catch (error) {
             console.error(error);
