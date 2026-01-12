@@ -5211,10 +5211,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Arquivo de Áudio</label>
-                                                <input type="file" accept="audio/*" onChange={e => setMusicForm({ ...musicForm, file: e.target.files?.[0] || null })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-2 text-white text-xs" />
-                                            </div>
-                                            <div className="space-y-1">
                                                 <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Letra da Música</label>
                                                 <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
                                             </div>
@@ -5249,11 +5245,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     {m.category}
                                                                 </span>
                                                             </div>
-                                                            {m.file_url && (
-                                                                <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-md">
-                                                                    <PlayCircle size={22} />
-                                                                </a>
-                                                            )}
+                                                            {/* Audio player removed */}
                                                         </div>
                                                         {m.lyrics && (
                                                             <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
