@@ -1718,11 +1718,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                 {m.category}
                               </span>
                             </div>
-                            {m.file_url && (
-                              <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="p-2.5 bg-yellow-500/10 text-yellow-500 rounded-xl hover:bg-yellow-500 hover:text-black transition-all shadow-md">
-                                <PlayCircle size={22} />
-                              </a>
-                            )}
+                            {/* Audio player removed */}
                           </div>
                           {m.lyrics && (
                             <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
