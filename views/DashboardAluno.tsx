@@ -40,12 +40,17 @@ const convertToStandardImage = async (file: File): Promise<File> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
 
   if (extension === 'heic' || extension === 'heif') {
+    // Check size - HEIC decompress takes significant memory. Limit input size to avoid crash.
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("Arquivo muito grande (max 10MB). Por favor use um arquivo menor.");
+    }
+
     try {
       console.log('Detectado arquivo HEIC/HEIF. Convertendo para JPEG...');
       const blob = await heic2any({
         blob: file,
         toType: 'image/jpeg',
-        quality: 0.7
+        quality: 0.6
       });
 
       const convertedBlob = Array.isArray(blob) ? blob[0] : blob;
@@ -417,10 +422,13 @@ export const DashboardAluno: React.FC<Props> = ({
   const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     setUploadingReport(true);
 
     try {
+      // Support for iPhone HEIC
+      file = await convertToStandardImage(file);
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/school_reports/${Date.now()}.${fileExt}`; // Unique path per user
 
@@ -777,9 +785,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     try {
       // Support for iPhone HEIC/HEIF
-      if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
-        file = await convertToStandardImage(file);
-      }
+      file = await convertToStandardImage(file);
 
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
@@ -1371,7 +1377,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                   </Button>
                                   <input
                                     type="file"
-                                    accept="image/*, application/pdf"
+                                    accept="image/*, application/pdf, .heic, .heif"
                                     className="hidden"
                                     ref={fileInputRef}
                                     onChange={handleFileChangeForPaymentProof}
@@ -1488,7 +1494,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                       <Eye size={18} />
                                     </button>
                                   )}
-                                  <input type="file" ref={eventFileInputRef} className="hidden" onChange={handleFileChangeForEventProof} />
+                                  <input type="file" ref={eventFileInputRef} accept="image/*, application/pdf, .heic, .heif" className="hidden" onChange={handleFileChangeForEventProof} />
                                 </div>
                               </div>
                             ))
@@ -1544,7 +1550,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           ) : (
                             <p className="text-stone-500 text-[10px] italic ml-1">Nenhum pedido registrado.</p>
                           )}
-                          <input type="file" ref={uniformFileInputRef} className="hidden" onChange={handleFileChangeForUniformProof} />
+                          <input type="file" ref={uniformFileInputRef} accept="image/*, application/pdf, .heic, .heif" className="hidden" onChange={handleFileChangeForUniformProof} />
                         </div>
                       </div>
                     </div>
@@ -1662,7 +1668,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             </Button>
                             <input
                               type="file"
-                              accept=".pdf,.doc,.docx,.jpg,.png"
+                              accept=".pdf,.doc,.docx,.jpg,.png,.heic,.heif"
                               className="hidden"
                               ref={assignmentFileInputRef}
                               onChange={handleAssignmentSubmission}
@@ -1825,7 +1831,7 @@ export const DashboardAluno: React.FC<Props> = ({
                         <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
                           Selecionar Arquivo
                         </span>
-                        <input type="file" accept=".pdf,.doc,.docx,.jpg,.png" className="hidden" onChange={handleUploadReport} disabled={uploadingReport} />
+                        <input type="file" accept=".pdf,.doc,.docx,.jpg,.png,.heic,.heif" className="hidden" onChange={handleUploadReport} disabled={uploadingReport} />
                       </label>
                       <p className="text-xs text-stone-500 mt-2">PDF, DOC, Imagem. Máx 10MB.</p>
                     </>
@@ -1958,7 +1964,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             </Button>
                             <input
                               type="file"
-                              accept="image/*, application/pdf"
+                              accept="image/*, application/pdf, .heic, .heif"
                               className="hidden"
                               ref={uniformFileInputRef}
                               onChange={handleFileChangeForUniformProof}

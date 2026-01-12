@@ -3399,7 +3399,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                                                     // Show if it belongs to student AND was created by their professor
                                                                     // Also show assignments without student_id (global) IF created by their professor
-                                                                    return (belongsToStudent || (assign.student_id === null)) && createdByProfessor;
+                                                                    return belongsToStudent || (assign.student_id === null);
                                                                 });
 
                                                                 return studentSpecificAssignments.length > 0 ? (
@@ -3419,9 +3419,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                                     </a>
                                                                                 )}
                                                                                 {assign.submission_url && (
-                                                                                    <a href={assign.submission_url} target="_blank" rel="noopener noreferrer" className="text-green-400 text-[10px] flex items-center gap-1 hover:underline">
+                                                                                    <button
+                                                                                        onClick={() => handleViewAssignmentSubmission(assign.submission_url!, assign.submission_name || 'Trabalho')}
+                                                                                        className="text-green-400 text-[10px] flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                                                                                    >
                                                                                         <CheckCircle size={10} /> Resposta
-                                                                                    </a>
+                                                                                    </button>
                                                                                 )}
                                                                             </div>
                                                                         </div>
