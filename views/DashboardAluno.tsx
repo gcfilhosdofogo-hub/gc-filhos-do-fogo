@@ -743,39 +743,61 @@ export const DashboardAluno: React.FC<Props> = ({
       return;
     }
 
-    const file = e.target.files[0];
+    let file = e.target.files[0];
     setUploadingAssignment(true);
 
     try {
+      // Support for iPhone HEIC/HEIF
+      if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+        file = await convertToStandardImage(file);
+      }
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/assignments/${selectedAssignmentToSubmit.id}-${Date.now()}.${fileExt}`;
 
+      console.log('Finalizing upload to path:', filePath);
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('assignment_submissions')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Supabase Storage Upload Error:', uploadError);
+        throw uploadError;
+      }
 
       const { data: publicUrlData } = supabase.storage
         .from('assignment_submissions')
         .getPublicUrl(filePath);
 
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        throw new Error('Falha ao gerar URL pública do arquivo.');
+      }
+
       const updatedAssignment = {
         ...selectedAssignmentToSubmit,
-        status: 'completed',
+        status: 'completed' as const,
         submission_url: publicUrlData.publicUrl,
         submission_name: file.name,
         student_id: user.id
       };
 
+      console.log('Updating assignment via App.tsx handler...');
       await onUpdateAssignment(updatedAssignment);
 
       onNotifyAdmin(`Enviou resposta de trabalho: ${selectedAssignmentToSubmit.title}`, user);
       alert('Trabalho enviado com sucesso!');
       setSelectedAssignmentToSubmit(null);
     } catch (error: any) {
-      console.error('Error uploading assignment:', error);
-      alert('Erro ao enviar trabalho: ' + error.message);
+      console.error('Detailed error in handleAssignmentSubmission:', error);
+      // More helpful error message for "failed to fetch"
+      const msg = error.message === 'Failed to fetch'
+        ? 'Erro de conexão: Não foi possível alcançar o servidor. Verifique sua internet ou se o arquivo é muito grande.'
+        : error.message;
+      alert('Erro ao enviar trabalho: ' + msg);
     } finally {
       setUploadingAssignment(false);
       if (assignmentFileInputRef.current) assignmentFileInputRef.current.value = '';
