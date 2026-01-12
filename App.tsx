@@ -977,6 +977,8 @@ function AppContent() {
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
               onToggleBlockUser={handleToggleBlockUser}
+              onUpdateOrderWithProof={handleUpdateOrderWithProof}
+              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
             />
           )}
         </div>

@@ -46,6 +46,8 @@ interface Props {
     onAddStudentGrade: (payload: any) => Promise<void>;
     allUsersProfiles: User[];
     onToggleBlockUser: (userId: string, currentStatus?: 'active' | 'blocked') => Promise<void>;
+    onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
+    onUpdateEventRegistrationWithProof: (updatedRegistration: EventRegistration) => Promise<void>;
 }
 
 const UNIFORM_PRICES = {
@@ -93,7 +95,9 @@ export const DashboardAdmin: React.FC<Props> = ({
     onAddClassRecord,
     onAddStudentGrade,
     allUsersProfiles = [],
-    onToggleBlockUser
+    onToggleBlockUser,
+    onUpdateOrderWithProof,
+    onUpdateEventRegistrationWithProof
 }) => {
     const { session } = useSession();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -108,6 +112,9 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // Uniform State
     const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
+    const uniformFileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingUniformProof, setUploadingUniformProof] = useState(false);
+    const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
     const [costPixCopied, setCostPixCopied] = useState(false);
     const getCurrentPrice = () => {
         switch (orderForm.item) {
@@ -886,6 +893,37 @@ export const DashboardAdmin: React.FC<Props> = ({
             return;
         }
         window.open(`https://wa.me/${phone}`, '_blank');
+    };
+
+    const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) return;
+        const file = e.target.files[0];
+        setUploadingUniformProof(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/uniform_proofs/${selectedOrderToProof.id}_${Date.now()}.${fileExt}`;
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('payment_proofs')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: publicUrlData } = supabase.storage
+                .from('payment_proofs')
+                .getPublicUrl(filePath);
+
+            await onUpdateOrderWithProof(selectedOrderToProof.id, publicUrlData.publicUrl, file.name);
+
+            alert("Comprovante enviado com sucesso!");
+            setSelectedOrderToProof(null);
+        } catch (error: any) {
+            console.error('Error uploading uniform proof:', error);
+            alert("Erro ao enviar comprovante: " + error.message);
+        } finally {
+            setUploadingUniformProof(false);
+            if (uniformFileInputRef.current) uniformFileInputRef.current.value = '';
+        }
     };
 
     // --- USER MANAGEMENT HANDLERS ---
@@ -3484,6 +3522,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <Button variant="secondary" onClick={() => setProfView('assignments')} className="border border-stone-600">
                                 <BookOpen size={18} className="text-blue-400" /> Trabalhos
                             </Button>
+                            <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
+                                <Shirt size={18} className="text-emerald-400" /> Uniforme
+                            </Button>
                             {profView === 'dashboard' && (
                                 <Button onClick={() => setProfView('new_class')}>
                                     <PlusCircle size={18} /> Nova Aula
@@ -3900,38 +3941,134 @@ export const DashboardAdmin: React.FC<Props> = ({
                         {
                             profView === 'uniform' && (
                                 <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
-                                    <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2"><ArrowLeft size={16} /> Voltar</button>
-                                    <h2 className="text-2xl font-bold text-white mb-6">Solicitar Uniforme (Admin/Prof)</h2>
-                                    <div className="grid md:grid-cols-2 gap-6">
-                                        <form onSubmit={handleOrderUniform} className="space-y-4">
-                                            <select value={orderForm.item} onChange={e => setOrderForm({ ...orderForm, item: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white">
-                                                <option value="combo">Combo</option>
-                                                <option value="shirt">Blusa</option>
-                                                <option value="pants_roda">Calça Roda</option>
-                                                <option value="pants_train">Calça de Treino</option>
-                                            </select>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
-                                                    <div>
-                                                        <label className="block text-sm text-stone-400 mb-1">Tam. Blusa</label>
-                                                        <input type="text" placeholder="Ex: P, M, G, GG" value={orderForm.shirtSize} onChange={e => setOrderForm({ ...orderForm, shirtSize: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required={orderForm.item === 'shirt' || orderForm.item === 'combo'} />
-                                                    </div>
-                                                )}
-                                                {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
-                                                    <div>
-                                                        <label className="block text-sm text-stone-400 mb-1">Tam. Calça</label>
-                                                        <input type="text" placeholder="Ex: 38, 40, 42, 44" value={orderForm.pantsSize} onChange={e => setOrderForm({ ...orderForm, pantsSize: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white" required={orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo'} />
-                                                    </div>
+                                    <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
+                                        <ArrowLeft size={16} className="mr-2" />
+                                        Voltar ao Painel
+                                    </Button>
+                                    <div className="grid md:grid-cols-2 gap-8">
+                                        <div className="bg-stone-900 p-6 rounded-xl border border-stone-700 shadow-xl">
+                                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                                <PlusCircle className="text-emerald-500" /> Fazer Novo Pedido
+                                            </h3>
+                                            <form onSubmit={handleOrderUniform} className="space-y-4">
+                                                <div>
+                                                    <label htmlFor="item" className="block text-sm text-stone-400 mb-1">Item</label>
+                                                    <select
+                                                        id="item"
+                                                        value={orderForm.item}
+                                                        onChange={e => setOrderForm({ ...orderForm, item: e.target.value })}
+                                                        className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                                                    >
+                                                        <option value="combo">Combo (Blusa + Calça)</option>
+                                                        <option value="shirt">Blusa Oficial</option>
+                                                        <option value="pants_roda">Calça de Roda</option>
+                                                        <option value="pants_train">Calça de Treino</option>
+                                                    </select>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                                                        <div>
+                                                            <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho Blusa</label>
+                                                            <input
+                                                                id="shirtSize"
+                                                                type="text"
+                                                                placeholder="Ex: P, M, G..."
+                                                                value={orderForm.shirtSize}
+                                                                onChange={(e) => setOrderForm({ ...orderForm, shirtSize: e.target.value })}
+                                                                className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                                                                required={orderForm.item === 'shirt' || orderForm.item === 'combo'}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                                                        <div>
+                                                            <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho Calça</label>
+                                                            <input
+                                                                id="pantsSize"
+                                                                type="text"
+                                                                placeholder="Ex: 38, 40..."
+                                                                value={orderForm.pantsSize}
+                                                                onChange={(e) => setOrderForm({ ...orderForm, pantsSize: e.target.value })}
+                                                                className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
+                                                                required={orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo'}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex justify-between items-center bg-stone-800 p-4 rounded-xl border border-stone-700 mt-2">
+                                                    <span className="text-stone-400 text-sm font-bold">Total a pagar:</span>
+                                                    <span className="text-xl font-black text-white">R$ {getCurrentPrice().toFixed(2).replace('.', ',')}</span>
+                                                </div>
+                                                <Button fullWidth type="submit" className="h-12 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
+                                                    <ShoppingBag size={18} className="mr-2" /> Finalizar Pedido
+                                                </Button>
+                                            </form>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                                <ShoppingBag className="text-emerald-400" /> Minhas Solicitações
+                                            </h3>
+                                            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                                                {myOrders.length > 0 ? (
+                                                    myOrders.map(order => (
+                                                        <div key={order.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col gap-3 shadow-lg`}>
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="font-bold text-white">{order.item}</p>
+                                                                    <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
+                                                                    {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
+                                                                    {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                {order.status === 'pending' && !order.proof_url && (
+                                                                    <>
+                                                                        <Button
+                                                                            variant="secondary"
+                                                                            className="text-[10px] h-auto px-2 py-1 flex-1 bg-stone-800 border-stone-700"
+                                                                            onClick={() => {
+                                                                                setSelectedOrderToProof(order);
+                                                                                uniformFileInputRef.current?.click();
+                                                                            }}
+                                                                            disabled={uploadingUniformProof}
+                                                                        >
+                                                                            {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                                                                        </Button>
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*, application/pdf"
+                                                                            className="hidden"
+                                                                            ref={uniformFileInputRef}
+                                                                            onChange={handleFileChangeForUniformProof}
+                                                                            disabled={uploadingUniformProof}
+                                                                        />
+                                                                    </>
+                                                                )}
+                                                                {order.status === 'pending' && order.proof_url && (
+                                                                    <span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic">
+                                                                        <Clock size={12} /> Comprovante em análise
+                                                                    </span>
+                                                                )}
+                                                                {order.proof_url && (
+                                                                    <button
+                                                                        onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
+                                                                        className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium bg-blue-400/5 px-2 py-1 rounded border border-blue-400/20"
+                                                                    >
+                                                                        <Eye size={12} /> Ver Comprovante
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">Nenhum pedido registrado.</p>
                                                 )}
                                             </div>
-                                            <div className="text-right text-white font-bold text-lg">
-                                                Total: R$ {getCurrentPrice().toFixed(2).replace('.', ',')}
-                                            </div>
-                                            <Button fullWidth type="submit">Fazer Pedido</Button>
-                                        </form>
-                                        <div className="bg-stone-900 p-4 rounded text-sm text-stone-400">
-                                            <h3 className="text-white font-bold mb-2">Meus Pedidos</h3>
-                                            {myOrders.length === 0 ? <p>Nenhum pedido.</p> : myOrders.map(o => <div key={o.id} className="border-b border-stone-700 py-1">{o.item} - R$ {o.total.toFixed(2).replace('.', ',')}</div>)}
                                         </div>
                                     </div>
                                 </div>
