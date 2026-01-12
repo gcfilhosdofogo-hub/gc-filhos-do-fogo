@@ -689,6 +689,22 @@ export const DashboardProfessor: React.FC<Props> = ({
     }
   };
 
+  const handleViewAssignment = async (fileUrl: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('assignment_submissions')
+        .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, '_blank');
+      onNotifyAdmin(`Visualizou resposta de trabalho: ${fileName}`, user);
+    } catch (error: any) {
+      console.error('Error generating signed URL for assignment:', error);
+      alert('Erro ao visualizar o arquivo: ' + error.message);
+    }
+  };
+
   const handleCompleteAssignment = async (assignmentId: string, studentId: string, file: File) => {
     setUploadingMusicFile(true); // Reusing this state for any file upload
     try {
@@ -701,14 +717,13 @@ export const DashboardProfessor: React.FC<Props> = ({
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('assignment_submissions')
-        .getPublicUrl(filePath);
+      // For private buckets, we store the path and generate a signed URL when needed for viewing
+      const fileUrl = uploadData.path;
 
       const updatedAssignment: AssignmentType = {
         ...assignments.find(a => a.id === assignmentId)!,
         status: 'completed',
-        submission_url: publicUrlData.publicUrl,
+        submission_url: fileUrl,
         submission_name: file.name,
         student_id: studentId, // Ensure student_id is set for submission
       };
@@ -1473,9 +1488,12 @@ export const DashboardProfessor: React.FC<Props> = ({
                         </a>
                       )}
                       {assign.submission_url && (
-                        <a href={assign.submission_url} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-green-900/20 text-green-400 px-2 py-1 rounded flex items-center gap-1 hover:bg-green-900/40 transition-colors border border-green-500/20">
+                        <button
+                          onClick={() => handleViewAssignment(assign.submission_url!, assign.submission_name || 'Trabalho')}
+                          className="text-[10px] bg-green-900/20 text-green-400 px-2 py-1 rounded flex items-center gap-1 hover:bg-green-900/40 transition-colors border border-green-500/20"
+                        >
                           <CheckCircle size={10} /> Ver Resposta
-                        </a>
+                        </button>
                       )}
                     </div>
                     <span className="text-[9px] text-stone-600 block mt-2 pt-2 border-t border-stone-800">Vence: {assign.due_date}</span>

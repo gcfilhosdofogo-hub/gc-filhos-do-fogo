@@ -471,6 +471,22 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
+  const handleViewAssignment = async (fileUrl: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('assignment_submissions')
+        .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+
+      if (error) throw error;
+
+      window.open(data.signedUrl, '_blank');
+      onNotifyAdmin(`Visualizou resposta de trabalho: ${fileName}`, user);
+    } catch (error: any) {
+      console.error('Error generating signed URL for assignment:', error);
+      alert('Erro ao visualizar o arquivo: ' + error.message);
+    }
+  };
+
   const handleGoToUpload = () => {
     setShowPendingVideoPopup(false);
     setActiveMainTab('home_training');
@@ -770,18 +786,13 @@ export const DashboardAluno: React.FC<Props> = ({
         throw uploadError;
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('assignment_submissions')
-        .getPublicUrl(filePath);
-
-      if (!publicUrlData || !publicUrlData.publicUrl) {
-        throw new Error('Falha ao gerar URL pública do arquivo.');
-      }
+      // For private buckets, we store the path and generate a signed URL when needed for viewing
+      const fileUrl = uploadData.path;
 
       const updatedAssignment = {
         id: selectedAssignmentToSubmit.id, // Only send identification
         status: 'completed' as const,     // and the fields to be updated
-        submission_url: publicUrlData.publicUrl,
+        submission_url: fileUrl,
         submission_name: file.name
       };
 
@@ -1614,7 +1625,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           <Button
                             variant="outline"
                             className="text-[10px] h-auto px-2 py-1 mt-2 w-full border-green-500/30 text-green-400"
-                            onClick={() => window.open(assignment.submission_url, '_blank')}
+                            onClick={() => handleViewAssignment(assignment.submission_url!, assignment.submission_name || 'Trabalho')}
                           >
                             <CheckCircle size={12} className="mr-1" /> Ver Minha Resposta
                           </Button>

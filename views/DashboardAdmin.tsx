@@ -1474,6 +1474,22 @@ export const DashboardAdmin: React.FC<Props> = ({
         setSelectedAssignmentTarget('mine'); // Reset to default
     };
 
+    const handleViewAssignmentSubmission = async (fileUrl: string, fileName: string) => {
+        try {
+            const { data, error } = await supabase.storage
+                .from('assignment_submissions')
+                .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+
+            if (error) throw error;
+
+            window.open(data.signedUrl, '_blank');
+            onNotifyAdmin(`Admin visualizou resposta de trabalho: ${fileName}`, user);
+        } catch (error: any) {
+            console.error('Error generating signed URL for assignment (Admin):', error);
+            alert('Erro ao visualizar o arquivo: ' + error.message);
+        }
+    };
+
     const handleCompleteAssignment = async (assignmentId: string, studentId: string, file: File) => {
         setUploadingMusicFile(true); // Reusing this state for any file upload
         try {
@@ -1486,14 +1502,13 @@ export const DashboardAdmin: React.FC<Props> = ({
 
             if (uploadError) throw uploadError;
 
-            const { data: publicUrlData } = supabase.storage
-                .from('assignment_submissions')
-                .getPublicUrl(filePath);
+            // For private buckets, we store the path and generate a signed URL when needed for viewing
+            const fileUrl = uploadData.path;
 
             const updatedAssignment: Assignment = {
                 ...assignments.find(a => a.id === assignmentId)!,
                 status: 'completed',
-                submission_url: publicUrlData.publicUrl,
+                submission_url: fileUrl,
                 submission_name: file.name,
                 student_id: studentId, // Ensure student_id is set for submission
             };
@@ -3857,9 +3872,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     <h4 className="font-bold text-stone-300 line-through decoration-stone-500">{assign.title}</h4>
                                                     <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.due_date}</p>
                                                     {assign.attachment_url && (
-                                                        <div className="flex items-center gap-2 text-xs text-green-500 bg-green-900/10 p-2 rounded">
+                                                        <div className="flex items-center gap-2 text-xs text-green-500 bg-green-900/10 p-2 rounded mb-2">
                                                             <Paperclip size={12} /> Arquivo Anexado
                                                         </div>
+                                                    )}
+                                                    {assign.submission_url && (
+                                                        <Button
+                                                            variant="secondary"
+                                                            className="w-full text-xs py-1.5 h-auto bg-green-900/20 text-green-400 border-green-500/20 hover:bg-green-900/40"
+                                                            onClick={() => handleViewAssignmentSubmission(assign.submission_url!, assign.submission_name || 'Trabalho')}
+                                                        >
+                                                            <CheckCircle size={14} className="mr-1" /> Ver Resposta do Aluno
+                                                        </Button>
                                                     )}
                                                 </div>
                                             ))}
