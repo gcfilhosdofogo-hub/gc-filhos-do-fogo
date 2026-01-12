@@ -501,38 +501,17 @@ export const DashboardProfessor: React.FC<Props> = ({
     onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
   };
 
-  const handleMusicFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setMusicForm({ ...musicForm, file: e.target.files[0] });
-    }
-  };
 
   const handleSubmitMusic = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploadingMusicFile(true);
-    let fileUrl = '';
 
     try {
-      if (musicForm.file) {
-        const fileExt = musicForm.file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `acervo/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('music_files')
-          .upload(filePath, musicForm.file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: pub } = supabase.storage.from('music_files').getPublicUrl(filePath);
-        fileUrl = pub.publicUrl;
-      }
-
       const newMusic: Omit<MusicItem, 'id' | 'created_at'> = {
         title: musicForm.title,
         category: musicForm.category,
         lyrics: musicForm.lyrics,
-        file_url: fileUrl,
+        file_url: '',
         created_by: user.id
       };
 
@@ -1527,12 +1506,8 @@ export const DashboardProfessor: React.FC<Props> = ({
                     <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
                     <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Arquivo de Áudio</label>
-                    <input type="file" accept="audio/*" onChange={e => setMusicForm({ ...musicForm, file: e.target.files?.[0] || null })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-2 text-white text-xs" />
-                  </div>
                   <textarea placeholder="Letra..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white h-32" />
-                  <Button fullWidth type="submit" disabled={uploadingMusicFile}>{uploadingMusicFile ? 'Enviando...' : 'Adicionar'}</Button>
+                  <Button fullWidth type="submit" disabled={uploadingMusicFile}>{uploadingMusicFile ? 'Salvando...' : 'Adicionar'}</Button>
                 </form>
               </div>
             </div>
@@ -1545,7 +1520,8 @@ export const DashboardProfessor: React.FC<Props> = ({
                       <p className="text-white font-bold">{m.title}</p>
                       <span className="text-xs text-stone-500 uppercase">{m.category}</span>
                     </div>
-                    {m.url && <a href={m.url} target="_blank" className="text-yellow-500 hover:text-yellow-400"><PlayCircle size={20} /></a>}
+                    {/* Audio player removed as per request */}
+                    {/* {m.url && <a href={m.url} target="_blank" className="text-yellow-500 hover:text-yellow-400"><PlayCircle size={20} /></a>} */}
                   </div>
                 ))}
               </div>
