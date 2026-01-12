@@ -577,8 +577,10 @@ function AppContent() {
   const handleAddMusic = async (newMusic: Omit<MusicItem, 'id' | 'created_at'>) => {
     if (!session) return;
     const { data, error } = await supabase.from('music_items').insert({ ...newMusic, created_by: session.user.id }).select().single();
-    if (error) console.error('Error adding music:', error);
-    else {
+    if (error) {
+      console.error('Error adding music:', error);
+      throw error; // Throw to let notification handle it
+    } else {
       setMusicList(prev => [...prev, data]);
       if (user) handleNotifyAdmin(`Adicionou música: ${newMusic.title}`, user);
       fetchData(); // Re-fetch all data to ensure consistency across components

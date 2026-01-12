@@ -11,7 +11,7 @@ interface Props {
   musicList: MusicItem[];
   uniformOrders: UniformOrder[];
   onAddOrder: (order: UniformOrder) => void;
-  onAddMusic: (music: MusicItem) => void;
+  onAddMusic: (music: Omit<MusicItem, 'id' | 'created_at'>) => void;
   onNotifyAdmin: (action: string, user: User) => void;
   onUpdateProfile: (data: Partial<User>) => void;
   classSessions: ClassSession[]; // Use real class sessions
@@ -114,7 +114,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
 
   // Music
-  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '', url: '', file: null as File | null });
+  const [musicForm, setMusicForm] = useState({ title: '', category: '', lyrics: '' });
   const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
 
   // Uniform
@@ -515,8 +515,8 @@ export const DashboardProfessor: React.FC<Props> = ({
         created_by: user.id
       };
 
-      await onAddMusic(newMusic as MusicItem);
-      setMusicForm({ title: '', category: '', lyrics: '', url: '', file: null });
+      await onAddMusic(newMusic);
+      setMusicForm({ title: '', category: '', lyrics: '' });
       onNotifyAdmin(`Adicionou música: ${musicForm.title}`, user);
       alert('Música adicionada!');
     } catch (err: any) {

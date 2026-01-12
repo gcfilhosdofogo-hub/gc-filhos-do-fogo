@@ -1385,17 +1385,21 @@ export const DashboardAdmin: React.FC<Props> = ({
             return;
         }
 
-        onAddMusic({
-            id: Date.now().toString(),
-            title: musicForm.title,
-            category: musicForm.category,
-            lyrics: musicForm.lyrics,
-            file_url: '' // Removed file upload
-        });
+        try {
+            await onAddMusic({
+                title: musicForm.title,
+                category: musicForm.category,
+                lyrics: musicForm.lyrics,
+                file_url: ''
+            } as any); // Type assertion to bypass strict Props check if needed, though simpler is better. App.tsx expects Omit<MusicItem, 'id'>
 
-        onNotifyAdmin(`Admin adicionou nova música: ${musicForm.title}`, user);
-        setMusicForm({ title: '', category: 'theory', lyrics: '', url: '' }); // Reset default category to theory or empty
-        alert('Música adicionada!');
+            onNotifyAdmin(`Admin adicionou nova música: ${musicForm.title}`, user);
+            setMusicForm({ title: '', category: 'theory', lyrics: '', url: '' });
+            alert('Música adicionada!');
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao adicionar música. Tente novamente.');
+        }
     };
 
     const handleAddAssignment = async (e: React.FormEvent) => {
