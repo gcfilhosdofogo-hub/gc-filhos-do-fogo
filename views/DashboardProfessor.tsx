@@ -59,10 +59,10 @@ interface AssignmentFormState {
 }
 
 const UNIFORM_PRICES = {
-  shirt: 30,
-  pants_roda: 80,
-  pants_train: 80,
-  combo: 110
+  combo: 110.00,
+  shirt: 30.00,
+  pants_roda: 80.00,
+  pants_train: 80.00
 };
 
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial';
@@ -333,12 +333,7 @@ export const DashboardProfessor: React.FC<Props> = ({
 
   // Filter my orders - removed duplicate const to keep useState version
 
-  const UNIFORM_PRICES = {
-    combo: 190.00,
-    shirt: 75.00,
-    pants_roda: 110.00,
-    pants_train: 110.00
-  };
+
 
   const getCurrentPrice = () => {
     switch (orderForm.item) {

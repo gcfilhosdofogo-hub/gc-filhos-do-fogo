@@ -55,7 +55,8 @@ const convertToStandardImage = async (file: File): Promise<File> => {
 
       const convertedBlob = Array.isArray(blob) ? blob[0] : blob;
       const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-      return new File([convertedBlob], newFileName, { type: 'image/jpeg' });
+      // Fix: Return properly constructed File object
+      return new File([convertedBlob], newFileName, { type: 'image/jpeg', lastModified: Date.now() });
     } catch (err) {
       console.error('Erro ao converter HEIC:', err);
       return file; // Fallback to original
@@ -68,10 +69,10 @@ const convertToStandardImage = async (file: File): Promise<File> => {
 type MainTab = 'overview' | 'finance_resources' | 'grades' | 'assignments' | 'music' | 'home_training' | 'school_report' | 'uniform'; // Main tabs for student dashboard
 
 const UNIFORM_PRICES = {
-  shirt: 30,
-  pants_roda: 80,
-  pants_train: 80,
-  combo: 110
+  combo: 110.00,
+  shirt: 30.00,
+  pants_roda: 80.00,
+  pants_train: 80.00
 };
 
 export const DashboardAluno: React.FC<Props> = ({

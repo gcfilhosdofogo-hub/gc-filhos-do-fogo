@@ -51,10 +51,10 @@ interface Props {
 }
 
 const UNIFORM_PRICES = {
-    shirt: 75.00,
-    pants_roda: 110.00,
-    pants_train: 110.00,
-    combo: 190.00
+    combo: 110.00,
+    shirt: 30.00,
+    pants_roda: 80.00,
+    pants_train: 80.00
 };
 
 type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music';
