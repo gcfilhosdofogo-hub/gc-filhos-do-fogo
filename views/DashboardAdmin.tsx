@@ -1289,6 +1289,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 setShowSuccess(false);
                 setJustifications({});
                 onNotifyAdmin('Realizou chamada de aula', user);
+                fetchAttendanceHistory();
             }, 1000);
         } catch (err: any) {
             console.error('Error saving attendance:', err);
@@ -1594,71 +1595,70 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
     };
 
+    const fetchClassRecords = useCallback(async () => {
+        try {
+            const { data, error } = await supabase.storage.from('class_records').list('', { limit: 20 });
+            if (error) throw error;
+            const items = data || [];
+            const withUrls = items.map((it: any) => {
+                const { data: pub } = supabase.storage.from('class_records').getPublicUrl(it.name);
+                return { name: it.name, url: pub.publicUrl, created_at: it.created_at };
+            });
+            setClassRecords(withUrls);
+        } catch (error) {
+            console.error('Error fetching class records:', error);
+        }
+    }, []);
+
+    const fetchAttendanceHistory = useCallback(async () => {
+        // Fetch real attendance records from DB
+        try {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select(`
+                    id,
+                    created_at,
+                    status,
+                    student_id,
+                    session_id,
+                    class_sessions (
+                        date,
+                        time,
+                        location,
+                        title
+                    ),
+                    profiles:student_id (
+                        nickname,
+                        first_name,
+                        last_name
+                    )
+                `)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+            // Store attendance history in state for display
+            if (data) {
+                const formattedHistory = data.map((record: any) => ({
+                    id: record.id,
+                    class_date: record.class_sessions?.date || record.created_at?.split('T')[0] || '',
+                    session_id: record.session_id,
+                    student_id: record.student_id,
+                    student_name: record.profiles?.nickname || record.profiles?.first_name || 'Aluno',
+                    status: record.status as 'present' | 'absent' | 'justified',
+                    justification: record.justification
+                }));
+                setAttendanceHistory(formattedHistory);
+            }
+        } catch (err) {
+            console.error("Error fetching attendance history", err);
+        }
+    }, []);
+
     useEffect(() => {
-        const fetchClassRecords = async () => {
-            try {
-                const { data, error } = await supabase.storage.from('class_records').list('', { limit: 20 });
-                if (error) throw error;
-                const items = data || [];
-                const withUrls = items.map((it: any) => {
-                    const { data: pub } = supabase.storage.from('class_records').getPublicUrl(it.name);
-                    return { name: it.name, url: pub.publicUrl, created_at: it.created_at };
-                });
-                setClassRecords(withUrls);
-            } catch (error) {
-                console.error('Error fetching class records:', error);
-            }
-        };
-
-        const fetchAttendanceHistory = async () => {
-            // Fetch real attendance records from DB
-            // We can check 'attendance_records' table
-            try {
-                const { data, error } = await supabase
-                    .from('attendance')
-                    .select(`
-                        id,
-                        created_at,
-                        status,
-                        student_id,
-                        session_id,
-                        class_sessions (
-                            date,
-                            time,
-                            location,
-                            title
-                        ),
-                        profiles:student_id (
-                            nickname,
-                            first_name,
-                            last_name
-                        )
-                    `)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-
-                if (error) throw error;
-                // Store attendance history in state for display
-                if (data) {
-                    const formattedHistory = data.map((record: any) => ({
-                        id: record.id,
-                        class_date: record.class_sessions?.date || record.created_at?.split('T')[0] || '',
-                        session_id: record.session_id,
-                        student_id: record.student_id,
-                        student_name: record.profiles?.nickname || record.profiles?.first_name || 'Aluno',
-                        status: record.status as 'present' | 'absent' | 'justified',
-                        justification: record.justification
-                    }));
-                    setAttendanceHistory(formattedHistory);
-                }
-            } catch (err) {
-                console.error("Error fetching attendance history", err);
-            }
-        };
-
         fetchClassRecords();
         fetchAttendanceHistory();
-    }, []);
+    }, [fetchClassRecords, fetchAttendanceHistory]);
 
 
     // --- Student Details Handlers ---
@@ -4664,33 +4664,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                             </div>
                                                                         )}
 
-                                                                        {isExpanded && isCompleted && (
-                                                                            <div className="ml-2 pl-2 border-l border-stone-700 space-y-1 pb-2 animate-fade-in">
-                                                                                {sessionAttendance.length > 0 ? (
-                                                                                    sessionAttendance.map(record => (
-                                                                                        <div key={record.id} className="bg-stone-900/20 p-2 rounded flex flex-col gap-1">
-                                                                                            <div className="flex justify-between items-center">
-                                                                                                <span className="text-stone-400 font-medium">{record.student_name}</span>
-                                                                                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${record.status === 'present' ? 'bg-green-900/30 text-green-500' :
-                                                                                                    record.status === 'justified' ? 'bg-blue-900/30 text-blue-400' :
-                                                                                                        'bg-red-900/30 text-red-500'
-                                                                                                    }`}>
-                                                                                                    {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            {record.status === 'justified' && record.justification && (
-                                                                                                <p className="text-[10px] text-stone-500 italic flex items-start gap-1">
-                                                                                                    <MessageCircle size={10} className="mt-0.5" />
-                                                                                                    "{record.justification}"
-                                                                                                </p>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    ))
-                                                                                ) : (
-                                                                                    <p className="text-[10px] text-stone-600 italic p-2">Dados da chamada não carregados ou indisponíveis.</p>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 );
                                                             })
