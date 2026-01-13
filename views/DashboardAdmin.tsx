@@ -266,7 +266,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [classPhoto, setClassPhoto] = useState<string | null>(null);
     const [pixCopied, setPixCopied] = useState(false);
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
-    const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; url: string }>({ title: '', category: 'theory', lyrics: '', url: '' });
+    const [musicForm, setMusicForm] = useState<{ title: string; category: string; lyrics: string; url: string }>({ title: '', category: '', lyrics: '', url: '' });
     const [uploadingMusicFile, setUploadingMusicFile] = useState(false);
     const [evalData, setEvalData] = useState({
         theory: { written: '', numeric: '' },
