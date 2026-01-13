@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Filhos do Fogo</string>
+    <string name="title_activity_main">Filhos do Fogo</string>
+    <string name="package_name">com.filhosdofogo.app</string>
+    <string name="custom_url_scheme">com.filhosdofogo.app</string>
+</resources>
