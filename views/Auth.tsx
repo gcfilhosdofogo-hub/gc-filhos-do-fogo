@@ -15,6 +15,8 @@ interface Props {
 export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +29,12 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              first_name: firstName,
+              nickname: nickname,
+            }
+          }
         });
         if (error) throw error;
         alert('Verifique seu e-mail para confirmar o cadastro!');
@@ -80,6 +88,40 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                 />
               </div>
             </div>
+            
+            {isSignUp && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-stone-400 mb-1">Nome Completo</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 text-stone-500" size={18} />
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full bg-stone-900 border border-stone-600 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                      placeholder="Seu nome"
+                      required={isSignUp}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-stone-400 mb-1">Apelido (Capoeira)</label>
+                  <div className="relative">
+                    <GraduationCap className="absolute left-3 top-3 text-stone-500" size={18} />
+                    <input
+                      type="text"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      className="w-full bg-stone-900 border border-stone-600 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-orange-500 transition-colors"
+                      placeholder="Seu apelido"
+                      required={isSignUp}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-stone-400 mb-1">Senha</label>

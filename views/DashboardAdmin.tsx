@@ -3035,8 +3035,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-white">{u.nickname || u.name}</p>
-                                                            <p className="text-xs text-stone-500">{u.name}</p>
+                                                            <p className="font-bold text-white">{u.name}</p>
+                                                            {u.nickname && <p className="text-xs text-cyan-400 font-medium italic">{u.nickname}</p>}
                                                         </div>
                                                     </div>
                                                 </td>
