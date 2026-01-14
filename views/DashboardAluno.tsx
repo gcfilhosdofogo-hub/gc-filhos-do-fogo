@@ -40,6 +40,11 @@ const convertToStandardImage = async (file: File): Promise<File> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
   let processingFile = file;
 
+  // Skip non-image files (PDFs, etc.)
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+
   // 1. Convert HEIC/HEIF if necessary
   if (extension === 'heic' || extension === 'heif') {
     if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo HEIC muito grande. Máx 20MB.");
@@ -50,6 +55,7 @@ const convertToStandardImage = async (file: File): Promise<File> => {
       processingFile = new File([convertedBlob], newFileName, { type: 'image/jpeg' });
     } catch (err) {
       console.error('HEIC conversion failed:', err);
+      return file; // Return original if HEIC conversion fails
     }
   }
 
@@ -57,36 +63,63 @@ const convertToStandardImage = async (file: File): Promise<File> => {
   const isImage = processingFile.type.startsWith('image/') && !processingFile.type.includes('gif');
   if (isImage) {
     try {
-      return await new Promise((resolve) => {
+      return await new Promise((resolve, reject) => {
+        // Timeout protection for Android PWA (15 seconds max)
+        const timeout = setTimeout(() => {
+          console.warn('Image processing timeout, using original file');
+          resolve(processingFile);
+        }, 15000);
+
         const reader = new FileReader();
+
+        reader.onerror = () => {
+          clearTimeout(timeout);
+          console.error('FileReader error, using original file');
+          resolve(processingFile);
+        };
+
         reader.onload = (e) => {
           const img = new Image();
+
+          img.onerror = () => {
+            clearTimeout(timeout);
+            console.error('Image load error, using original file');
+            resolve(processingFile);
+          };
+
           img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-            const MAX_WIDTH = 1600;
-            const MAX_HEIGHT = 1600;
+            try {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              const MAX_WIDTH = 1600;
+              const MAX_HEIGHT = 1600;
 
-            if (width > height) {
-              if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-            } else {
-              if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0, width, height);
-
-            canvas.toBlob((blob) => {
-              if (blob) {
-                const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
-                resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+              if (width > height) {
+                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
               } else {
-                resolve(processingFile);
+                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
               }
-            }, 'image/jpeg', 0.75); // 0.75 quality is great for saving space without visible loss
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              canvas.toBlob((blob) => {
+                clearTimeout(timeout);
+                if (blob) {
+                  const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                  resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                } else {
+                  resolve(processingFile);
+                }
+              }, 'image/jpeg', 0.75);
+            } catch (canvasError) {
+              clearTimeout(timeout);
+              console.error('Canvas error:', canvasError);
+              resolve(processingFile);
+            }
           };
           img.src = e.target?.result as string;
         };
@@ -375,6 +408,8 @@ export const DashboardAluno: React.FC<Props> = ({
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     setUploadingPhoto(true);
@@ -467,6 +502,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0) return;
 
     const file = e.target.files[0];
@@ -530,6 +567,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0) return;
 
     let file = e.target.files[0];
@@ -708,6 +747,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
       if (!selectedPaymentToProof && e.target.files && e.target.files.length > 0) {
         alert("Erro: Sessão de upload expirou. Por favor, clique novamente no botão 'Enviar Comprovante'.");
@@ -752,6 +793,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedEventRegToProof) {
       if (!selectedEventRegToProof && e.target.files && e.target.files.length > 0) {
         alert("Erro: Sessão de upload expirou. Clique novamente em 'Pagar Agora'.");
@@ -824,6 +867,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) {
       if (!selectedOrderToProof && e.target.files && e.target.files.length > 0) {
         alert("Erro: Sessão de upload expirou. Clique novamente no botão do uniforme.");
@@ -861,6 +906,8 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleAssignmentSubmission = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedAssignmentToSubmit) {
       setUploadingAssignment(false);
       return;
@@ -1468,6 +1515,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                     className="hidden"
                                     ref={fileInputRef}
                                     onChange={handleFileChangeForPaymentProof}
+                                    onClick={(e) => e.stopPropagation()}
                                     disabled={uploadingPaymentProof}
                                   />
                                 </>
