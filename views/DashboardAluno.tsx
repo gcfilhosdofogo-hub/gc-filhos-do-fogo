@@ -173,6 +173,10 @@ export const DashboardAluno: React.FC<Props> = ({
 
   const uniformFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Uniform Order Proof Upload State
+  const [uploadingUniformProof, setUploadingUniformProof] = useState(false);
+  const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
+
   // Video/Link Training State
   const [trainingType, setTrainingType] = useState<'file' | 'link'>('link');
   const [videoLink, setVideoLink] = useState('');
@@ -1448,7 +1452,8 @@ export const DashboardAluno: React.FC<Props> = ({
                                     className="text-[10px] h-auto px-2 py-1 bg-stone-800 border-stone-700"
                                     onClick={() => {
                                       setSelectedPaymentToProof(payment);
-                                      fileInputRef.current?.click();
+                                      // Small delay to ensure state is set before click (fixes mobile PWA issue)
+                                      setTimeout(() => fileInputRef.current?.click(), 100);
                                     }}
                                     disabled={uploadingPaymentProof}
                                   >
@@ -1558,7 +1563,11 @@ export const DashboardAluno: React.FC<Props> = ({
                                     <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
                                   ) : (
                                     <button
-                                      onClick={() => { setSelectedEventRegToProof(reg); eventFileInputRef.current?.click(); }}
+                                      onClick={() => {
+                                        setSelectedEventRegToProof(reg);
+                                        // Small delay for mobile PWA
+                                        setTimeout(() => eventFileInputRef.current?.click(), 100);
+                                      }}
                                       className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
                                     >
                                       {reg.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
@@ -1735,7 +1744,8 @@ export const DashboardAluno: React.FC<Props> = ({
                               className="text-xs h-auto px-2 py-1 mt-2 w-full border-cyan-500 text-cyan-500 hover:bg-cyan-900/20"
                               onClick={() => {
                                 setSelectedAssignmentToSubmit(assignment);
-                                assignmentFileInputRef.current?.click();
+                                // Small delay for mobile PWA
+                                setTimeout(() => assignmentFileInputRef.current?.click(), 100);
                               }}
                               disabled={uploadingAssignment}
                             >
@@ -2069,7 +2079,8 @@ export const DashboardAluno: React.FC<Props> = ({
                               className="text-xs h-auto px-3 py-1.5"
                               onClick={() => {
                                 setSelectedOrderToProof(order);
-                                uniformFileInputRef.current?.click();
+                                // Small delay to ensure state is set before click (fixes mobile PWA issue)
+                                setTimeout(() => uniformFileInputRef.current?.click(), 100);
                               }}
                               disabled={uploadingUniformProof}
                             >
