@@ -385,7 +385,8 @@ export const DashboardAluno: React.FC<Props> = ({
 
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/home_trainings/${Date.now()}.${fileExt}`; // Unique path per user
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/home_trainings/${fileName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('home_training_videos')
@@ -393,29 +394,25 @@ export const DashboardAluno: React.FC<Props> = ({
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('home_training_videos')
-        .getPublicUrl(filePath);
-
       const now = new Date();
       const expires = new Date(now.getTime() + (72 * 60 * 60 * 1000)); // 72 hours from now
 
       const newVideo: Omit<HomeTraining, 'id' | 'created_at'> = {
         user_id: user.id,
-        date: now.toISOString().split('T')[0], // Use ISO format for DB
+        date: now.toISOString().split('T')[0],
         video_name: file.name,
-        video_url: publicUrlData.publicUrl,
+        video_url: filePath, // Store the relative path instead of publicUrl for private buckets
         expires_at: expires.toISOString()
       };
 
-      await onAddHomeTraining(newVideo); // Call prop to add to Supabase
+      await onAddHomeTraining(newVideo);
       setUploading(false);
-      setShowPendingVideoPopup(false); // Close popup if open
+      setShowPendingVideoPopup(false);
       onNotifyAdmin('Enviou vídeo de Treino em Casa', user);
       alert("Vídeo enviado com sucesso! Ele ficará disponível por 72 horas.");
     } catch (error: any) {
       console.error('Error uploading video:', error);
-      alert("Erro ao enviar vídeo: " + error.message);
+      alert("Erro ao enviar vídeo (" + (error.status || error.name) + "): " + error.message);
       setUploading(false);
     }
   };
@@ -486,23 +483,35 @@ export const DashboardAluno: React.FC<Props> = ({
   };
 
   const handleViewAssignment = async (fileUrl: string, fileName: string) => {
-    // Open window immediately to avoid pop-up blocking on mobile
     const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from('assignment_submissions')
-        .createSignedUrl(fileUrl, 60); // URL valid for 60 seconds
+        .createSignedUrl(fileUrl, 60);
 
       if (error) throw error;
-
-      if (newWindow) {
-        newWindow.location.href = data.signedUrl;
-      }
+      if (newWindow) newWindow.location.href = data.signedUrl;
       onNotifyAdmin(`Visualizou resposta de trabalho: ${fileName}`, user);
     } catch (error: any) {
       if (newWindow) newWindow.close();
       console.error('Error generating signed URL for assignment:', error);
-      alert('Erro ao visualizar o arquivo: ' + error.message);
+      alert('Erro ao visualizar: ' + error.message);
+    }
+  };
+
+  const handleViewVideo = async (fileUrl: string, videoName: string) => {
+    const newWindow = window.open('', '_blank');
+    try {
+      const { data, error } = await supabase.storage
+        .from('home_training_videos')
+        .createSignedUrl(fileUrl, 300); // 5 minutes for video
+
+      if (error) throw error;
+      if (newWindow) newWindow.location.href = data.signedUrl;
+    } catch (error: any) {
+      if (newWindow) newWindow.close();
+      console.error('Error viewing video:', error);
+      alert('Erro ao carregar vídeo: ' + error.message);
     }
   };
 
@@ -604,6 +613,9 @@ export const DashboardAluno: React.FC<Props> = ({
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) {
+      if (!selectedPaymentToProof && e.target.files && e.target.files.length > 0) {
+        alert("Erro: Sessão de upload expirou. Por favor, clique novamente no botão 'Enviar Comprovante'.");
+      }
       setUploadingPaymentProof(false);
       return;
     }
@@ -612,9 +624,7 @@ export const DashboardAluno: React.FC<Props> = ({
     setUploadingPaymentProof(true);
 
     try {
-      // Support for iPhone HEIC
       file = await convertToStandardImage(file);
-
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/payment_proofs/${selectedPaymentToProof.id}-${Date.now()}.${fileExt}`;
 
@@ -624,36 +634,32 @@ export const DashboardAluno: React.FC<Props> = ({
 
       if (uploadError) throw uploadError;
 
-      const fileUrl = uploadData.path;
-
       const updatedPayment: PaymentRecord = {
         ...selectedPaymentToProof,
-        proof_url: fileUrl,
+        proof_url: uploadData.path,
         proof_name: file.name,
         status: 'pending',
       };
 
       await onUpdatePaymentRecord(updatedPayment);
-
-      // Notify BEFORE clearing state to avoid crash
       onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para ${selectedPaymentToProof.month}`, user);
 
-      setUploadingPaymentProof(false);
+      alert("Comprovante enviado com sucesso! O Admin será notificado.");
       setSelectedPaymentToProof(null);
-      alert("Comprovante enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading payment proof:', error);
-      alert("Erro ao enviar comprovante: " + error.message);
-      setUploadingPaymentProof(false);
+      alert("Erro ao enviar comprovante (" + (error.status || error.name) + "): " + error.message);
     } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setUploadingPaymentProof(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedEventRegToProof) {
+      if (!selectedEventRegToProof && e.target.files && e.target.files.length > 0) {
+        alert("Erro: Sessão de upload expirou. Clique novamente em 'Pagar Agora'.");
+      }
       setUploadingEventProof(false);
       return;
     }
@@ -662,43 +668,34 @@ export const DashboardAluno: React.FC<Props> = ({
     setUploadingEventProof(true);
 
     try {
-      // Support for iPhone HEIC
       file = await convertToStandardImage(file);
-
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/event_proofs/${selectedEventRegToProof.id}-${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('payment_proofs')
+        .from('event_proofs') // Corrected to event_proofs bucket
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const fileUrl = uploadData.path;
-
       const updatedRegistration: EventRegistration = {
         ...selectedEventRegToProof,
-        proof_url: fileUrl,
+        proof_url: uploadData.path,
         proof_name: file.name,
         status: 'pending',
       };
 
       await onUpdateEventRegistrationWithProof(updatedRegistration);
+      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de evento ${selectedEventRegToProof.event_title}`, user);
 
-      // Notify BEFORE clearing state
-      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para o evento ${selectedEventRegToProof.event_title}`, user);
-
-      setUploadingEventProof(false);
+      alert("Comprovante de evento enviado com sucesso!");
       setSelectedEventRegToProof(null);
-      alert("Comprovante de evento enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading event proof:', error);
       alert("Erro ao enviar comprovante de evento: " + error.message);
-      setUploadingEventProof(false);
     } finally {
-      if (eventFileInputRef.current) {
-        eventFileInputRef.current.value = '';
-      }
+      setUploadingEventProof(false);
+      if (eventFileInputRef.current) eventFileInputRef.current.value = '';
     }
   };
 
@@ -732,6 +729,9 @@ export const DashboardAluno: React.FC<Props> = ({
 
   const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) {
+      if (!selectedOrderToProof && e.target.files && e.target.files.length > 0) {
+        alert("Erro: Sessão de upload expirou. Clique novamente no botão do uniforme.");
+      }
       setUploadingUniformProof(false);
       return;
     }
@@ -740,9 +740,7 @@ export const DashboardAluno: React.FC<Props> = ({
     setUploadingUniformProof(true);
 
     try {
-      // Support for iPhone HEIC
       file = await convertToStandardImage(file);
-
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}/uniform_proofs/${selectedOrderToProof.id}-${Date.now()}.${fileExt}`;
 
@@ -752,26 +750,17 @@ export const DashboardAluno: React.FC<Props> = ({
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('payment_proofs')
-        .getPublicUrl(filePath);
+      await onUpdateOrderWithProof(selectedOrderToProof.id, uploadData.path, file.name);
+      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de uniforme: ${selectedOrderToProof.item}`, user);
 
-      await onUpdateOrderWithProof(selectedOrderToProof.id, publicUrlData.publicUrl, file.name);
-
-      // Notify BEFORE clearing state
-      onNotifyAdmin(`Aluno ${user.nickname || user.name} enviou comprovante de pagamento para uniforme: ${selectedOrderToProof.item}`, user);
-
-      setUploadingUniformProof(false);
+      alert("Comprovante enviado com sucesso!");
       setSelectedOrderToProof(null);
-      alert("Comprovante enviado com sucesso! O Admin será notificado para confirmar o pagamento.");
     } catch (error: any) {
       console.error('Error uploading uniform proof:', error);
       alert("Erro ao enviar comprovante: " + error.message);
-      setUploadingUniformProof(false);
     } finally {
-      if (uniformFileInputRef.current) {
-        uniformFileInputRef.current.value = '';
-      }
+      setUploadingUniformProof(false);
+      if (uniformFileInputRef.current) uniformFileInputRef.current.value = '';
     }
   };
 
@@ -1790,11 +1779,13 @@ export const DashboardAluno: React.FC<Props> = ({
                         <p className="text-stone-400 text-sm">Enviado em: {training.date}</p>
                         <p className="text-stone-500 text-xs">Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
                       </div>
-                      <a href={training.video_url} target="_blank" rel="noopener noreferrer">
-                        <Button variant="secondary" className="text-xs h-auto px-3 py-1.5">
-                          <PlayCircle size={16} className="mr-1" /> Ver Vídeo
-                        </Button>
-                      </a>
+                      <Button
+                        variant="secondary"
+                        className="text-xs h-auto px-3 py-1.5"
+                        onClick={() => handleViewVideo(training.video_url, training.video_name)}
+                      >
+                        <PlayCircle size={16} className="mr-1" /> Ver Vídeo
+                      </Button>
                     </div>
                   ))
                 ) : (

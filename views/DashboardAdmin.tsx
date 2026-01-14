@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import heic2any from "heic2any";
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram } from 'lucide-react'; // Import FileUp, Eye, Award, Instagram
 import { Button } from '../components/Button';
@@ -136,6 +137,30 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [selectedAssignmentToAssign, setSelectedAssignmentToAssign] = useState<Assignment | null>(null);
     const [selectedStudentForAssignment, setSelectedStudentForAssignment] = useState<string>('');
     const profModeAssignments = useMemo(() => (assignments || []).filter(a => a.created_by === user.id), [assignments, user.id]);
+    const convertToStandardImage = async (file: File): Promise<File> => {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+
+        if (extension === 'heic' || extension === 'heif') {
+            try {
+                const convertedBlob = await heic2any({
+                    blob: file,
+                    toType: 'image/jpeg',
+                    quality: 0.8
+                }) as Blob;
+
+                const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+                return new File([convertedBlob], newFileName, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+            } catch (error) {
+                console.error('HEIC conversion failed:', error);
+                return file;
+            }
+        }
+        return file;
+    };
+
     // Finance State
     const [paymentFilter, setPaymentFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
     const [showBeltConfig, setShowBeltConfig] = useState(false);
@@ -872,7 +897,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleViewPaymentProof = async (filePath: string, proofName: string) => {
         // Open window immediately to avoid pop-up blocking on mobile
         const newWindow = window.open('', '_blank');
-        const bucket = 'payment_proofs'; // Explicitly define bucket here
+
+        // Decide bucket based on path
+        let bucket = 'payment_proofs';
+        if (filePath.includes('event_proofs')) bucket = 'event_proofs';
+        if (filePath.includes('uniform_proofs')) bucket = 'payment_proofs'; // Uniforms use payment_proofs for now
+
         try {
             // Generate a signed URL for private buckets
             const { data, error } = await supabase.storage
@@ -900,27 +930,100 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleViewEventRegistrationProof = async (filePath: string, proofName: string) => {
         // Open window immediately to avoid pop-up blocking on mobile
         const newWindow = window.open('', '_blank');
-        const bucket = 'payment_proofs'; // Changed from 'event_proofs' to match student upload bucket
+        const bucket = 'event_proofs';
         try {
             const { data, error } = await supabase.storage
                 .from(bucket)
-                .createSignedUrl(filePath, 60); // URL valid for 60 seconds
+                .createSignedUrl(filePath, 60);
 
             if (error) {
-                if (newWindow) newWindow.close();
-                console.error('Error generating signed URL in DashboardAdmin (Event Proof):', error);
-                alert('Erro ao visualizar o comprovante de evento: ' + error.message);
-                return;
-            }
+                const { data: retryData, error: retryError } = await supabase.storage
+                    .from('payment_proofs')
+                    .createSignedUrl(filePath, 60);
 
-            if (newWindow) {
-                newWindow.location.href = data.signedUrl;
+                if (retryError) {
+                    if (newWindow) newWindow.close();
+                    console.error('Error generating signed URL in DashboardAdmin (Event Proof):', error);
+                    alert('Erro ao visualizar o comprovante de evento: ' + error.message);
+                    return;
+                }
+                if (newWindow) newWindow.location.href = retryData.signedUrl;
+            } else {
+                if (newWindow) newWindow.location.href = data.signedUrl;
             }
             onNotifyAdmin(`Visualizou comprovante de evento: ${proofName}`, user);
         } catch (error: any) {
             if (newWindow) newWindow.close();
             console.error('Caught error in handleViewEventRegistrationProof (DashboardAdmin):', error);
-            alert('Erro ao visualizar o comprovante de evento: ' + error.message);
+            alert('Erro ao visualizar o comprovante: ' + error.message);
+        }
+    };
+
+    const handleViewHomeTrainingVideo = async (videoUrl: string) => {
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('home_training_videos')
+                .createSignedUrl(videoUrl, 300);
+
+            if (error) throw error;
+            if (newWindow) newWindow.location.href = data.signedUrl;
+            onNotifyAdmin(`Visualizou vídeo de treino em casa`, user);
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            if (videoUrl.startsWith('http')) {
+                window.open(videoUrl, '_blank');
+            } else {
+                alert('Erro ao visualizar o vídeo: ' + error.message);
+            }
+        }
+    };
+
+    const handleViewSchoolReport = async (reportUrl: string) => {
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('school_reports_files')
+                .createSignedUrl(reportUrl, 60);
+
+            if (error) throw error;
+            if (newWindow) newWindow.location.href = data.signedUrl;
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            console.error('Error generating signed URL for report:', error);
+            alert('Erro ao visualizar o boletim: ' + error.message);
+        }
+    };
+
+    const handleViewAssignment = async (fileUrl: string) => {
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('assignment_submissions')
+                .createSignedUrl(fileUrl, 60);
+
+            if (error) throw error;
+            if (newWindow) newWindow.location.href = data.signedUrl;
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            console.error('Error generating signed URL for assignment submission:', error);
+            alert('Erro ao visualizar a resposta do trabalho: ' + error.message);
+        }
+    };
+
+    const handleViewAssignmentSource = async (fileUrl: string) => {
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('assignment_attachments')
+                .createSignedUrl(fileUrl, 300);
+
+            if (error) throw error;
+            if (newWindow) newWindow.location.href = data.signedUrl;
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            console.error('Error generating signed URL for assignment source:', error);
+            alert('Erro ao visualizar o anexo do trabalho: ' + error.message);
         }
     };
 
@@ -951,11 +1054,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
             if (uploadError) throw uploadError;
 
-            const { data: publicUrlData } = supabase.storage
-                .from('payment_proofs')
-                .getPublicUrl(filePath);
-
-            await onUpdateOrderWithProof(selectedOrderToProof.id, publicUrlData.publicUrl, file.name);
+            await onUpdateOrderWithProof(selectedOrderToProof.id, uploadData.path, file.name);
 
             alert("Comprovante enviado com sucesso!");
             setSelectedOrderToProof(null);
@@ -1045,7 +1144,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                 alert('Erro ao excluir perfil do usuário.');
             } else {
                 alert('Perfil do usuário excluído com sucesso!');
-                fetchManagedUsers(); // Re-fetch to update the list
                 onNotifyAdmin(`Excluiu perfil do usuário ID: ${userId}`, user);
             }
         }
@@ -1074,7 +1172,6 @@ export const DashboardAdmin: React.FC<Props> = ({
             setEditingGradCostId(null);
             setEditingGradCostValue('');
             setEditingEvaluationDate('');
-            fetchManagedUsers(); // Re-fetch to update the list
             const userName = managedUsers.find(u => u.id === userIdToUpdate)?.nickname || 'Usuário';
             onNotifyAdmin(`Atualizou avaliação do usuário: ${userName} para Data: ${editingEvaluationDate} / Valor: R$ ${newCost.toFixed(2)}`, user);
         }
@@ -1086,37 +1183,35 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
+        let file = e.target.files[0];
         setUploadingPhoto(true);
 
         try {
+            file = await convertToStandardImage(file);
             const fileExt = file.name.split('.').pop();
             const filePath = `${user.id}/profile_${Date.now()}.${fileExt}`;
 
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
+            const { data: uploadData, error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(uploadData.path);
 
-            await supabase.auth.updateUser({ data: { avatar_url: publicUrl } }); // Changed photo_url to avatar_url
-
-            // For Admin/Professor, update their own profile in 'profiles' table same as students
-            const { error: dbError } = await supabase
-                .from('profiles')
-                .update({ avatar_url: publicUrl })
-                .eq('id', user.id);
+            // Update auth metadata
+            await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+            // Update profile table
+            const { error: dbError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
 
             if (dbError) throw dbError;
 
-            onUpdateProfile({ photo_url: publicUrl }); // We keep photo_url in the local state for now as it's what the UI uses
+            onUpdateProfile({ photo_url: publicUrl });
             alert("Foto de perfil atualizada!");
-
         } catch (error: any) {
             console.error('Error uploading profile photo:', error);
             alert('Erro ao atualizar foto de perfil: ' + error.message);
         } finally {
             setUploadingPhoto(false);
+            if (photoInputRef.current) photoInputRef.current.value = '';
         }
     };
 
@@ -1425,13 +1520,13 @@ export const DashboardAdmin: React.FC<Props> = ({
         let attachmentName = '';
         if (newAssignment.file) {
             try {
-                const file = newAssignment.file;
+                let file = newAssignment.file;
+                file = await convertToStandardImage(file);
                 const fileExt = file.name.split('.').pop();
                 const filePath = `${user.id}/assignments_source/${Date.now()}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('assignment_attachments').upload(filePath, file);
+                const { data: uploadData, error: uploadError } = await supabase.storage.from('assignment_attachments').upload(filePath, file);
                 if (uploadError) throw uploadError;
-                const { data: pub } = supabase.storage.from('assignment_attachments').getPublicUrl(filePath);
-                attachmentUrl = pub.publicUrl;
+                attachmentUrl = uploadData.path;
                 attachmentName = file.name;
             } catch (err: any) {
                 console.error('Error uploading assignment attachment:', err);
@@ -1560,38 +1655,40 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || !e.target.files[0]) return;
-        const file = e.target.files[0];
+        let file = e.target.files[0];
 
         // Show preview immediately
         const previewUrl = URL.createObjectURL(file);
         setClassPhoto(previewUrl);
 
         try {
+            file = await convertToStandardImage(file);
             const ext = file.name.split('.').pop();
             const filePath = `${user.id}/class_records/${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file, {
+            const { data: uploadData, error: uploadError } = await supabase.storage.from('class_records').upload(filePath, file, {
                 upsert: true
             });
             if (uploadError) throw uploadError;
-            const { data: pub } = supabase.storage.from('class_records').getPublicUrl(filePath);
 
-            // Store in DB
+            // Store in DB using relative path
             await onAddClassRecord({
-                photo_url: pub.publicUrl,
+                photo_url: uploadData.path,
                 created_by: user.id,
                 description: `Registro de aula por ${user.nickname || user.name}`
             });
 
             // Update class records list for UI
-            setClassRecords(prev => [...prev, { name: filePath, url: pub.publicUrl, created_at: new Date().toISOString() }]);
+            setClassRecords(prev => [...prev, { name: uploadData.path, url: '', created_at: new Date().toISOString() }]);
 
-            onNotifyAdmin(`Registro de aula enviado: ${pub.publicUrl}`, user);
+            onNotifyAdmin(`Registro de aula enviado`, user);
             alert('Registro de aula enviado com sucesso!');
             setClassPhoto(null); // Clear preview after successful upload
         } catch (err: any) {
             console.error('Error uploading class record:', err);
             alert('Erro ao enviar registro de aula: ' + (err.message || err.error_description || 'Erro desconhecido'));
             setClassPhoto(null); // Clear preview on error
+        } finally {
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -1600,15 +1697,33 @@ export const DashboardAdmin: React.FC<Props> = ({
             const { data, error } = await supabase.storage.from('class_records').list('', { limit: 20 });
             if (error) throw error;
             const items = data || [];
-            const withUrls = items.map((it: any) => {
-                const { data: pub } = supabase.storage.from('class_records').getPublicUrl(it.name);
-                return { name: it.name, url: pub.publicUrl, created_at: it.created_at };
-            });
-            setClassRecords(withUrls);
+            // Only store item names/paths, sign them when viewing
+            const records = items.map((it: any) => ({
+                name: it.name,
+                url: '', // Will be signed on click
+                created_at: it.created_at
+            }));
+            setClassRecords(records);
         } catch (error) {
             console.error('Error fetching class records:', error);
         }
     }, []);
+
+    const handleViewClassRecord = async (filePath: string) => {
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('class_records')
+                .createSignedUrl(filePath, 300); // 5 minutes
+
+            if (error) throw error;
+            if (newWindow) newWindow.location.href = data.signedUrl;
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            console.error('Error generating signed URL for class record:', error);
+            alert('Erro ao visualizar foto: ' + error.message);
+        }
+    };
 
     const fetchAttendanceHistory = useCallback(async () => {
         // Fetch real attendance records from DB
@@ -1684,10 +1799,29 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleViewHomeTrainingVideo = async (videoUrl: string) => {
-        // For public URLs, we can directly open them.
-        // If it were a private bucket, we'd need a signed URL.
-        window.open(videoUrl, '_blank');
-        onNotifyAdmin(`Visualizou vídeo de treino em casa: ${videoUrl}`, user); // Added notification
+        // Home training videos are private, needs signed URL
+        const newWindow = window.open('', '_blank');
+        try {
+            const { data, error } = await supabase.storage
+                .from('home_training_videos')
+                .createSignedUrl(videoUrl, 300); // 5 minutes
+
+            if (error) throw error;
+
+            if (newWindow) {
+                newWindow.location.href = data.signedUrl;
+            }
+            onNotifyAdmin(`Visualizou vídeo de treino: ${videoUrl}`, user);
+        } catch (error: any) {
+            if (newWindow) newWindow.close();
+            console.error('Error viewing training video:', error);
+            // Fallback for full URLs (legacy)
+            if (videoUrl.startsWith('http')) {
+                window.open(videoUrl, '_blank');
+            } else {
+                alert('Erro ao visualizar vídeo: ' + error.message);
+            }
+        }
     };
 
     // --- CALCULATED PROFESSORS DATA (Pedagogical Tab) ---
@@ -2666,17 +2800,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 accept="image/*,application/pdf"
                                                                 onChange={async (e) => {
                                                                     if (e.target.files?.[0]) {
-                                                                        const file = e.target.files[0];
+                                                                        let file = e.target.files[0];
                                                                         try {
+                                                                            file = await convertToStandardImage(file);
                                                                             const ext = file.name.split('.').pop();
-                                                                            const path = `payment_proofs/${payment.id}_${Date.now()}.${ext}`;
-                                                                            const { error } = await supabase.storage.from('payment_proofs').upload(path, file);
+                                                                            const path = `${user.id}/payment_proofs/${payment.id}_${Date.now()}.${ext}`;
+                                                                            const { data: uploadData, error } = await supabase.storage.from('payment_proofs').upload(path, file);
                                                                             if (error) throw error;
-                                                                            const { data: pub } = supabase.storage.from('payment_proofs').getPublicUrl(path);
 
                                                                             await onUpdatePaymentRecord({
                                                                                 ...payment,
-                                                                                proof_url: pub.publicUrl,
+                                                                                proof_url: uploadData.path,
                                                                                 proof_name: file.name
                                                                             });
                                                                             alert('Comprovante enviado!');
@@ -3339,7 +3473,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         <Button
                                                                             variant="secondary"
                                                                             className="text-xs h-auto px-2 py-1"
-                                                                            onClick={() => handleViewReport(report.file_url, report.file_name)}
+                                                                            onClick={() => handleViewSchoolReport(report.file_url)}
                                                                         >
                                                                             <FileText size={14} className="mr-1" /> Ver
                                                                         </Button>
@@ -4437,9 +4571,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         {studentVideos.length > 0 ? studentVideos.slice(0, 3).map((v: any) => (
                                                                             <div key={v.id} className="flex items-center justify-between bg-stone-900/50 p-2 rounded-lg border border-stone-800">
                                                                                 <span className="text-[10px] text-stone-300 truncate w-24">{v.video_name}</span>
-                                                                                <a href={v.video_url} target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-white transition-colors">
+                                                                                <button
+                                                                                    onClick={() => handleViewHomeTrainingVideo(v.video_url)}
+                                                                                    className="text-indigo-400 hover:text-white transition-colors"
+                                                                                >
                                                                                     <PlayCircle size={14} />
-                                                                                </a>
+                                                                                </button>
                                                                             </div>
                                                                         )) : <p className="text-[10px] text-stone-600 italic">Nenhum vídeo</p>}
                                                                     </div>
@@ -4499,7 +4636,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             {classRecords.length > 0 ? classRecords.map(rec => (
                                                 <div key={rec.name} className="flex justify-between items-center bg-stone-900 p-3 rounded border-l-2 border-purple-500">
                                                     <span className="text-stone-300 text-sm truncate max-w-[60%]">{rec.name}</span>
-                                                    <a href={rec.url} target="_blank" rel="noopener noreferrer" className="text-purple-400 text-xs hover:underline">Abrir</a>
+                                                    <button
+                                                        onClick={() => handleViewClassRecord(rec.name)}
+                                                        className="text-purple-400 text-xs hover:underline"
+                                                    >
+                                                        Abrir
+                                                    </button>
                                                 </div>
                                             )) : (
                                                 <p className="text-stone-500 text-sm">Nenhum registro enviado ainda.</p>
