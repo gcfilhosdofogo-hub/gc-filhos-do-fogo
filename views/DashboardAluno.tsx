@@ -38,31 +38,67 @@ interface Props {
  */
 const convertToStandardImage = async (file: File): Promise<File> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
+  let processingFile = file;
 
+  // 1. Convert HEIC/HEIF if necessary
   if (extension === 'heic' || extension === 'heif') {
-    // Check size - HEIC decompress takes significant memory. Limit input size to avoid crash.
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error("Arquivo muito grande (max 10MB). Por favor use um arquivo menor.");
-    }
-
+    if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo HEIC muito grande. Máx 20MB.");
     try {
-      console.log('Detectado arquivo HEIC/HEIF. Convertendo para JPEG...');
-      const blob = await heic2any({
-        blob: file,
-        toType: 'image/jpeg',
-        quality: 0.6
-      });
-
+      const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
       const convertedBlob = Array.isArray(blob) ? blob[0] : blob;
       const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-      // Fix: Return properly constructed File object
-      return new File([convertedBlob], newFileName, { type: 'image/jpeg', lastModified: Date.now() });
+      processingFile = new File([convertedBlob], newFileName, { type: 'image/jpeg' });
     } catch (err) {
-      console.error('Erro ao converter HEIC:', err);
-      return file; // Fallback to original
+      console.error('HEIC conversion failed:', err);
     }
   }
-  return file;
+
+  // 2. Compress and resize all images (JPG, PNG, WEBP, and converted HEIC)
+  const isImage = processingFile.type.startsWith('image/') && !processingFile.type.includes('gif');
+  if (isImage) {
+    try {
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const MAX_WIDTH = 1600;
+            const MAX_HEIGHT = 1600;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+            } else {
+              if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+              } else {
+                resolve(processingFile);
+              }
+            }, 'image/jpeg', 0.75); // 0.75 quality is great for saving space without visible loss
+          };
+          img.src = e.target?.result as string;
+        };
+        reader.readAsDataURL(processingFile);
+      });
+    } catch (err) {
+      console.error('Compression failed:', err);
+      return processingFile;
+    }
+  }
+
+  return processingFile;
 };
 
 
@@ -135,10 +171,11 @@ export const DashboardAluno: React.FC<Props> = ({
   const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<EventRegistration | null>(null);
   const eventFileInputRef = useRef<HTMLInputElement>(null); // Ref for the hidden file input for event proofs
 
-  // Uniform Order Proof Upload State
-  const [uploadingUniformProof, setUploadingUniformProof] = useState(false);
-  const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
   const uniformFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Video/Link Training State
+  const [trainingType, setTrainingType] = useState<'file' | 'link'>('link');
+  const [videoLink, setVideoLink] = useState('');
 
   // Assignment Submission Upload State
   const [uploadingAssignment, setUploadingAssignment] = useState(false);
@@ -377,6 +414,41 @@ export const DashboardAluno: React.FC<Props> = ({
 
 
 
+  const handleAddTrainingLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!videoLink) return;
+
+    // Simple validation for Google Drive / Video links
+    if (!videoLink.includes('drive.google.com') && !videoLink.includes('youtube.com') && !videoLink.includes('youtu.be') && !videoLink.includes('http')) {
+      return alert('Por favor, insira um link válido (ex: Google Drive, YouTube, etc).');
+    }
+
+    setUploading(true);
+    try {
+      const now = new Date();
+      const expires = new Date(now.getTime() + (180 * 24 * 60 * 60 * 1000)); // Links last 6 months by default
+
+      const newVideo: Omit<HomeTraining, 'id' | 'created_at'> = {
+        user_id: user.id,
+        date: now.toISOString().split('T')[0],
+        video_name: `Link de Treino: ${now.toLocaleDateString()}`,
+        video_url: videoLink,
+        expires_at: expires.toISOString()
+      };
+
+      await onAddHomeTraining(newVideo);
+      setUploading(false);
+      setVideoLink('');
+      setShowPendingVideoPopup(false);
+      onNotifyAdmin('Enviou Link de Treino em Casa (Google Drive)', user);
+      alert("Link de treino enviado com sucesso!");
+    } catch (err: any) {
+      console.error('Error adding video link:', err);
+      alert('Erro ao salvar o link: ' + err.message);
+      setUploading(false);
+    }
+  };
+
   const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
@@ -414,6 +486,29 @@ export const DashboardAluno: React.FC<Props> = ({
       console.error('Error uploading video:', error);
       alert("Erro ao enviar vídeo (" + (error.status || error.name) + "): " + error.message);
       setUploading(false);
+    }
+  };
+
+  const handleViewVideo = async (videoUrl: string, videoName: string) => {
+    // If it's a external link (YouTube/Drive), open directly
+    if (videoUrl.startsWith('http')) {
+      window.open(videoUrl, '_blank');
+      onNotifyAdmin(`Visualizou link de treino: ${videoName}`, user);
+      return;
+    }
+
+    const newWindow = window.open('', '_blank');
+    try {
+      const { data, error } = await supabase.storage
+        .from('home_training_videos')
+        .createSignedUrl(videoUrl, 300); // 5 minutes
+
+      if (error) throw error;
+      if (newWindow) newWindow.location.href = data.signedUrl;
+      onNotifyAdmin(`Visualizou vídeo de treino: ${videoName}`, user);
+    } catch (error: any) {
+      if (newWindow) newWindow.close();
+      alert('Erro ao visualizar o vídeo: ' + error.message);
     }
   };
 
@@ -1748,25 +1843,61 @@ export const DashboardAluno: React.FC<Props> = ({
 
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
                 <h3 className="text-lg font-bold text-white mb-3">Enviar Vídeo de Treino</h3>
-                <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
-                  {uploading ? (
-                    <div className="text-center">
-                      <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
-                      <p className="text-white">Enviando vídeo...</p>
-                    </div>
-                  ) : (
-                    <>
-                      <Video size={32} className="text-stone-500 mb-2" />
-                      <label className="cursor-pointer">
-                        <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
-                          Selecionar Vídeo
-                        </span>
-                        <input type="file" accept="video/*" className="hidden" onChange={handleUploadVideo} disabled={uploading} />
-                      </label>
-                      <p className="text-xs text-stone-500 mt-2">MP4, MOV, etc. Máx 50MB.</p>
-                    </>
-                  )}
+
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setTrainingType('link')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${trainingType === 'link' ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400'}`}
+                  >
+                    Link (Google Drive/YT)
+                  </button>
+                  <button
+                    onClick={() => setTrainingType('file')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${trainingType === 'file' ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400'}`}
+                  >
+                    Upload Direto
+                  </button>
                 </div>
+
+                {trainingType === 'link' ? (
+                  <form onSubmit={handleAddTrainingLink} className="space-y-3">
+                    <div className="bg-stone-900/50 p-4 rounded-lg border border-stone-700">
+                      <label className="block text-xs text-stone-400 mb-2">Cole o link do Google Drive ou YouTube abaixo:</label>
+                      <input
+                        type="url"
+                        value={videoLink}
+                        onChange={(e) => setVideoLink(e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                        className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                        required
+                      />
+                      <p className="text-[10px] text-stone-500 mt-2">Dica: Lembre-se de deixar o link do Google Drive como "Qualquer pessoa com o link".</p>
+                    </div>
+                    <Button fullWidth type="submit" disabled={uploading || !videoLink}>
+                      {uploading ? 'Salvando...' : 'Salvar Link de Treino'}
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
+                    {uploading ? (
+                      <div className="text-center">
+                        <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
+                        <p className="text-white">Enviando vídeo...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Video size={32} className="text-stone-500 mb-2" />
+                        <label className="cursor-pointer">
+                          <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
+                            Selecionar Vídeo
+                          </span>
+                          <input type="file" accept="video/*" className="hidden" onChange={handleUploadVideo} disabled={uploading} />
+                        </label>
+                        <p className="text-xs text-stone-500 mt-2">MP4, MOV, etc. Máx 50MB.</p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Clock size={20} className="text-stone-400" /> Meus Vídeos Enviados</h3>

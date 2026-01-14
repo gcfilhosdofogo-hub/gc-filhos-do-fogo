@@ -139,26 +139,65 @@ export const DashboardAdmin: React.FC<Props> = ({
     const profModeAssignments = useMemo(() => (assignments || []).filter(a => a.created_by === user.id), [assignments, user.id]);
     const convertToStandardImage = async (file: File): Promise<File> => {
         const extension = file.name.split('.').pop()?.toLowerCase();
+        let processingFile = file;
 
+        // 1. Convert HEIC/HEIF
         if (extension === 'heic' || extension === 'heif') {
             try {
-                const convertedBlob = await heic2any({
-                    blob: file,
-                    toType: 'image/jpeg',
-                    quality: 0.8
-                }) as Blob;
-
+                const convertedBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 }) as Blob;
                 const newFileName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-                return new File([convertedBlob], newFileName, {
-                    type: 'image/jpeg',
-                    lastModified: Date.now()
-                });
+                processingFile = new File([convertedBlob], newFileName, { type: 'image/jpeg' });
             } catch (error) {
                 console.error('HEIC conversion failed:', error);
-                return file;
             }
         }
-        return file;
+
+        // 2. Compress and resize
+        const isImage = processingFile.type.startsWith('image/') && !processingFile.type.includes('gif');
+        if (isImage) {
+            try {
+                return await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const MAX_WIDTH = 1600;
+                            const MAX_HEIGHT = 1600;
+
+                            if (width > height) {
+                                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                            } else {
+                                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx?.drawImage(img, 0, 0, width, height);
+
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                                    resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                                } else {
+                                    resolve(processingFile);
+                                }
+                            }, 'image/jpeg', 0.8);
+                        };
+                        img.src = e.target?.result as string;
+                    };
+                    reader.readAsDataURL(processingFile);
+                });
+            } catch (err) {
+                console.error('Compression failed:', err);
+                return processingFile;
+            }
+        }
+
+        return processingFile;
     };
 
     // Finance State
@@ -960,6 +999,13 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleViewHomeTrainingVideo = async (videoUrl: string) => {
+        // If it's a external link (YouTube/Drive), open directly
+        if (videoUrl.startsWith('http')) {
+            window.open(videoUrl, '_blank');
+            onNotifyAdmin(`Visualizou link de treino em casa`, user);
+            return;
+        }
+
         const newWindow = window.open('', '_blank');
         try {
             const { data, error } = await supabase.storage
@@ -971,11 +1017,8 @@ export const DashboardAdmin: React.FC<Props> = ({
             onNotifyAdmin(`Visualizou vídeo de treino em casa`, user);
         } catch (error: any) {
             if (newWindow) newWindow.close();
-            if (videoUrl.startsWith('http')) {
-                window.open(videoUrl, '_blank');
-            } else {
-                alert('Erro ao visualizar o vídeo: ' + error.message);
-            }
+            console.error('Error opening video:', error);
+            alert('Erro ao visualizar o vídeo: ' + error.message);
         }
     };
 
