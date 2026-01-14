@@ -594,22 +594,6 @@ export const DashboardAluno: React.FC<Props> = ({
     }
   };
 
-  const handleViewVideo = async (fileUrl: string, videoName: string) => {
-    const newWindow = window.open('', '_blank');
-    try {
-      const { data, error } = await supabase.storage
-        .from('home_training_videos')
-        .createSignedUrl(fileUrl, 300); // 5 minutes for video
-
-      if (error) throw error;
-      if (newWindow) newWindow.location.href = data.signedUrl;
-    } catch (error: any) {
-      if (newWindow) newWindow.close();
-      console.error('Error viewing video:', error);
-      alert('Erro ao carregar vídeo: ' + error.message);
-    }
-  };
-
   const handleGoToUpload = () => {
     setShowPendingVideoPopup(false);
     setActiveMainTab('home_training');
