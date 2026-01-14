@@ -304,15 +304,25 @@ export const DashboardAluno: React.FC<Props> = ({
 
   // Check for pending video on mount
   useEffect(() => {
-    // Se não for dia de aula e o aluno não tiver enviado vídeo hoje (simulação de lista vazia no inicio)
-    if (!isClassDay && myHomeTrainings.length === 0) {
-      // Pequeno delay para simular carregamento e ficar visualmente agradável
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+
+    // Don't show popup on weekends (Saturday = 6, Sunday = 0)
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    if (isWeekend) return;
+
+    // Check if student already sent a video/link TODAY
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const hasSentToday = myHomeTrainings.some(training => training.date === todayStr);
+
+    // Only show popup if it's a weekday and no video sent today
+    if (!isClassDay && !hasSentToday) {
       const timer = setTimeout(() => {
         setShowPendingVideoPopup(true);
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isClassDay, myHomeTrainings.length]); // Run once on mount
+  }, [isClassDay, myHomeTrainings]); // Run once on mount or when trainings change
 
   const isOver18 = useMemo(() => {
     if (!user.birthDate) return false;
