@@ -303,9 +303,6 @@ export const DashboardAluno: React.FC<Props> = ({
     );
   }, [classSessions, studentProfessorId]);
 
-  // Mock Logic: Today is NOT a class day, enforcing video upload logic
-  const isClassDay = false;
-
   // Check for pending video on mount
   useEffect(() => {
     const today = new Date();
@@ -315,18 +312,24 @@ export const DashboardAluno: React.FC<Props> = ({
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     if (isWeekend) return;
 
-    // Check if student already sent a video/link TODAY
+    // Check if student has a class with their professor TODAY
     const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const hasClassToday = myClasses.some(session => session.date === todayStr);
+
+    // If there's a class today, don't show popup (student will train in person)
+    if (hasClassToday) return;
+
+    // Check if student already sent a video/link TODAY
     const hasSentToday = myHomeTrainings.some(training => training.date === todayStr);
 
-    // Only show popup if it's a weekday and no video sent today
-    if (!isClassDay && !hasSentToday) {
+    // Only show popup if: weekday + no class today + no video sent today
+    if (!hasSentToday) {
       const timer = setTimeout(() => {
         setShowPendingVideoPopup(true);
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isClassDay, myHomeTrainings]); // Run once on mount or when trainings change
+  }, [myClasses, myHomeTrainings]); // Run when classes or trainings change
 
   const isOver18 = useMemo(() => {
     if (!user.birthDate) return false;
