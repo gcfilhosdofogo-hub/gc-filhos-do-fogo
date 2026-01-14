@@ -1841,31 +1841,6 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
     };
 
-    const handleViewHomeTrainingVideo = async (videoUrl: string) => {
-        // Home training videos are private, needs signed URL
-        const newWindow = window.open('', '_blank');
-        try {
-            const { data, error } = await supabase.storage
-                .from('home_training_videos')
-                .createSignedUrl(videoUrl, 300); // 5 minutes
-
-            if (error) throw error;
-
-            if (newWindow) {
-                newWindow.location.href = data.signedUrl;
-            }
-            onNotifyAdmin(`Visualizou vídeo de treino: ${videoUrl}`, user);
-        } catch (error: any) {
-            if (newWindow) newWindow.close();
-            console.error('Error viewing training video:', error);
-            // Fallback for full URLs (legacy)
-            if (videoUrl.startsWith('http')) {
-                window.open(videoUrl, '_blank');
-            } else {
-                alert('Erro ao visualizar vídeo: ' + error.message);
-            }
-        }
-    };
 
     // --- CALCULATED PROFESSORS DATA (Pedagogical Tab) ---
     const professorsData: ProfessorClassData[] = useMemo(() => {
