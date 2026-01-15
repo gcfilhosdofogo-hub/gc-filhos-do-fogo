@@ -587,6 +587,18 @@ function AppContent() {
     }
   };
 
+  const handleDeleteMusic = async (musicId: string) => {
+    if (!session) return;
+    const { error } = await supabase.from('music_items').delete().eq('id', musicId);
+    if (error) {
+      console.error('Error deleting music:', error);
+      alert('Erro ao excluir música: ' + error.message);
+    } else {
+      setMusicList(prev => prev.filter(m => m.id !== musicId));
+      if (user) handleNotifyAdmin(`Excluiu uma música do acervo`, user);
+    }
+  };
+
   const handleAddOrder = async (order: Omit<UniformOrder, 'id' | 'created_at'>) => {
     const { data, error } = await supabase.from('uniform_orders').insert(order).select().single();
     if (error) console.error('Error adding order:', error);
@@ -985,6 +997,7 @@ function AppContent() {
               onToggleBlockUser={handleToggleBlockUser}
               onUpdateOrderWithProof={handleUpdateOrderWithProof}
               onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
+              onDeleteMusic={handleDeleteMusic}
             />
           )}
         </div>

@@ -345,8 +345,10 @@ export const DashboardAluno: React.FC<Props> = ({
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     if (isWeekend) return;
 
+    // Use local YYYY-MM-DD for comparison (safer than ISO)
+    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
     // Check if student has a class with their professor TODAY
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
     const hasClassToday = myClasses.some(session => session.date === todayStr);
 
     // If there's a class today, don't show popup (student will train in person)
@@ -359,10 +361,10 @@ export const DashboardAluno: React.FC<Props> = ({
     if (!hasSentToday) {
       const timer = setTimeout(() => {
         setShowPendingVideoPopup(true);
-      }, 800);
+      }, 1500); // 1.5s delay for better UX
       return () => clearTimeout(timer);
     }
-  }, [myClasses, myHomeTrainings]); // Run when classes or trainings change
+  }, [myClasses, myHomeTrainings]);
 
   const isOver18 = useMemo(() => {
     if (!user.birthDate) return false;

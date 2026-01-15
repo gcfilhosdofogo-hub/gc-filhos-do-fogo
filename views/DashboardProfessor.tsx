@@ -32,6 +32,7 @@ interface Props {
   onUpdateEventRegistrationWithProof: (updatedRegistration: any) => Promise<void>;
   onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
   allUsersProfiles: User[];
+  onDeleteMusic?: (musicId: string) => Promise<void>;
 }
 
 const BELT_COLOR_MAPPING: Record<string, { main: string, ponta?: string }> = {
@@ -94,6 +95,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   eventRegistrations,
   onAddClassRecord = async (record: { photo_url: string; created_by: string; description?: string }) => { },
   allUsersProfiles = [],
+  onDeleteMusic = async (_id: string) => { }
 }) => {
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
@@ -173,6 +175,11 @@ export const DashboardProfessor: React.FC<Props> = ({
     const extension = file.name.split('.').pop()?.toLowerCase();
     let processingFile = file;
 
+    // Skip non-image files
+    if (!file.type.startsWith('image/')) {
+      return file;
+    }
+
     // 1. Convert HEIC/HEIF
     if (extension === 'heic' || extension === 'heif') {
       try {
@@ -181,6 +188,7 @@ export const DashboardProfessor: React.FC<Props> = ({
         processingFile = new File([convertedBlob], newFileName, { type: 'image/jpeg' });
       } catch (error) {
         console.error('HEIC conversion failed:', error);
+        return file;
       }
     }
 
@@ -189,35 +197,48 @@ export const DashboardProfessor: React.FC<Props> = ({
     if (isImage) {
       try {
         return await new Promise((resolve) => {
+          const timeout = setTimeout(() => {
+            console.warn('Image processing timeout, using original');
+            resolve(processingFile);
+          }, 15000);
+
           const reader = new FileReader();
+          reader.onerror = () => { clearTimeout(timeout); resolve(processingFile); };
           reader.onload = (e) => {
             const img = new Image();
+            img.onerror = () => { clearTimeout(timeout); resolve(processingFile); };
             img.onload = () => {
-              const canvas = document.createElement('canvas');
-              let width = img.width;
-              let height = img.height;
-              const MAX_WIDTH = 1600;
-              const MAX_HEIGHT = 1600;
+              try {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_WIDTH = 1600;
+                const MAX_HEIGHT = 1600;
 
-              if (width > height) {
-                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-              } else {
-                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-
-              canvas.toBlob((blob) => {
-                if (blob) {
-                  const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
-                  resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                if (width > height) {
+                  if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                 } else {
-                  resolve(processingFile);
+                  if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                 }
-              }, 'image/jpeg', 0.8);
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                  clearTimeout(timeout);
+                  if (blob) {
+                    const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                    resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                  } else {
+                    resolve(processingFile);
+                  }
+                }, 'image/jpeg', 0.8);
+              } catch (err) {
+                clearTimeout(timeout);
+                resolve(processingFile);
+              }
             };
             img.src = e.target?.result as string;
           };
@@ -233,6 +254,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedPaymentToProof) return;
     let file = e.target.files[0];
     setUploadingPaymentProof(true);
@@ -265,6 +288,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) return;
     let file = e.target.files[0];
     setUploadingUniformProof(true);
@@ -294,6 +319,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0 || !selectedEventRegToProof) return;
     let file = e.target.files[0];
     setUploadingEventProof(true);
@@ -813,18 +840,34 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handleViewHomeTrainingVideo = async (videoUrl: string) => {
+    let path = videoUrl;
+
     // If it's a external link (YouTube/Drive), open directly
+    // But if it's a Supabase URL, we need to extract the path to sign it (since bucket is private)
     if (videoUrl.startsWith('http')) {
-      window.open(videoUrl, '_blank');
-      onNotifyAdmin(`Visualizou link de treino em casa`, user);
-      return;
+      if (videoUrl.includes('supabase.co/storage/v1/object/')) {
+        // Extract path after bucket name
+        const segments = videoUrl.split('/');
+        const bucketIndex = segments.indexOf('home_training_videos');
+        if (bucketIndex !== -1) {
+          path = segments.slice(bucketIndex + 1).join('/');
+        } else {
+          // Fallback to direct open if bucket name not found in URL
+          window.open(videoUrl, '_blank');
+          return;
+        }
+      } else {
+        window.open(videoUrl, '_blank');
+        onNotifyAdmin(`Visualizou link de treino em casa`, user);
+        return;
+      }
     }
 
     const newWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.storage
         .from('home_training_videos')
-        .createSignedUrl(videoUrl, 300);
+        .createSignedUrl(path, 300);
 
       if (error) throw error;
 
@@ -835,12 +878,7 @@ export const DashboardProfessor: React.FC<Props> = ({
     } catch (error: any) {
       if (newWindow) newWindow.close();
       console.error('Error generating signed URL:', error);
-      // Fallback for full URLs
-      if (videoUrl.startsWith('http')) {
-        window.open(videoUrl, '_blank');
-      } else {
-        alert('Erro ao visualizar o vídeo: ' + error.message);
-      }
+      alert('Erro ao visualizar vídeo: ' + error.message);
     }
   };
 
@@ -905,6 +943,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || !e.target.files[0]) return;
     let file = e.target.files[0];
     try {
@@ -936,6 +976,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!e.target.files || e.target.files.length === 0) return;
     let file = e.target.files[0];
     setUploadingPhoto(true);
@@ -978,7 +1020,12 @@ export const DashboardProfessor: React.FC<Props> = ({
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-900 to-stone-900 p-8 rounded-2xl border border-purple-900/50 shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-          <div className="relative group cursor-pointer" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+          <div className="relative group cursor-pointer" onClick={() => {
+            if (!uploadingPhoto) {
+              // Delay for mobile PWA
+              setTimeout(() => photoInputRef.current?.click(), 100);
+            }
+          }} title="Clique para alterar a foto">
             <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
               {user.photo_url ? (
                 <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
@@ -998,6 +1045,7 @@ export const DashboardProfessor: React.FC<Props> = ({
             className="hidden"
             accept="image/*"
             onChange={handleProfilePhotoUpload}
+            onClick={(e) => { e.stopPropagation(); }}
             disabled={uploadingPhoto}
           />
 
@@ -1742,7 +1790,15 @@ export const DashboardProfessor: React.FC<Props> = ({
                             <Clock size={10} /> {new Date(m.created_at || new Date().toISOString()).toLocaleDateString('pt-BR')}
                           </span>
                           <div className="flex items-center gap-2">
-                            <button className="p-1.5 text-stone-600 hover:text-red-500 transition-colors" title="Remover">
+                            <button
+                              className="p-1.5 text-stone-600 hover:text-red-500 transition-colors"
+                              title="Remover"
+                              onClick={() => {
+                                if (window.confirm('Tem certeza que deseja remover esta música do acervo?')) {
+                                  onDeleteMusic(m.id);
+                                }
+                              }}
+                            >
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -1857,7 +1913,8 @@ export const DashboardProfessor: React.FC<Props> = ({
                               className="text-[10px] h-auto px-2 py-1 flex-1 bg-stone-800 border-stone-700"
                               onClick={() => {
                                 setSelectedOrderToProof(order);
-                                uniformFileInputRef.current?.click();
+                                // Delay for mobile PWA
+                                setTimeout(() => uniformFileInputRef.current?.click(), 100);
                               }}
                               disabled={uploadingUniformProof}
                             >
@@ -1869,6 +1926,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                               className="hidden"
                               ref={uniformFileInputRef}
                               onChange={handleFileChangeForUniformProof}
+                              onClick={(e) => { e.stopPropagation(); }}
                               disabled={uploadingUniformProof}
                             />
                           </>
@@ -1946,7 +2004,8 @@ export const DashboardProfessor: React.FC<Props> = ({
                                 className="text-[10px] h-auto px-2 py-1 bg-stone-800 border-stone-700"
                                 onClick={() => {
                                   setSelectedPaymentToProof(payment);
-                                  fileInputRef.current?.click();
+                                  // Delay for mobile PWA
+                                  setTimeout(() => fileInputRef.current?.click(), 100);
                                 }}
                                 disabled={uploadingPaymentProof}
                               >
@@ -1958,6 +2017,7 @@ export const DashboardProfessor: React.FC<Props> = ({
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileChangeForPaymentProof}
+                                onClick={(e) => { e.stopPropagation(); }}
                                 disabled={uploadingPaymentProof}
                               />
                             </>
@@ -2047,7 +2107,11 @@ export const DashboardProfessor: React.FC<Props> = ({
                                 <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
                               ) : (
                                 <button
-                                  onClick={() => { setSelectedEventRegToProof(reg); eventFileInputRef.current?.click(); }}
+                                  onClick={() => {
+                                    setSelectedEventRegToProof(reg);
+                                    // Delay for mobile PWA
+                                    setTimeout(() => eventFileInputRef.current?.click(), 100);
+                                  }}
                                   className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
                                 >
                                   {reg.proof_url ? 'Novo Comprovante' : 'Enviar PIX'}
@@ -2077,9 +2141,32 @@ export const DashboardProfessor: React.FC<Props> = ({
               <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
               <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50">
                 {classPhoto ? (
-                  <div className="relative w-full h-32 rounded overflow-hidden"><img src={classPhoto} className="w-full h-full object-cover" /><button onClick={() => setClassPhoto(null)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"><X size={12} /></button></div>
+                  <div className="relative w-full h-32 rounded overflow-hidden">
+                    <img src={classPhoto} className="w-full h-full object-cover" />
+                    <button onClick={() => setClassPhoto(null)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1">
+                      <X size={12} />
+                    </button>
+                  </div>
                 ) : (
-                  <label className="cursor-pointer flex flex-col items-center"><Camera size={32} className="text-stone-500 mb-2" /><span className="text-purple-400 font-bold">Enviar Foto</span><input type="file" className="hidden" onChange={handlePhotoUpload} /></label>
+                  <div
+                    className="cursor-pointer flex flex-col items-center"
+                    onClick={() => {
+                      setTimeout(() => {
+                        const input = document.getElementById('class-photo-input');
+                        if (input) (input as HTMLInputElement).click();
+                      }, 100);
+                    }}
+                  >
+                    <Camera size={32} className="text-stone-500 mb-2" />
+                    <span className="text-purple-400 font-bold">Enviar Foto</span>
+                    <input
+                      id="class-photo-input"
+                      type="file"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -2105,6 +2192,11 @@ export const DashboardProfessor: React.FC<Props> = ({
                 <Shirt size={28} className="text-emerald-300" />
                 <span className="text-sm font-bold">Uniforme</span>
                 <span className="text-xs text-emerald-200">Pedidos</span>
+              </Button>
+              <Button onClick={() => setProfView('financial')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-900 to-stone-700 hover:from-stone-800 hover:to-stone-600 border border-stone-500/30">
+                <Wallet size={28} className="text-stone-300" />
+                <span className="text-sm font-bold">Financeiro</span>
+                <span className="text-xs text-stone-200">Minha Conta</span>
               </Button>
             </div>
 

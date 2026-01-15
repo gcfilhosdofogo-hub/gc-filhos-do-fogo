@@ -49,6 +49,7 @@ interface Props {
     onToggleBlockUser: (userId: string, currentStatus?: 'active' | 'blocked') => Promise<void>;
     onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
     onUpdateEventRegistrationWithProof: (updatedRegistration: EventRegistration) => Promise<void>;
+    onDeleteMusic?: (musicId: string) => Promise<void>;
 }
 
 const UNIFORM_PRICES = {
@@ -98,7 +99,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     allUsersProfiles = [],
     onToggleBlockUser,
     onUpdateOrderWithProof,
-    onUpdateEventRegistrationWithProof
+    onUpdateEventRegistrationWithProof,
+    onDeleteMusic = async (_id: string) => { }
 }) => {
     const { session } = useSession();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -141,6 +143,11 @@ export const DashboardAdmin: React.FC<Props> = ({
         const extension = file.name.split('.').pop()?.toLowerCase();
         let processingFile = file;
 
+        // Skip non-image files
+        if (!file.type.startsWith('image/')) {
+            return file;
+        }
+
         // 1. Convert HEIC/HEIF
         if (extension === 'heic' || extension === 'heif') {
             try {
@@ -157,35 +164,49 @@ export const DashboardAdmin: React.FC<Props> = ({
         if (isImage) {
             try {
                 return await new Promise((resolve) => {
+                    const timeout = setTimeout(() => {
+                        console.warn('Image processing timeout, using original file');
+                        resolve(processingFile);
+                    }, 15000);
+
                     const reader = new FileReader();
+                    reader.onerror = () => { clearTimeout(timeout); resolve(processingFile); };
                     reader.onload = (e) => {
                         const img = new Image();
+                        img.onerror = () => { clearTimeout(timeout); resolve(processingFile); };
                         img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            let width = img.width;
-                            let height = img.height;
-                            const MAX_WIDTH = 1600;
-                            const MAX_HEIGHT = 1600;
+                            try {
+                                const canvas = document.createElement('canvas');
+                                let width = img.width;
+                                let height = img.height;
+                                const MAX_WIDTH = 1600;
+                                const MAX_HEIGHT = 1600;
 
-                            if (width > height) {
-                                if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                            } else {
-                                if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                            }
-
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            ctx?.drawImage(img, 0, 0, width, height);
-
-                            canvas.toBlob((blob) => {
-                                if (blob) {
-                                    const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
-                                    resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                                if (width > height) {
+                                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                                 } else {
-                                    resolve(processingFile);
+                                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                                 }
-                            }, 'image/jpeg', 0.8);
+
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                ctx?.drawImage(img, 0, 0, width, height);
+
+                                canvas.toBlob((blob) => {
+                                    clearTimeout(timeout);
+                                    if (blob) {
+                                        const newName = processingFile.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                                        resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+                                    } else {
+                                        resolve(processingFile);
+                                    }
+                                }, 'image/jpeg', 0.8);
+                            } catch (err) {
+                                clearTimeout(timeout);
+                                console.error('Canvas processing failed:', err);
+                                resolve(processingFile);
+                            }
                         };
                         img.src = e.target?.result as string;
                     };
@@ -999,26 +1020,42 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleViewHomeTrainingVideo = async (videoUrl: string) => {
+        let path = videoUrl;
+
         // If it's a external link (YouTube/Drive), open directly
+        // But if it's a Supabase URL, we need to extract the path to sign it (since bucket is private)
         if (videoUrl.startsWith('http')) {
-            window.open(videoUrl, '_blank');
-            onNotifyAdmin(`Visualizou link de treino em casa`, user);
-            return;
+            if (videoUrl.includes('supabase.co/storage/v1/object/')) {
+                // Extract path after bucket name
+                const segments = videoUrl.split('/');
+                const bucketIndex = segments.indexOf('home_training_videos');
+                if (bucketIndex !== -1) {
+                    path = segments.slice(bucketIndex + 1).join('/');
+                } else {
+                    // Fallback to direct open if bucket name not found in URL
+                    window.open(videoUrl, '_blank');
+                    return;
+                }
+            } else {
+                window.open(videoUrl, '_blank');
+                onNotifyAdmin(`Visualizou link de treino em casa`, user);
+                return;
+            }
         }
 
         const newWindow = window.open('', '_blank');
         try {
             const { data, error } = await supabase.storage
                 .from('home_training_videos')
-                .createSignedUrl(videoUrl, 300);
+                .createSignedUrl(path, 300);
 
             if (error) throw error;
             if (newWindow) newWindow.location.href = data.signedUrl;
             onNotifyAdmin(`Visualizou vídeo de treino em casa`, user);
         } catch (error: any) {
             if (newWindow) newWindow.close();
-            console.error('Error opening video:', error);
-            alert('Erro ao visualizar o vídeo: ' + error.message);
+            console.error('Error generating signed URL for home training:', error);
+            alert('Erro ao visualizar vídeo: ' + error.message);
         }
     };
 
@@ -1084,6 +1121,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleFileChangeForUniformProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!e.target.files || e.target.files.length === 0 || !selectedOrderToProof) return;
         const file = e.target.files[0];
         setUploadingUniformProof(true);
@@ -1225,6 +1264,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     const photoInputRef = useRef<HTMLInputElement>(null);
 
     const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!e.target.files || e.target.files.length === 0) return;
         let file = e.target.files[0];
         setUploadingPhoto(true);
@@ -1697,6 +1738,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
         if (!e.target.files || !e.target.files[0]) return;
         let file = e.target.files[0];
 
@@ -1737,18 +1780,41 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const fetchClassRecords = useCallback(async () => {
         try {
-            const { data, error } = await supabase.storage.from('class_records').list('', { limit: 20 });
+            // Fetch from database table instead of direct storage listing
+            const { data, error } = await supabase
+                .from('class_records')
+                .select('*, profiles(nickname, name)')
+                .order('created_at', { ascending: false })
+                .limit(40);
+
             if (error) throw error;
-            const items = data || [];
-            // Only store item names/paths, sign them when viewing
-            const records = items.map((it: any) => ({
-                name: it.name,
-                url: '', // Will be signed on click
-                created_at: it.created_at
+
+            const records = (data || []).map((it: any) => ({
+                name: it.photo_url, // This is the full path needed for createSignedUrl
+                url: '',
+                created_at: it.created_at,
+                author_id: it.created_by,
+                author_name: it.profiles?.nickname || it.profiles?.name || 'Professor',
+                description: it.description
             }));
+
             setClassRecords(records);
         } catch (error) {
-            console.error('Error fetching class records:', error);
+            console.error('Error fetching class records (from DB):', error);
+            // Fallback to storage listing if table fails for some reason
+            try {
+                const { data, error: storageError } = await supabase.storage.from('class_records').list('', { limit: 20 });
+                if (!storageError) {
+                    const storageRecords = (data || []).map((it: any) => ({
+                        name: it.name,
+                        url: '',
+                        created_at: it.created_at
+                    }));
+                    setClassRecords(storageRecords);
+                }
+            } catch (err) {
+                console.error('Final fallback failed:', err);
+            }
         }
     }, []);
 
@@ -3744,6 +3810,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
                                 <Shirt size={18} className="text-emerald-400" /> Uniforme
                             </Button>
+                            <Button variant="secondary" onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
+                                <Wallet size={18} /> Financeiro
+                            </Button>
                             {profView === 'dashboard' && (
                                 <Button onClick={() => setProfView('new_class')}>
                                     <PlusCircle size={18} /> Nova Aula
@@ -4652,13 +4721,18 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <h3 className="text-xl font-bold text-white mb-4">Registros de Aula Recebidos</h3>
                                         <div className="space-y-2">
                                             {classRecords.length > 0 ? classRecords.map(rec => (
-                                                <div key={rec.name} className="flex justify-between items-center bg-stone-900 p-3 rounded border-l-2 border-purple-500">
-                                                    <span className="text-stone-300 text-sm truncate max-w-[60%]">{rec.name}</span>
+                                                <div key={rec.name} className="flex justify-between items-center bg-stone-900 p-4 rounded-xl border-l-4 border-purple-500 shadow-lg">
+                                                    <div className="flex flex-col gap-1 overflow-hidden">
+                                                        <span className="text-white font-bold text-sm truncate capitalize">{(rec as any).author_name || 'Professor'}</span>
+                                                        <span className="text-stone-500 text-[10px] flex items-center gap-1 font-mono">
+                                                            <Calendar size={10} /> {new Date(rec.created_at || '').toLocaleDateString('pt-BR')} - {new Date(rec.created_at || '').toLocaleTimeString('pt-BR', { hour: '2-min', minute: '2-min' })}
+                                                        </span>
+                                                    </div>
                                                     <button
                                                         onClick={() => handleViewClassRecord(rec.name)}
-                                                        className="text-purple-400 text-xs hover:underline"
+                                                        className="px-4 py-1.5 bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 text-xs font-black uppercase rounded-lg transition-all border border-purple-500/20 whitespace-nowrap"
                                                     >
-                                                        Abrir
+                                                        Ver Foto
                                                     </button>
                                                 </div>
                                             )) : (
