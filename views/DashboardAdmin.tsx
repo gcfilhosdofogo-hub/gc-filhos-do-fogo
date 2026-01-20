@@ -773,9 +773,9 @@ export const DashboardAdmin: React.FC<Props> = ({
             // Updated to await the response and create debts
             const newEvent = await onAddEvent(eventPayload);
 
-            // Create pending registrations for ALL active users (Students, Professors, and Admins)
+            // Create pending registrations for ACTIVE users only
             if (newEvent) {
-                const targets = managedUsers.filter(u => u.role === 'aluno' || u.role === 'professor' || u.role === 'admin');
+                const targets = managedUsers.filter(u => (u.status !== 'archived') && (u.role === 'aluno' || u.role === 'professor' || u.role === 'admin'));
 
                 // We'll iterate and add them. Note: In a real app, this should be a batch insert or DB trigger.
                 // For now, we do it client-side as requested.
@@ -796,7 +796,6 @@ export const DashboardAdmin: React.FC<Props> = ({
         setShowEventForm(false);
     };
 
-    // --- MONTHLY PAYMENT AUTO-GENERATION ---
     const handleGenerateMonthlyPayments = async () => {
         if (!confirm('Deseja gerar as mensalidades deste mês para todos os alunos ativos?\n\nIsso criará registros pendentes de R$ 50,00 para quem ainda não tem mensalidade gerada para o mês atual.\nVencimento: Dia 10.')) return;
 
@@ -814,8 +813,8 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         let createdCount = 0;
 
-        // Fetch all active students and professors (User requested to exclude EVERYONE from auto-gen)
-        const activeStudents: User[] = []; // managedUsers.filter(u => false); 
+        // Fetch all active students and professors
+        const activeStudents = managedUsers.filter(u => u.status !== 'archived' && (u.role === 'aluno' || u.role === 'professor')); 
 
         try {
             for (const student of activeStudents) {
@@ -1916,7 +1915,9 @@ export const DashboardAdmin: React.FC<Props> = ({
         return professors.map(prof => {
             const profStudents = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (prof.nickname || prof.first_name || prof.name));
 
-            const studentsData: StudentAcademicData[] = profStudents.map(s => {
+            const studentsData: StudentAcademicData[] = profStudents
+                .filter(u => u.status !== 'archived')
+                .map(s => {
                 const sGrades = studentGrades.filter(g => g.student_id === s.id);
                 // Extract specific grades
                 const theoryGrade = sGrades.find(g => g.category === 'theory')?.numeric || 0;
@@ -1946,17 +1947,28 @@ export const DashboardAdmin: React.FC<Props> = ({
         });
     }, [managedUsers, studentGrades]);
 
-    const filteredMonthlyPayments = monthlyPayments.filter(p =>
-        (!p.type || p.type === 'Mensalidade') &&
-        !p.month.toLowerCase().includes('avalia') &&
-        (paymentFilter === 'all' ? true : p.status === paymentFilter)
-    );
-    const evaluationPayments = monthlyPayments.filter(p =>
-        (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia')) &&
-        (paymentFilter === 'all' ? true : p.status === paymentFilter)
-    );
+    const filteredMonthlyPayments = monthlyPayments.filter(p => {
+        const student = managedUsers.find(u => u.id === p.student_id);
+        if (student && student.status === 'archived') return false;
+        
+        return (!p.type || p.type === 'Mensalidade') &&
+            !p.month.toLowerCase().includes('avalia') &&
+            (paymentFilter === 'all' ? true : p.status === paymentFilter);
+    });
+    
+    const evaluationPayments = monthlyPayments.filter(p => {
+        const student = managedUsers.find(u => u.id === p.student_id);
+        if (student && student.status === 'archived') return false;
+
+        return (p.type === 'evaluation' || p.month.toLowerCase().includes('avalia')) &&
+            (paymentFilter === 'all' ? true : p.status === paymentFilter);
+    });
     const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
     const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
+
+    const activeUsers = managedUsers.filter(u => u.status !== 'archived');
+    const totalStudents = activeUsers.filter(u => u.role === 'aluno').length;
+    const totalProfessors = activeUsers.filter(u => u.role === 'professor').length;
 
     const filteredManagedUsers = managedUsers.filter(u =>
         u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -1965,7 +1977,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     );
 
     const filteredStudentsForDetails = managedUsers.filter(u =>
-        u.role === 'aluno' &&
+        u.role === 'aluno' && u.status !== 'archived' &&
         (u.name.toLowerCase().includes(studentDetailsSearch.toLowerCase()) ||
             (u.nickname && u.nickname.toLowerCase().includes(studentDetailsSearch.toLowerCase())) ||
             u.email.toLowerCase().includes(studentDetailsSearch.toLowerCase()))
