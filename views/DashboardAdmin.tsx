@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram } from 'lucide-react'; // Import FileUp, Eye, Award, Instagram
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -46,7 +46,8 @@ interface Props {
     onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
     onAddStudentGrade: (payload: any) => Promise<void>;
     allUsersProfiles: User[];
-    onToggleBlockUser: (userId: string, currentStatus?: 'active' | 'blocked') => Promise<void>;
+    onToggleBlockUser: (userId: string, currentStatus?: 'active' | 'blocked' | 'archived') => Promise<void>;
+    onToggleArchiveUser: (userId: string, currentStatus?: 'active' | 'blocked' | 'archived') => Promise<void>;
     onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
     onUpdateEventRegistrationWithProof: (updatedRegistration: EventRegistration) => Promise<void>;
     onDeleteMusic?: (musicId: string) => Promise<void>;
@@ -98,6 +99,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     onAddStudentGrade,
     allUsersProfiles = [],
     onToggleBlockUser,
+    onToggleArchiveUser,
     onUpdateOrderWithProof,
     onUpdateEventRegistrationWithProof,
     onDeleteMusic = async (_id: string) => { }
@@ -3249,11 +3251,19 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <tr key={u.id} className="hover:bg-stone-700/30 group">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-stone-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-                                                            <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
+                                                        <div className="w-8 h-8 rounded-full bg-stone-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden border border-stone-500">
+                                                            <Logo className="w-full h-full object-cover" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-white">{u.name}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="font-bold text-white">{u.name}</p>
+                                                                {u.status === 'blocked' && (
+                                                                    <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Bloqueado</span>
+                                                                )}
+                                                                {u.status === 'archived' && (
+                                                                    <span className="bg-stone-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Arquivado</span>
+                                                                )}
+                                                            </div>
                                                             {u.nickname && <p className="text-xs text-cyan-400 font-medium italic">{u.nickname}</p>}
                                                         </div>
                                                     </div>
@@ -3438,6 +3448,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 </td>
                                                 <td className="p-4 text-right">
                                                     <div className="flex justify-end gap-2">
+                                                        <button
+                                                            onClick={() => onToggleArchiveUser(u.id, u.status)}
+                                                            className={`p-2 bg-stone-900 rounded transition-colors ${u.status === 'archived' ? 'text-blue-500 hover:bg-stone-700' : 'text-stone-400 hover:text-blue-500 hover:bg-stone-700'}`}
+                                                            title={u.status === 'archived' ? 'Desarquivar' : 'Arquivar'}
+                                                        >
+                                                            <Archive size={16} />
+                                                        </button>
                                                         <button
                                                             onClick={() => onToggleBlockUser(u.id, u.status)}
                                                             className={`p-2 bg-stone-900 rounded transition-colors ${u.status === 'blocked' ? 'text-red-500 hover:bg-stone-700' : 'text-stone-400 hover:text-green-500 hover:bg-stone-700'}`}

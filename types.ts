@@ -17,7 +17,7 @@ export interface User {
   last_name?: string; // Supabase profile field
   nextEvaluationDate?: string; // YYYY-MM-DD
   photo_url?: string; // Profile photo URL
-  status?: 'active' | 'blocked'; // User account status
+  status?: 'active' | 'blocked' | 'archived'; // User account status
 }
 
 export interface ClassSession {

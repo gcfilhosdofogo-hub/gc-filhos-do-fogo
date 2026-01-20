@@ -383,6 +383,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const myStudents = useMemo(() => {
     return allUsersProfiles.filter(p =>
       p.role === 'aluno' &&
+      p.status !== 'archived' &&
       p.professorName === (user.nickname || user.first_name || user.name)
     );
   }, [allUsersProfiles, user.nickname, user.first_name, user.name]);

@@ -526,28 +526,25 @@ function AppContent() {
     else setEvents(prev => prev.map(event => event.id === eventId ? { ...event, status: 'cancelled' } : event));
   };
 
-  const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked') => {
+  const handleToggleBlockUser = async (userId: string, currentStatus?: 'active' | 'blocked' | 'archived') => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
-
-    // Using update now that column existence is confirmed. 
-    // Requires SQL RLS policy "Admins can update all profiles" to be active.
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', userId);
-
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
     if (error) {
-      console.error('Error toggling user block status:', error);
-      if (error.message?.includes('row-level security')) {
-        alert('Erro de Permissão (RLS): O banco de dados não permitiu a alteração. Certifique-se de ter rodado o script SQL de permissões de Admin no painel do Supabase.');
-      } else {
-        alert(`Erro ao alterar status: ${error.message}`);
-      }
+      console.error('Error toggling block:', error);
+      alert('Erro ao alterar bloqueio');
     } else {
-      // Optimistic update
       setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
-      const targetUser = allUsersProfiles.find(u => u.id === userId);
-      handleNotifyAdmin(`${newStatus === 'blocked' ? 'Bloqueou' : 'Desbloqueou'} o usuário: ${targetUser?.nickname || targetUser?.name || userId}`, user!);
+    }
+  };
+
+  const handleToggleArchiveUser = async (userId: string, currentStatus?: 'active' | 'blocked' | 'archived') => {
+    const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', userId);
+    if (error) {
+      console.error('Error toggling archive:', error);
+      alert('Erro ao alterar arquivamento');
+    } else {
+      setAllUsersProfiles(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
     }
   };
 
@@ -995,6 +992,7 @@ function AppContent() {
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
               onToggleBlockUser={handleToggleBlockUser}
+            onToggleArchiveUser={handleToggleArchiveUser}
               onUpdateOrderWithProof={handleUpdateOrderWithProof}
               onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
               onDeleteMusic={handleDeleteMusic}
