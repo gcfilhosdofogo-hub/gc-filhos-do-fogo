@@ -3549,17 +3549,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <div className="space-y-2">
                                                             {schoolReports.filter(report => report.user_id === student.id).length > 0 ? (
                                                                 schoolReports.filter(report => report.user_id === student.id).map(report => (
-                                                                    <div key={report.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex justify-between items-center">
-                                                                        <div>
-                                                                            <p className="text-white font-medium">{report.file_name}</p>
+                                                                    <div key={report.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <p className="text-white font-medium truncate">{report.file_name}</p>
                                                                             <p className="text-xs text-stone-500">Período: {report.period} • Enviado em: {report.date}</p>
                                                                         </div>
                                                                         <Button
                                                                             variant="secondary"
-                                                                            className="text-xs h-auto px-2 py-1"
+                                                                            className="text-xs h-auto px-4 py-2 w-full sm:w-auto flex items-center justify-center gap-2"
                                                                             onClick={() => handleViewSchoolReport(report.file_url)}
                                                                         >
-                                                                            <FileText size={14} className="mr-1" /> Ver
+                                                                            <Eye size={14} /> Ver Boletim
                                                                         </Button>
                                                                     </div>
                                                                 ))
@@ -3577,17 +3577,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <div className="space-y-2">
                                                             {homeTrainings.filter(training => training.user_id === student.id).length > 0 ? (
                                                                 homeTrainings.filter(training => training.user_id === student.id).map(training => (
-                                                                    <div key={training.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex justify-between items-center">
-                                                                        <div>
-                                                                            <p className="text-white font-medium">{training.video_name}</p>
+                                                                    <div key={training.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <p className="text-white font-medium truncate">{training.video_name}</p>
                                                                             <p className="text-xs text-stone-500">Enviado em: {training.date} • Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
                                                                         </div>
                                                                         <Button
                                                                             variant="secondary"
-                                                                            className="text-xs h-auto px-2 py-1"
+                                                                            className="text-xs h-auto px-4 py-2 w-full sm:w-auto flex items-center justify-center gap-2"
                                                                             onClick={() => handleViewHomeTrainingVideo(training.video_url)}
                                                                         >
-                                                                            <Video size={14} className="mr-1" /> Ver
+                                                                            <Video size={14} /> Ver Treino
                                                                         </Button>
                                                                     </div>
                                                                 ))
