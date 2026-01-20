@@ -536,8 +536,23 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     // --- ADMIN HANDLERS ---
-    const totalMonthlyPayments = (monthlyPayments || []).filter(p => p.status === 'paid').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const pendingMonthlyPayments = (monthlyPayments || []).filter(p => p.status !== 'paid').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    const totalMonthlyPayments = useMemo(() => {
+        return (monthlyPayments || [])
+            .filter(p => {
+                const student = managedUsers.find(u => u.id === p.student_id);
+                return p.status === 'paid' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    }, [monthlyPayments, managedUsers]);
+
+    const pendingMonthlyPayments = useMemo(() => {
+        return (monthlyPayments || [])
+            .filter(p => {
+                const student = managedUsers.find(u => u.id === p.student_id);
+                return p.status !== 'paid' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+    }, [monthlyPayments, managedUsers]);
 
     const totalUniformRevenue = (uniformOrders || []).filter(o => o.status !== 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
     const pendingUniformRevenue = (uniformOrders || []).filter(o => o.status === 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
@@ -1966,9 +1981,9 @@ export const DashboardAdmin: React.FC<Props> = ({
     const selectedClassInfo = myClasses.find(c => c.id === selectedClassId);
     const studentBeingEvaluated = studentsForAttendance.find(s => s.id === selectedStudentForEval);
 
-    const activeUsers = managedUsers.filter(u => u.status !== 'archived');
-    const totalStudents = activeUsers.filter(u => u.role === 'aluno').length;
-    const totalProfessors = activeUsers.filter(u => u.role === 'professor').length;
+    const activeUsers = useMemo(() => managedUsers.filter(u => u.status !== 'archived'), [managedUsers]);
+    const totalStudentsCount = useMemo(() => activeUsers.filter(u => u.role === 'aluno').length, [activeUsers]);
+    const totalProfessorsCount = useMemo(() => activeUsers.filter(u => u.role === 'professor').length, [activeUsers]);
 
     const filteredManagedUsers = managedUsers.filter(u =>
         u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -2236,7 +2251,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <Users size={24} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">{managedUsers.filter(u => u.role === 'aluno').length}</h3>
+                            <h3 className="text-2xl font-bold text-white">{totalStudentsCount}</h3>
                             <p className="text-stone-400 text-sm">Total Alunos</p>
                         </button>
                         <button

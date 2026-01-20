@@ -388,6 +388,14 @@ export const DashboardProfessor: React.FC<Props> = ({
     );
   }, [allUsersProfiles, user.nickname, user.first_name, user.name]);
 
+  const activeGraduandoCount = useMemo(() => {
+    return allUsersProfiles.filter(p => p.role === 'aluno' && p.status !== 'archived').length;
+  }, [allUsersProfiles]);
+
+  const activeProfessorCount = useMemo(() => {
+    return allUsersProfiles.filter(p => p.role === 'professor' && p.status !== 'archived').length;
+  }, [allUsersProfiles]);
+
   useEffect(() => {
     const fetchAttendanceHistory = async () => {
       try {
