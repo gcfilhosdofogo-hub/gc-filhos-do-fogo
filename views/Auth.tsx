@@ -139,6 +139,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-stone-500 hover:text-white transition-colors"
+                  title={showPassword ? "Ocultar senha" : "Revelar senha"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>

@@ -2006,6 +2006,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </h1>
                         <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
                     </div>
+                        <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
+                    </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
             </div>
