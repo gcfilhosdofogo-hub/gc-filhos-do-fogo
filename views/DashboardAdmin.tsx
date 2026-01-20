@@ -2006,8 +2006,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </h1>
                         <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
                     </div>
-                        <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
-                    </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
             </div>
@@ -4727,7 +4725,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     <div className="flex flex-col gap-1 overflow-hidden">
                                                         <span className="text-white font-bold text-sm truncate capitalize">{(rec as any).author_name || 'Professor'}</span>
                                                         <span className="text-stone-500 text-[10px] flex items-center gap-1 font-mono">
-                                                            <Calendar size={10} /> {new Date(rec.created_at || '').toLocaleDateString('pt-BR')} - {new Date(rec.created_at || '').toLocaleTimeString('pt-BR', { hour: '2-min', minute: '2-min' })}
+                                                            <Calendar size={10} /> {new Date(rec.created_at || '').toLocaleDateString('pt-BR')} - {new Date(rec.created_at || '').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
                                                     <button
