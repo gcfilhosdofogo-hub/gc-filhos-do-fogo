@@ -286,7 +286,9 @@ function AppContent() {
 
       const dueDate = new Date(today.getFullYear(), today.getMonth(), 10).toISOString().split('T')[0];
 
-      const newPayments = students.map(s => ({
+      const newPayments = students
+        .filter(s => s.status !== 'archived')
+        .map(s => ({
         student_id: s.id,
         student_name: s.nickname || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Aluno',
         month: currentMonth,

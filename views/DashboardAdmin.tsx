@@ -554,11 +554,41 @@ export const DashboardAdmin: React.FC<Props> = ({
             .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
     }, [monthlyPayments, managedUsers]);
 
-    const totalUniformRevenue = (uniformOrders || []).filter(o => o.status !== 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
-    const pendingUniformRevenue = (uniformOrders || []).filter(o => o.status === 'pending').reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+    const totalUniformRevenue = useMemo(() => {
+        return (uniformOrders || [])
+            .filter(o => {
+                const student = managedUsers.find(u => u.id === o.user_id);
+                return o.status !== 'pending' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+    }, [uniformOrders, managedUsers]);
 
-    const totalEventRevenue = (eventRegistrations || []).filter(reg => reg.status === 'paid').reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
-    const pendingEventRevenue = (eventRegistrations || []).filter(reg => reg.status === 'pending').reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
+    const pendingUniformRevenue = useMemo(() => {
+        return (uniformOrders || [])
+            .filter(o => {
+                const student = managedUsers.find(u => u.id === o.user_id);
+                return o.status === 'pending' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+    }, [uniformOrders, managedUsers]);
+
+    const totalEventRevenue = useMemo(() => {
+        return (eventRegistrations || [])
+            .filter(r => {
+                const student = managedUsers.find(u => u.id === r.user_id);
+                return r.status === 'paid' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
+    }, [eventRegistrations, managedUsers]);
+
+    const pendingEventRevenue = useMemo(() => {
+        return (eventRegistrations || [])
+            .filter(r => {
+                const student = managedUsers.find(u => u.id === r.user_id);
+                return r.status === 'pending' && (!student || student.status !== 'archived');
+            })
+            .reduce((acc, curr) => acc + (Number(curr.amount_paid) || 0), 0);
+    }, [eventRegistrations, managedUsers]);
 
     const totalRevenue = totalMonthlyPayments + totalUniformRevenue + totalEventRevenue;
     const pendingRevenue = pendingMonthlyPayments + pendingUniformRevenue + pendingEventRevenue;
@@ -597,8 +627,10 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         // Monthly Payments
         monthlyPayments.forEach(p => {
-            const isEval = p.type === 'evaluation' || p.month.toLowerCase().includes('avalia');
             const student = managedUsers.find(u => u.id === p.student_id);
+            if (student && student.status === 'archived') return;
+
+            const isEval = p.type === 'evaluation' || p.month.toLowerCase().includes('avalia');
             movements.push({
                 date: p.status === 'paid' ? formatDatePTBR(p.paid_at) : formatDatePTBR(p.due_date),
                 description: isEval ? `Avaliação - ${p.student_name}` : `Mensalidade - ${p.month}`,
@@ -614,6 +646,8 @@ export const DashboardAdmin: React.FC<Props> = ({
         // Uniform Orders
         uniformOrders.forEach(o => {
             const student = managedUsers.find(u => u.id === o.user_id);
+            if (student && student.status === 'archived') return;
+
             movements.push({
                 date: formatDatePTBR(o.date),
                 description: `Uniforme - ${o.item}`,
@@ -628,9 +662,11 @@ export const DashboardAdmin: React.FC<Props> = ({
 
         // Event Registrations
         eventRegistrations.forEach(reg => {
+            const student = managedUsers.find(u => u.id === reg.user_id);
+            if (student && student.status === 'archived') return;
+
             const linkedEvent = events.find(e => e.id === reg.event_id);
             const dateDisplay = linkedEvent ? formatDatePTBR(linkedEvent.date) : '-';
-            const student = managedUsers.find(u => u.id === reg.user_id);
             movements.push({
                 date: dateDisplay,
                 description: `Evento - ${reg.event_title}`,
