@@ -42,7 +42,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleDebug
+          ./gradlew assembleDebug
 
       - name: List APK outputs
         run: |
