@@ -1,0 +1,3 @@
+rootProject.name = "gc-filhos-do-fogo"
+
+apply from: "capacitor.settings.gradle"
