@@ -67,7 +67,7 @@ const UNIFORM_PRICES = {
   pants_train: 80.00
 };
 
-type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial';
+type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial' | 'planning';
 
 export const DashboardProfessor: React.FC<Props> = ({
   user,
@@ -1096,6 +1096,9 @@ export const DashboardProfessor: React.FC<Props> = ({
             <PlusCircle size={18} /> Nova Aula
           </Button>
         )}
+        <Button onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600">
+          <BookOpen size={18} /> Planejamento
+        </Button>
         <Button onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
           <Wallet size={18} /> Financeiro
         </Button>
@@ -1182,6 +1185,76 @@ export const DashboardProfessor: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* --- PROF VIEW: PLANEJAMENTO DE AULA --- */}
+      {profView === 'planning' && (
+        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+          <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
+            <ArrowLeft size={16} /> Voltar ao Painel
+          </button>
+
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-400">
+              <BookOpen size={28} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
+              <p className="text-stone-400 text-sm">Conteúdo planejado para cada aula</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {myClasses.length === 0 ? (
+              <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
+                <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
+                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula agendada.</p>
+                <button
+                  onClick={() => setProfView('new_class')}
+                  className="mt-4 text-purple-400 text-sm hover:text-purple-300 font-bold underline"
+                >
+                  Agendar primeira aula
+                </button>
+              </div>
+            ) : (
+              [...myClasses]
+                .sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime())
+                .map(cls => (
+                  <div key={cls.id} className={`rounded-xl border p-5 transition-all ${cls.status === 'completed' ? 'bg-stone-900/50 border-stone-700/50' :
+                      cls.status === 'cancelled' ? 'bg-red-900/10 border-red-900/30 opacity-60' :
+                        'bg-stone-900/80 border-purple-500/20'
+                    }`}>
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <p className="font-black text-white text-base">{cls.title || 'Aula sem título'}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] text-stone-500 font-bold font-mono">
+                            {cls.date.split('-').reverse().join('/')} às {cls.time}
+                          </span>
+                          <span className="text-[10px] text-stone-500">•</span>
+                          <span className="text-[10px] text-stone-500 font-bold">{cls.location}</span>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0 ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' :
+                          cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' :
+                            'bg-purple-900/30 text-purple-400'
+                        }`}>
+                        {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
+                      </span>
+                    </div>
+
+                    <div className="bg-stone-950/60 rounded-lg p-4 border border-stone-800 min-h-[60px]">
+                      {cls.planning ? (
+                        <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic">Sem planejamento registrado para esta aula.</p>
+                      )}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* NEW CLASS VIEW */}
       {profView === 'new_class' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in relative">
@@ -1245,6 +1318,16 @@ export const DashboardProfessor: React.FC<Props> = ({
                   placeholder="Ex: Sede"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-stone-400 mb-1">Planejamento de Aula</label>
+              <textarea
+                value={newClassData.planning}
+                onChange={e => setNewClassData({ ...newClassData, planning: e.target.value })}
+                className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white focus:border-purple-500 transition-colors min-h-[100px] resize-y"
+                placeholder="Descreva o conteúdo planejado (ex: Aquecimento, Ginga, Jogo de dentro, Roda...)"
+              />
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-stone-700 mt-4">

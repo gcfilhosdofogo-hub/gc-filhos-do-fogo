@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
 import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive } from 'lucide-react'; // Import Archive
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -61,7 +61,7 @@ const UNIFORM_PRICES = {
 };
 
 type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music';
-type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial';
+type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial' | 'planning';
 
 export const DashboardAdmin: React.FC<Props> = ({
     user,
@@ -365,6 +365,27 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; session_id: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const [savingGrades, setSavingGrades] = useState(false);
+
+    // Self-payment states (for admin's own financial view in Minhas Aulas)
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingPaymentProof, setUploadingPaymentProof] = useState(false);
+    const [selectedPaymentToProof, setSelectedPaymentToProof] = useState<PaymentRecord | null>(null);
+    const eventFileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<EventRegistration | null>(null);
+
+    // Derived: admin's own payments
+    const myMonthlyPayments = useMemo(() =>
+        monthlyPayments.filter(p => p.student_id === user.id && p.type !== 'evaluation'),
+        [monthlyPayments, user.id]
+    );
+    const myEvaluations = useMemo(() =>
+        monthlyPayments.filter(p => p.student_id === user.id && p.type === 'evaluation'),
+        [monthlyPayments, user.id]
+    );
+    const myEventRegistrations = useMemo(() =>
+        eventRegistrations.filter(r => r.user_id === user.id),
+        [eventRegistrations, user.id]
+    );
 
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
@@ -865,7 +886,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         let createdCount = 0;
 
         // Fetch all active students and professors
-        const activeStudents = managedUsers.filter(u => u.status !== 'archived' && (u.role === 'aluno' || u.role === 'professor')); 
+        const activeStudents = managedUsers.filter(u => u.status !== 'archived' && (u.role === 'aluno' || u.role === 'professor'));
 
         try {
             for (const student of activeStudents) {
@@ -1469,6 +1490,58 @@ export const DashboardAdmin: React.FC<Props> = ({
         setTimeout(() => setCostPixCopied(false), 2000);
     };
 
+    const handleFileChangeForPaymentProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !selectedPaymentToProof) return;
+        setUploadingPaymentProof(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/payment_proofs/${selectedPaymentToProof.id}_${Date.now()}.${fileExt}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('payment_proofs')
+                .upload(filePath, file, { upsert: true });
+            if (uploadError) throw uploadError;
+            await onUpdatePaymentRecord({
+                ...selectedPaymentToProof,
+                proof_url: uploadData.path,
+                proof_name: file.name,
+            });
+            alert('Comprovante enviado com sucesso! Aguarde a confirmação.');
+        } catch (err) {
+            console.error('Erro ao enviar comprovante:', err);
+            alert('Erro ao enviar comprovante. Tente novamente.');
+        } finally {
+            setUploadingPaymentProof(false);
+            setSelectedPaymentToProof(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleFileChangeForEventProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !selectedEventRegToProof) return;
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `${user.id}/event_proofs/${selectedEventRegToProof.id}_${Date.now()}.${fileExt}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('event_proofs')
+                .upload(filePath, file, { upsert: true });
+            if (uploadError) throw uploadError;
+            await onUpdateEventRegistrationWithProof({
+                ...selectedEventRegToProof,
+                proof_url: uploadData.path,
+                proof_name: file.name,
+            });
+            alert('Comprovante de evento enviado! Aguarde a confirmação.');
+        } catch (err) {
+            console.error('Erro ao enviar comprovante de evento:', err);
+            alert('Erro ao enviar comprovante. Tente novamente.');
+        } finally {
+            setSelectedEventRegToProof(null);
+            if (eventFileInputRef.current) eventFileInputRef.current.value = '';
+        }
+    };
+
     const handleConfirmClass = (classId: string) => { // Changed to string
         // This logic is not used with real class sessions, attendance is handled differently
         // setConfirmedClasses([...confirmedClasses, classId]);
@@ -1970,24 +2043,24 @@ export const DashboardAdmin: React.FC<Props> = ({
             const studentsData: StudentAcademicData[] = profStudents
                 .filter(u => u.status !== 'archived')
                 .map(s => {
-                const sGrades = studentGrades.filter(g => g.student_id === s.id);
-                // Extract specific grades
-                const theoryGrade = sGrades.find(g => g.category === 'theory')?.numeric || 0;
-                const movementGrade = sGrades.find(g => g.category === 'movement')?.numeric || 0;
-                const musicalityGrade = sGrades.find(g => g.category === 'musicality')?.numeric || 0;
+                    const sGrades = studentGrades.filter(g => g.student_id === s.id);
+                    // Extract specific grades
+                    const theoryGrade = sGrades.find(g => g.category === 'theory')?.numeric || 0;
+                    const movementGrade = sGrades.find(g => g.category === 'movement')?.numeric || 0;
+                    const musicalityGrade = sGrades.find(g => g.category === 'musicality')?.numeric || 0;
 
-                return {
-                    studentId: s.id,
-                    studentName: s.nickname || s.name,
-                    attendanceRate: 85, // Mock data or derive from attendance table if available
-                    theoryGrade: Number(theoryGrade),
-                    movementGrade: Number(movementGrade),
-                    musicalityGrade: Number(musicalityGrade),
-                    lastEvaluation: s.nextEvaluationDate ? formatDatePTBR(s.nextEvaluationDate) : '-',
-                    graduationCost: s.graduationCost,
-                    phone: s.phone
-                };
-            });
+                    return {
+                        studentId: s.id,
+                        studentName: s.nickname || s.name,
+                        attendanceRate: 85, // Mock data or derive from attendance table if available
+                        theoryGrade: Number(theoryGrade),
+                        movementGrade: Number(movementGrade),
+                        musicalityGrade: Number(musicalityGrade),
+                        lastEvaluation: s.nextEvaluationDate ? formatDatePTBR(s.nextEvaluationDate) : '-',
+                        graduationCost: s.graduationCost,
+                        phone: s.phone
+                    };
+                });
 
             return {
                 professorId: prof.id,
@@ -2002,12 +2075,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     const filteredMonthlyPayments = monthlyPayments.filter(p => {
         const student = managedUsers.find(u => u.id === p.student_id);
         if (student && student.status === 'archived') return false;
-        
+
         return (!p.type || p.type === 'Mensalidade') &&
             !p.month.toLowerCase().includes('avalia') &&
             (paymentFilter === 'all' ? true : p.status === paymentFilter);
     });
-    
+
     const evaluationPayments = monthlyPayments.filter(p => {
         const student = managedUsers.find(u => u.id === p.student_id);
         if (student && student.status === 'archived') return false;
@@ -3888,6 +3961,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <Button variant="secondary" onClick={() => setProfView('assignments')} className="border border-stone-600">
                                 <BookOpen size={18} className="text-blue-400" /> Trabalhos
                             </Button>
+                            <Button variant="secondary" onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600">
+                                <BookOpen size={18} /> Planejamento
+                            </Button>
                             <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
                                 <Shirt size={18} className="text-emerald-400" /> Uniforme
                             </Button>
@@ -4793,174 +4869,249 @@ export const DashboardAdmin: React.FC<Props> = ({
                             )
                         }
 
-                        {/* --- PROF MODE: FINANCIAL --- */}
+                        {/* --- PROF MODE: PLANEJAMENTO DE AULA --- */}
+                        {
+                            profView === 'planning' && (
+                                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+                                    <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
+                                        <ArrowLeft size={16} /> Voltar ao Painel
+                                    </button>
+
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-400">
+                                            <BookOpen size={28} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
+                                            <p className="text-stone-400 text-sm">Conteúdo planejado para cada aula</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {myClasses.length === 0 ? (
+                                            <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
+                                                <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
+                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula agendada.</p>
+                                                <button
+                                                    onClick={() => setProfView('new_class')}
+                                                    className="mt-4 text-purple-400 text-sm hover:text-purple-300 font-bold underline"
+                                                >
+                                                    Agendar primeira aula
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            [...myClasses]
+                                                .sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime())
+                                                .map(cls => (
+                                                    <div key={cls.id} className={`rounded-xl border p-5 transition-all ${cls.status === 'completed' ? 'bg-stone-900/50 border-stone-700/50' :
+                                                            cls.status === 'cancelled' ? 'bg-red-900/10 border-red-900/30 opacity-60' :
+                                                                'bg-stone-900/80 border-purple-500/20'
+                                                        }`}>
+                                                        <div className="flex items-start justify-between gap-4 mb-3">
+                                                            <div>
+                                                                <p className="font-black text-white text-base">{cls.title || 'Aula sem título'}</p>
+                                                                <div className="flex items-center gap-3 mt-1">
+                                                                    <span className="text-[10px] text-stone-500 font-bold font-mono">
+                                                                        {cls.date.split('-').reverse().join('/')} às {cls.time}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-stone-500">•</span>
+                                                                    <span className="text-[10px] text-stone-500 font-bold">{cls.location}</span>
+                                                                </div>
+                                                            </div>
+                                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0 ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' :
+                                                                    cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' :
+                                                                        'bg-purple-900/30 text-purple-400'
+                                                                }`}>
+                                                                {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="bg-stone-950/60 rounded-lg p-4 border border-stone-800 min-h-[60px]">
+                                                            {cls.planning ? (
+                                                                <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>
+                                                            ) : (
+                                                                <p className="text-stone-600 text-sm italic">Sem planejamento registrado para esta aula.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        }
+
+                        {/* --- PROF MODE: FINANCIAL (Pessoal) --- */}
                         {
                             profView === 'financial' && (
-                                <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+                                <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
+                                    <Button variant="ghost" className="mb-6 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
+                                        <ArrowLeft size={16} className="mr-2" />
+                                        Voltar ao Painel
+                                    </Button>
 
-                                    <div className="relative z-10">
-                                        <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
-                                            <ArrowLeft size={16} /> Voltar ao Painel
-                                        </button>
+                                    <div className="grid lg:grid-cols-2 gap-8">
+                                        {/* Mensalidades Card */}
+                                        <div className="space-y-6">
+                                            <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                                                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                                    <Wallet className="text-orange-500" />
+                                                    Minhas Mensalidades
+                                                </h3>
 
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-500">
-                                                <Wallet size={32} />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Financeiro</h2>
-                                                <p className="text-stone-400 text-sm">Situação financeira dos seus alunos</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Summary Cards */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                                            <div className="bg-stone-900/70 p-5 rounded-2xl border border-emerald-500/20">
-                                                <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Recebido (Meus Alunos)</p>
-                                                <p className="text-2xl font-black text-emerald-400">
-                                                    R$ {monthlyPayments
-                                                        .filter(p => studentsForAttendance.some(s => s.id === p.student_id) && p.status === 'paid' && p.type !== 'evaluation')
-                                                        .reduce((acc, p) => acc + p.amount, 0)
-                                                        .toFixed(2).replace('.', ',')}
-                                                </p>
-                                            </div>
-                                            <div className="bg-stone-900/70 p-5 rounded-2xl border border-red-500/20">
-                                                <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Pendente (Meus Alunos)</p>
-                                                <p className="text-2xl font-black text-red-400">
-                                                    R$ {monthlyPayments
-                                                        .filter(p => studentsForAttendance.some(s => s.id === p.student_id) && (p.status === 'pending' || p.status === 'overdue') && p.type !== 'evaluation')
-                                                        .reduce((acc, p) => acc + p.amount, 0)
-                                                        .toFixed(2).replace('.', ',')}
-                                                </p>
-                                            </div>
-                                            <div className="bg-stone-900/70 p-5 rounded-2xl border border-purple-500/20">
-                                                <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest mb-1">Avaliações Pendentes</p>
-                                                <p className="text-2xl font-black text-purple-400">
-                                                    R$ {monthlyPayments
-                                                        .filter(p => studentsForAttendance.some(s => s.id === p.student_id) && p.status !== 'paid' && p.type === 'evaluation')
-                                                        .reduce((acc, p) => acc + p.amount, 0)
-                                                        .toFixed(2).replace('.', ',')}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Students Financial Status */}
-                                        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2 uppercase tracking-wider">
-                                            <Users size={20} className="text-emerald-500" /> Status por Aluno
-                                        </h3>
-                                        <div className="space-y-3 mb-8">
-                                            {studentsForAttendance.length === 0 ? (
-                                                <div className="text-center py-10 text-stone-500 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-800">
-                                                    <Users size={40} className="mx-auto mb-2 opacity-20" />
-                                                    <p className="text-sm font-bold uppercase tracking-widest opacity-50">Nenhum aluno vinculado.</p>
+                                                <div className="mb-6 space-y-3">
+                                                    <Button
+                                                        fullWidth
+                                                        variant="outline"
+                                                        onClick={handleCopyPix}
+                                                        className={`h-12 border-2 transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-orange-500/30 text-orange-400 hover:border-orange-500 hover:bg-orange-500/5"}`}
+                                                    >
+                                                        {pixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                                                        {pixCopied ? 'Chave Copiada!' : 'Copiar PIX Mensalidade'}
+                                                    </Button>
+                                                    <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">Chave: soufilhodofogo@gmail.com</p>
                                                 </div>
-                                            ) : (
-                                                studentsForAttendance.map(student => {
-                                                    const studentPayments = monthlyPayments.filter(p => p.student_id === student.id);
-                                                    const pendingPayments = studentPayments.filter(p => p.status === 'pending' || p.status === 'overdue');
-                                                    const paidPayments = studentPayments.filter(p => p.status === 'paid');
-                                                    const totalPending = pendingPayments.reduce((acc, p) => acc + p.amount, 0);
-                                                    const isOverdue = pendingPayments.some(p => p.status === 'overdue');
-                                                    const isInDay = pendingPayments.length === 0;
 
-                                                    return (
-                                                        <div key={student.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                                                            isOverdue ? 'bg-red-900/10 border-red-500/20' :
-                                                            isInDay ? 'bg-emerald-900/10 border-emerald-500/20' :
-                                                            'bg-stone-900/50 border-stone-700/50'
-                                                        }`}>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="w-10 h-10 rounded-xl bg-stone-800 border border-stone-700 flex items-center justify-center text-sm font-black text-white">
-                                                                    {student.name?.charAt(0) || 'A'}
-                                                                </div>
+                                                <div className="space-y-3">
+                                                    {myMonthlyPayments.length > 0 ? (
+                                                        myMonthlyPayments.map(payment => (
+                                                            <div key={payment.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md`}>
                                                                 <div>
-                                                                    <p className="font-bold text-white">{student.nickname || student.name}</p>
-                                                                    <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest">{student.belt || 'Sem Cordel'}</p>
+                                                                    <p className="font-bold text-white text-sm uppercase tracking-tight">{payment.month}</p>
+                                                                    <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • Venc: {payment.due_date?.split('-').reverse().join('/')}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    {payment.status === 'paid' ? (
+                                                                        <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">Pago</span>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Button
+                                                                                variant="secondary"
+                                                                                className="text-[10px] h-auto px-2 py-1 bg-stone-800 border-stone-700"
+                                                                                onClick={() => {
+                                                                                    setSelectedPaymentToProof(payment);
+                                                                                    setTimeout(() => fileInputRef.current?.click(), 100);
+                                                                                }}
+                                                                                disabled={uploadingPaymentProof}
+                                                                            >
+                                                                                {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                                                                            </Button>
+                                                                            <input
+                                                                                type="file"
+                                                                                accept="image/*, application/pdf"
+                                                                                className="hidden"
+                                                                                ref={fileInputRef}
+                                                                                onChange={handleFileChangeForPaymentProof}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                disabled={uploadingPaymentProof}
+                                                                            />
+                                                                        </>
+                                                                    )}
+                                                                    {payment.proof_url && (
+                                                                        <button
+                                                                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                                                                            className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-400/5 transition-all"
+                                                                            title="Ver Comprovante"
+                                                                        >
+                                                                            <Eye size={18} />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            <div className="text-right flex items-center gap-4">
-                                                                <div>
-                                                                    <p className="text-[10px] text-stone-500 font-bold">Pagas</p>
-                                                                    <p className="font-black text-emerald-400 text-sm">{paidPayments.length}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[10px] text-stone-500 font-bold">Pendentes</p>
-                                                                    <p className={`font-black text-sm ${pendingPayments.length > 0 ? 'text-red-400' : 'text-stone-500'}`}>{pendingPayments.length}</p>
-                                                                </div>
-                                                                {totalPending > 0 && (
-                                                                    <div className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg">
-                                                                        <p className="text-[10px] text-stone-500 font-bold">Em aberto</p>
-                                                                        <p className="font-black text-red-400 text-sm">R$ {totalPending.toFixed(2).replace('.', ',')}</p>
-                                                                    </div>
-                                                                )}
-                                                                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
-                                                                    isOverdue ? 'bg-red-900/30 text-red-400' :
-                                                                    isInDay ? 'bg-emerald-900/30 text-emerald-400' :
-                                                                    'bg-yellow-900/30 text-yellow-400'
-                                                                }`}>
-                                                                    {isOverdue ? 'Atrasado' : isInDay ? 'Em Dia' : 'Pendente'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">Nenhuma mensalidade registrada.</p>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        {/* Recent Movements */}
-                                        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2 uppercase tracking-wider">
-                                            <DollarSign size={20} className="text-emerald-500" /> Movimentações Recentes
-                                        </h3>
-                                        <div className="overflow-x-auto rounded-2xl border border-stone-700/50">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="bg-stone-900/80 text-stone-500 text-[10px] uppercase font-black tracking-widest">
-                                                        <th className="p-4">Aluno</th>
-                                                        <th className="p-4">Descrição</th>
-                                                        <th className="p-4">Tipo</th>
-                                                        <th className="p-4">Valor</th>
-                                                        <th className="p-4">Vencimento</th>
-                                                        <th className="p-4">Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-stone-800 text-sm">
-                                                    {monthlyPayments
-                                                        .filter(p => studentsForAttendance.some(s => s.id === p.student_id))
-                                                        .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())
-                                                        .slice(0, 20)
-                                                        .map(p => (
-                                                            <tr key={p.id} className="hover:bg-stone-900/40 transition-colors">
-                                                                <td className="p-4 font-bold text-white">{p.student_name}</td>
-                                                                <td className="p-4 text-stone-300">{p.type === 'evaluation' ? `Avaliação - ${p.month}` : `Mensalidade - ${p.month}`}</td>
-                                                                <td className="p-4">
-                                                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${
-                                                                        p.type === 'evaluation' ? 'border-purple-900/50 text-purple-400 bg-purple-900/10' : 'border-blue-900/50 text-blue-400 bg-blue-900/10'
-                                                                    }`}>
-                                                                        {p.type === 'evaluation' ? 'Avaliação' : 'Mensalidade'}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="p-4 font-mono text-white">R$ {p.amount.toFixed(2).replace('.', ',')}</td>
-                                                                <td className="p-4 text-stone-400">{p.due_date ? new Date(p.due_date + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
-                                                                <td className="p-4">
-                                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                                        p.status === 'paid' ? 'text-emerald-400 bg-emerald-950/40' :
-                                                                        p.status === 'overdue' ? 'text-red-400 bg-red-950/40' :
-                                                                        'text-yellow-400 bg-yellow-950/40'
-                                                                    }`}>
-                                                                        {p.status === 'paid' ? 'Pago' : p.status === 'overdue' ? 'Atrasado' : 'Pendente'}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    }
-                                                    {monthlyPayments.filter(p => studentsForAttendance.some(s => s.id === p.student_id)).length === 0 && (
-                                                        <tr>
-                                                            <td colSpan={6} className="p-8 text-center text-stone-500 italic">Nenhuma movimentação encontrada para seus alunos.</td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
+                                        {/* Eventos e Avaliações Card */}
+                                        <div className="space-y-6">
+                                            <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
+                                                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                                    <DollarSign className="text-yellow-500" />
+                                                    Eventos e Avaliações
+                                                </h3>
+
+                                                <Button
+                                                    fullWidth
+                                                    variant="outline"
+                                                    onClick={handleCopyCostPix}
+                                                    className={`h-12 border-2 transition-all mb-6 ${costPixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-yellow-500/30 text-yellow-400 hover:border-yellow-500 hover:bg-yellow-500/5"}`}
+                                                >
+                                                    {costPixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
+                                                    {costPixCopied ? 'Chave Copiada!' : 'PIX Eventos/Avaliação'}
+                                                </Button>
+
+                                                <div className="space-y-6">
+                                                    {/* Avaliações Section */}
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Avaliações de Cordel</h4>
+                                                        <div className="space-y-3">
+                                                            {myEvaluations.length > 0 ? (
+                                                                myEvaluations.map(payment => (
+                                                                    <div key={payment.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                                                                        <div>
+                                                                            <p className="text-sm font-bold text-white">{payment.month}</p>
+                                                                            <p className="text-[10px] text-stone-500 font-mono">VALOR: R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {payment.status === 'paid' ? (
+                                                                                <CheckCircle className="text-green-500" size={20} />
+                                                                            ) : (
+                                                                                <button
+                                                                                    onClick={() => { setSelectedPaymentToProof(payment); fileInputRef.current?.click(); }}
+                                                                                    className="text-[10px] font-black uppercase text-yellow-500 hover:text-yellow-400 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20"
+                                                                                >
+                                                                                    {payment.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma avaliação registrada.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* EventRegistrations Section */}
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Eventos Inscritos</h4>
+                                                        <div className="space-y-3">
+                                                            {myEventRegistrations.length > 0 ? (
+                                                                myEventRegistrations.map(reg => (
+                                                                    <div key={reg.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
+                                                                        <div>
+                                                                            <p className="text-sm font-bold text-white truncate max-w-[150px]">{reg.event_title}</p>
+                                                                            <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? 'Inscrição Confirmada' : 'Aguardando Pagamento'}</p>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {reg.status === 'paid' ? (
+                                                                                <div className="bg-green-500/20 p-1 rounded-full"><Check className="text-green-500" size={14} /></div>
+                                                                            ) : (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setSelectedEventRegToProof(reg);
+                                                                                        setTimeout(() => eventFileInputRef.current?.click(), 100);
+                                                                                    }}
+                                                                                    className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
+                                                                                >
+                                                                                    {reg.proof_url ? 'Novo Comprovante' : 'Enviar PIX'}
+                                                                                </button>
+                                                                            )}
+                                                                            <input type="file" ref={eventFileInputRef} className="hidden" onChange={handleFileChangeForEventProof} />
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma inscrição em eventos.</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
