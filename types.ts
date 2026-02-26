@@ -30,6 +30,7 @@ export interface ClassSession {
   level: string;
   professor_id?: string; // Link to professor's user ID
   status?: 'pending' | 'completed' | 'cancelled'; // Match database
+  planning?: string; // NEW: Aula planning/content
 }
 
 export interface NewsItem {

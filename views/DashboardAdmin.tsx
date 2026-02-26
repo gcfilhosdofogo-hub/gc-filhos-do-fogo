@@ -437,7 +437,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
     // New Class Form State (for Professor Mode)
-    const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
+    const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
 
     // Student Details Tab State
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -1540,9 +1540,10 @@ export const DashboardAdmin: React.FC<Props> = ({
             location: newClassData.location,
             level: 'Todos os Níveis', // Default level
             professor_id: user.id,
+            planning: newClassData.planning,
         };
         await onAddClassSession(newSessionPayload);
-        setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '' });
+        setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
         // setProfView('dashboard'); // Removed for consistency
         onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
     };

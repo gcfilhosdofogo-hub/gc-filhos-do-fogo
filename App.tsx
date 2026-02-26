@@ -62,6 +62,7 @@ function AppContent() {
         belt: p.belt || undefined,
         graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0, // Safe cast
         nextEvaluationDate: p.next_evaluation_date || undefined,
+        planning: p.planning || undefined,
         phone: p.phone || undefined
       }));
       setAllUsersProfiles(mappedProfiles);
@@ -143,7 +144,13 @@ function AppContent() {
     // Fetch Class Sessions
     const { data: classSessionData, error: classSessionError } = await supabase.from('class_sessions').select('*');
     if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
-    else setClassSessions(classSessionData || []);
+    else {
+      const mappedSessions = (classSessionData || []).map(s => ({
+        ...s,
+        planning: s.planning || ''
+      }));
+      setClassSessions(mappedSessions);
+    }
 
     // Fetch Event Registrations (all for admin, own for others)
     let eventRegQuery = supabase.from('event_registrations').select('*');
