@@ -366,7 +366,7 @@ export const DashboardAluno: React.FC<Props> = ({
     if (!hasSentToday) {
       const timer = setTimeout(() => {
         setShowPendingVideoPopup(true);
-      }, 1500); // 1.5s delay for better UX
+      }, 300000); // 5 minutes delay (300,000ms) for better UX
       return () => clearTimeout(timer);
     } else {
       // Explicitly hide popup if video was already sent today
