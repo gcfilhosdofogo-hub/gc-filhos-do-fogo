@@ -4007,6 +4007,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <div><label className="block text-sm text-stone-400 mb-1">Horário</label><input type="time" required value={newClassData.time} onChange={e => setNewClassData({ ...newClassData, time: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" /></div>
                                     </div>
                                     <div><label className="block text-sm text-stone-400 mb-1">Local</label><input type="text" required value={newClassData.location} onChange={e => setNewClassData({ ...newClassData, location: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" /></div>
+                                    <div>
+                                        <label className="block text-sm text-stone-400 mb-1">Planejamento de Aula</label>
+                                        <textarea
+                                            value={newClassData.planning}
+                                            onChange={(e) => setNewClassData({ ...newClassData, planning: e.target.value })}
+                                            placeholder="Descreva o que será treinado (ex: Aquecimento, Ginga, Jogo de dentro...)"
+                                            className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white min-h-[100px]"
+                                        />
+                                    </div>
                                     <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setProfView('dashboard')} className="text-stone-400 hover:text-white">Cancelar</button><Button type="submit">Agendar Aula</Button></div>
                                 </form>
                             </div>
