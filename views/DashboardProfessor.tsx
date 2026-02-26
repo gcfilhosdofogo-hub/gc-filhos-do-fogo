@@ -100,7 +100,8 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
-  const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '' });
+  // New Class Form State (for Professor Mode)
+  const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', planning: '' });
 
   // Attendance State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null); // Changed to string
@@ -618,9 +619,10 @@ export const DashboardProfessor: React.FC<Props> = ({
       location: newClassData.location,
       level: 'Todos os Níveis', // Default level, can be made dynamic
       professor_id: user.id,
+      planning: newClassData.planning,
     };
     await onAddClassSession(newSession);
-    setNewClassData({ title: '', date: '', time: '', location: '' });
+    setNewClassData({ title: '', date: '', time: '', location: '', planning: '' });
     // setProfView('dashboard'); // Removed to keep user context
     onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
   };

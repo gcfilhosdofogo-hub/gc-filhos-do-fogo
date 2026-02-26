@@ -355,14 +355,22 @@ export const DashboardAluno: React.FC<Props> = ({
     if (hasClassToday) return;
 
     // Check if student already sent a video/link TODAY
-    const hasSentToday = myHomeTrainings.some(training => training.date === todayStr);
+    const hasSentToday = myHomeTrainings.some(training => {
+      // Use local date string comparison to match todayStr
+      const trainingDate = new Date(training.date + 'T12:00:00');
+      const tDateStr = trainingDate.getFullYear() + '-' + String(trainingDate.getMonth() + 1).padStart(2, '0') + '-' + String(trainingDate.getDate()).padStart(2, '0');
+      return tDateStr === todayStr;
+    });
 
     // Only show popup if: weekday + no class today + no video sent today
     if (!hasSentToday) {
       const timer = setTimeout(() => {
         setShowPendingVideoPopup(true);
-      }, 1500); // 1.5s delay for better UX
+      }, 300000); // 5 minutes delay (300,000ms) for better UX
       return () => clearTimeout(timer);
+    } else {
+      // Explicitly hide popup if video was already sent today
+      setShowPendingVideoPopup(false);
     }
   }, [myClasses, myHomeTrainings]);
 
