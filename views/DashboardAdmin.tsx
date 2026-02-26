@@ -460,6 +460,14 @@ export const DashboardAdmin: React.FC<Props> = ({
     // New Class Form State (for Professor Mode)
     const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
 
+    // Planning view states
+    const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+    const [editPlanTitle, setEditPlanTitle] = useState('');
+    const [editPlanContent, setEditPlanContent] = useState('');
+    const [showNewPlanForm, setShowNewPlanForm] = useState(false);
+    const [newPlanTitle, setNewPlanTitle] = useState('');
+    const [newPlanContent, setNewPlanContent] = useState('');
+
     // Student Details Tab State
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
     const [studentDetailsSearch, setStudentDetailsSearch] = useState('');
@@ -1619,6 +1627,32 @@ export const DashboardAdmin: React.FC<Props> = ({
         setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
         // setProfView('dashboard'); // Removed for consistency
         onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
+    };
+
+    const handleAddPlan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newPlanTitle.trim()) return;
+        const today = new Date().toISOString().split('T')[0];
+        const now = new Date().toTimeString().slice(0, 5);
+        await onAddClassSession({
+            title: newPlanTitle,
+            date: today,
+            time: now,
+            instructor: user.nickname || user.name,
+            location: 'A definir',
+            level: 'Todos os Níveis',
+            professor_id: user.id,
+            planning: newPlanContent,
+        });
+        setNewPlanTitle('');
+        setNewPlanContent('');
+        setShowNewPlanForm(false);
+        onNotifyAdmin(`Adicionou planejamento: ${newPlanTitle}`, user);
+    };
+
+    const handleSavePlanContent = async (cls: ClassSession) => {
+        await onUpdateClassSession({ ...cls, title: editPlanTitle, planning: editPlanContent });
+        setEditingPlanId(null);
     };
 
     const handleOpenEvaluation = (studentId: string) => {
@@ -4877,62 +4911,71 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <ArrowLeft size={16} /> Voltar ao Painel
                                     </button>
 
-                                    <div className="flex items-center gap-4 mb-8">
-                                        <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-400">
-                                            <BookOpen size={28} />
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-400">
+                                                <BookOpen size={28} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
+                                                <p className="text-stone-400 text-sm">{myClasses.length} aula(s) planejada(s)</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
-                                            <p className="text-stone-400 text-sm">Conteúdo planejado para cada aula</p>
-                                        </div>
+                                        <Button onClick={() => { setShowNewPlanForm(true); setNewPlanTitle(`Aula ${myClasses.length + 1}`); setNewPlanContent(''); }} className="bg-purple-600 hover:bg-purple-500 shrink-0">
+                                            <PlusCircle size={16} className="mr-1" /> Nova Aula
+                                        </Button>
                                     </div>
+                                    {showNewPlanForm && (
+                                        <form onSubmit={handleAddPlan} className="mb-6 bg-stone-900/80 border border-purple-500/30 rounded-2xl p-5 space-y-4 animate-fade-in">
+                                            <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Nova Aula</h3>
+                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" required value={newPlanTitle} onChange={e => setNewPlanTitle(e.target.value)} placeholder="Ex: Aula 1..." className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
+                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Planejamento / Conteúdo</label><textarea value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} rows={4} placeholder="Descreva o conteúdo (ex: Aquecimento, Ginga, Jogo de dentro, Roda...)" className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
+                                            <div className="flex gap-3"><Button type="submit" className="bg-purple-600 hover:bg-purple-500"><Save size={14} className="mr-1" /> Salvar</Button><Button type="button" variant="ghost" onClick={() => setShowNewPlanForm(false)} className="text-stone-400"><X size={14} className="mr-1" /> Cancelar</Button></div>
+                                        </form>
+                                    )}
 
                                     <div className="space-y-4">
                                         {myClasses.length === 0 ? (
                                             <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
                                                 <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
-                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula agendada.</p>
-                                                <button
-                                                    onClick={() => setProfView('new_class')}
-                                                    className="mt-4 text-purple-400 text-sm hover:text-purple-300 font-bold underline"
-                                                >
-                                                    Agendar primeira aula
-                                                </button>
+                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula planejada ainda.</p>
+                                                <p className="text-stone-600 text-xs mt-2">Clique em "Nova Aula" para começar.</p>
                                             </div>
                                         ) : (
                                             [...myClasses]
-                                                .sort((a, b) => new Date(b.date + 'T' + b.time).getTime() - new Date(a.date + 'T' + a.time).getTime())
-                                                .map(cls => (
-                                                    <div key={cls.id} className={`rounded-xl border p-5 transition-all ${cls.status === 'completed' ? 'bg-stone-900/50 border-stone-700/50' :
-                                                            cls.status === 'cancelled' ? 'bg-red-900/10 border-red-900/30 opacity-60' :
-                                                                'bg-stone-900/80 border-purple-500/20'
-                                                        }`}>
-                                                        <div className="flex items-start justify-between gap-4 mb-3">
-                                                            <div>
-                                                                <p className="font-black text-white text-base">{cls.title || 'Aula sem título'}</p>
-                                                                <div className="flex items-center gap-3 mt-1">
-                                                                    <span className="text-[10px] text-stone-500 font-bold font-mono">
-                                                                        {cls.date.split('-').reverse().join('/')} às {cls.time}
-                                                                    </span>
-                                                                    <span className="text-[10px] text-stone-500">•</span>
-                                                                    <span className="text-[10px] text-stone-500 font-bold">{cls.location}</span>
+                                                .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime())
+                                                .map((cls, idx) => (
+                                                    <div key={cls.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
+                                                        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
+                                                                <p className="font-black text-white">{cls.title || `Aula ${idx + 1}`}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' : cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' : 'bg-stone-800 text-stone-400'}`}>
+                                                                    {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
+                                                                </span>
+                                                                {editingPlanId !== cls.id && (
+                                                                    <button onClick={() => { setEditingPlanId(cls.id); setEditPlanTitle(cls.title || ''); setEditPlanContent(cls.planning || ''); }} className="text-stone-500 hover:text-purple-400 transition-colors p-1" title="Editar">
+                                                                        <Edit2 size={14} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {editingPlanId !== cls.id ? (
+                                                            <div className="px-5 py-4 min-h-[70px]">
+                                                                {cls.planning ? (<p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>) : (<p className="text-stone-600 text-sm italic">Sem planejamento. Clique em editar para adicionar.</p>)}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="px-5 py-4 space-y-3 bg-stone-900/40">
+                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" value={editPlanTitle} onChange={e => setEditPlanTitle(e.target.value)} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
+                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Planejamento / Conteúdo</label><textarea value={editPlanContent} onChange={e => setEditPlanContent(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
+                                                                <div className="flex gap-2">
+                                                                    <Button onClick={() => handleSavePlanContent(cls)} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs"><Save size={12} className="mr-1" /> Salvar</Button>
+                                                                    <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs"><X size={12} className="mr-1" /> Cancelar</Button>
                                                                 </div>
                                                             </div>
-                                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase shrink-0 ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' :
-                                                                    cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' :
-                                                                        'bg-purple-900/30 text-purple-400'
-                                                                }`}>
-                                                                {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="bg-stone-950/60 rounded-lg p-4 border border-stone-800 min-h-[60px]">
-                                                            {cls.planning ? (
-                                                                <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>
-                                                            ) : (
-                                                                <p className="text-stone-600 text-sm italic">Sem planejamento registrado para esta aula.</p>
-                                                            )}
-                                                        </div>
+                                                        )}
                                                     </div>
                                                 ))
                                         )}
@@ -5112,6 +5155,45 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Pedidos de Uniforme */}
+                                    <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl mt-6">
+                                        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                            <Shirt className="text-emerald-500" />
+                                            Meus Pedidos de Uniforme
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {myOrders.length > 0 ? (
+                                                myOrders.map(order => (
+                                                    <div key={order.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${order.status !== 'pending' ? 'border-green-500' : 'border-yellow-500'} flex flex-col gap-3 shadow-lg`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="font-bold text-white">{order.item}</p>
+                                                                <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
+                                                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
+                                                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                                                            </div>
+                                                        </div>
+                                                        {order.status === 'pending' && !order.proof_url && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Button variant="secondary" className="text-[10px] h-auto px-2 py-1 flex-1 bg-stone-800 border-stone-700" onClick={() => { setSelectedOrderToProof(order); setTimeout(() => uniformFileInputRef.current?.click(), 100); }} disabled={uploadingUniformProof}>
+                                                                    {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar/Enviar Comprovante</>}
+                                                                </Button>
+                                                                <input type="file" accept="image/*, application/pdf" className="hidden" ref={uniformFileInputRef} onChange={handleFileChangeForUniformProof} onClick={(e) => e.stopPropagation()} disabled={uploadingUniformProof} />
+                                                            </div>
+                                                        )}
+                                                        {order.status === 'pending' && order.proof_url && (<span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic"><Clock size={12} /> Comprovante em análise</span>)}
+                                                        {order.proof_url && (<button onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')} className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium bg-blue-400/5 px-2 py-1 rounded border border-blue-400/20 self-start"><Eye size={12} /> Ver Comprovante</button>)}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">Nenhum pedido registrado.</p>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
