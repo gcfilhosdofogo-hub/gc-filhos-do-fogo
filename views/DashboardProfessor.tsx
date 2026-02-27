@@ -2604,61 +2604,74 @@ id,
                           const isCompleted = cls.status === 'completed';
                           const isExpanded = expandedSessionId === cls.id;
                           const sessionAttendance = attendanceHistory.filter(h => h.session_id === cls.id);
+                          const presentCount = sessionAttendance.filter(h => h.status === 'present').length;
+                          const absentCount = sessionAttendance.filter(h => h.status === 'absent').length;
+                          const justifiedCount = sessionAttendance.filter(h => h.status === 'justified').length;
 
                           return (
                             <div key={cls.id} className="space-y-1">
                               <div
                                 onClick={() => isCompleted && setExpandedSessionId(isExpanded ? null : cls.id)}
-                                className={`flex justify-between items-center bg-stone-900/40 p-2 rounded text-xs border-l-2 ${isCompleted ? 'border-green-500 hover:bg-stone-900/60 cursor-pointer' : 'border-stone-600'} transition-all`}
+                                className={`flex justify-between items-center bg-stone-900/40 p-3 rounded-lg text-xs border-l-4 ${isCompleted ? 'border-green-500 hover:bg-stone-900/60 cursor-pointer shadow-sm hover:shadow-md' : 'border-stone-600'} transition-all`}
                               >
                                 <div className="flex-1">
-                                  <span className="text-stone-300 font-bold block">{cls.title}</span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-stone-500 font-mono">
+                                  <span className="text-stone-100 font-black text-sm block mb-1">{cls.title || 'Aula Sem Título'}</span>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span className="flex items-center gap-1 text-[10px] text-stone-500 bg-stone-900 px-2 py-0.5 rounded font-mono">
                                       {cls.date.split('-').reverse().join('/')}
                                     </span>
-                                    {!isCompleted && <span className="text-orange-400 text-[10px] font-bold">(Pendente)</span>}
+                                    {!isCompleted && <span className="text-orange-400 text-[10px] font-black uppercase tracking-wider animate-pulse">(Pendente)</span>}
                                     {isCompleted && sessionAttendance.length > 0 && (
-                                      <span className="text-green-500/70 text-[10px]">{sessionAttendance.length} registros</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-green-500 font-bold text-[10px]">{presentCount} Presentes</span>
+                                        <span className="text-red-500 font-bold text-[10px]">{absentCount} Faltas</span>
+                                        {justifiedCount > 0 && <span className="text-blue-400 font-bold text-[10px]">{justifiedCount} Justif.</span>}
+                                      </div>
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                   {isCompleted ? (
                                     <>
-                                      <Check size={12} className="text-green-500" />
-                                      {isExpanded ? <ChevronUp size={14} className="text-stone-500" /> : <ChevronDown size={14} className="text-stone-500" />}
+                                      <CheckCircle size={14} className="text-green-500" />
+                                      {isExpanded ? <ChevronUp size={16} className="text-stone-400" /> : <ChevronDown size={16} className="text-stone-500" />}
                                     </>
                                   ) : (
-                                    <Clock size={12} className="text-stone-500" />
+                                    <Clock size={14} className="text-stone-600" />
                                   )}
                                 </div>
                               </div>
 
                               {isExpanded && isCompleted && (
-                                <div className="ml-2 pl-2 border-l border-stone-700 space-y-1 pb-2 animate-fade-in">
+                                <div className="ml-3 pl-3 border-l-2 border-stone-800 space-y-1.5 py-3 animate-fade-in">
+                                  <p className="text-[10px] text-stone-500 font-black uppercase mb-2 tracking-widest">Lista de Alunos</p>
                                   {sessionAttendance.length > 0 ? (
-                                    sessionAttendance.map(record => (
-                                      <div key={record.id} className="bg-stone-900/20 p-2 rounded flex flex-col gap-1">
+                                    sessionAttendance.sort((a, b) => a.student_name.localeCompare(b.student_name)).map(record => (
+                                      <div key={record.id} className={`bg-stone-900/30 p-2.5 rounded-lg flex flex-col gap-1 border border-stone-800/50 hover:border-stone-700 transition-colors`}>
                                         <div className="flex justify-between items-center">
-                                          <span className="text-stone-400 font-medium">{record.student_name}</span>
-                                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${record.status === 'present' ? 'bg-green-900/30 text-green-500' :
-                                            record.status === 'justified' ? 'bg-blue-900/30 text-blue-400' :
-                                              'bg-red-900/30 text-red-500'
+                                          <div className="flex items-center gap-2">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${record.status === 'present' ? 'bg-green-500 shadow-sm shadow-green-500/50' : record.status === 'justified' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                                            <span className="text-stone-300 font-bold text-xs">{record.student_name}</span>
+                                          </div>
+                                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${record.status === 'present' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                            record.status === 'justified' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                              'bg-red-500/10 text-red-500 border border-red-500/20'
                                             }`}>
                                             {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
                                           </span>
                                         </div>
                                         {record.status === 'justified' && record.justification && (
-                                          <p className="text-[10px] text-stone-500 italic flex items-start gap-1">
-                                            <MessageCircle size={10} className="mt-0.5" />
-                                            "{record.justification}"
-                                          </p>
+                                          <div className="mt-1 bg-blue-900/5 p-2 rounded border border-blue-900/10">
+                                            <p className="text-[10px] text-blue-400/80 italic flex items-start gap-1.5">
+                                              <MessageCircle size={10} className="mt-0.5" />
+                                              "{record.justification}"
+                                            </p>
+                                          </div>
                                         )}
                                       </div>
                                     ))
                                   ) : (
-                                    <p className="text-[10px] text-stone-600 italic p-2">Dados da chamada não carregados ou indisponíveis.</p>
+                                    <p className="text-[10px] text-stone-600 italic p-4 bg-stone-900/20 rounded-lg">Dados da chamada não carregados ou indisponíveis.</p>
                                   )}
                                 </div>
                               )}
