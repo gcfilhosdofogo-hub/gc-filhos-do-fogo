@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
-import { User, GroupEvent, PaymentRecord, ProfessorClassData, StudentAcademicData, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory } from '../types';
+import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan } from '../types';
+
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
@@ -51,7 +52,13 @@ interface Props {
     onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
     onUpdateEventRegistrationWithProof: (updatedRegistration: EventRegistration) => Promise<void>;
     onDeleteMusic?: (musicId: string) => Promise<void>;
+    // Lesson Plan props
+    lessonPlans?: LessonPlan[];
+    onAddLessonPlan?: (plan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+    onUpdateLessonPlan?: (plan: LessonPlan) => Promise<void>;
+    onDeleteLessonPlan?: (planId: string) => Promise<void>;
 }
+
 
 const UNIFORM_PRICES = {
     combo: 110.00,
@@ -102,8 +109,13 @@ export const DashboardAdmin: React.FC<Props> = ({
     onToggleArchiveUser,
     onUpdateOrderWithProof,
     onUpdateEventRegistrationWithProof,
-    onDeleteMusic = async (_id: string) => { }
+    onDeleteMusic = async (_id: string) => { },
+    lessonPlans = [],
+    onAddLessonPlan,
+    onUpdateLessonPlan,
+    onDeleteLessonPlan,
 }) => {
+
     const { session } = useSession();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
@@ -130,10 +142,6 @@ export const DashboardAdmin: React.FC<Props> = ({
             default: return 0;
         }
     };
-    const [myOrders, setMyOrders] = useState<UniformOrder[]>([]);
-    useEffect(() => {
-        setMyOrders(uniformOrders.filter(o => o.user_id === user.id));
-    }, [uniformOrders, user.id]);
 
     // Assignments State
     const [newAssignment, setNewAssignment] = useState<{ title: string, description: string, dueDate: string, studentId: string, file: File | null }>({ title: '', description: '', dueDate: '', studentId: '', file: null });
@@ -373,19 +381,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     const eventFileInputRef = useRef<HTMLInputElement>(null);
     const [selectedEventRegToProof, setSelectedEventRegToProof] = useState<EventRegistration | null>(null);
 
-    // Derived: admin's own payments
-    const myMonthlyPayments = useMemo(() =>
-        monthlyPayments.filter(p => p.student_id === user.id && p.type !== 'evaluation'),
-        [monthlyPayments, user.id]
-    );
-    const myEvaluations = useMemo(() =>
-        monthlyPayments.filter(p => p.student_id === user.id && p.type === 'evaluation'),
-        [monthlyPayments, user.id]
-    );
-    const myEventRegistrations = useMemo(() =>
-        eventRegistrations.filter(r => r.user_id === user.id),
-        [eventRegistrations, user.id]
-    );
+    // Derived: admin's own payments (matching DashboardProfessor filters)
+    const myFilteredPayments = useMemo(() => (monthlyPayments || []).filter(p => p.student_id === user.id), [monthlyPayments, user.id]);
+    const myMonthlyPayments = useMemo(() => myFilteredPayments.filter(p => (!p.type || p.type === 'Mensalidade') && !p.month.toLowerCase().includes('avalia')), [myFilteredPayments]);
+    const myEvaluations = useMemo(() => myFilteredPayments.filter(p => p.type === 'evaluation' || p.month.toLowerCase().includes('avalia')), [myFilteredPayments]);
+    const myEventRegistrations = useMemo(() => eventRegistrations ? eventRegistrations.filter(r => r.user_id === user.id) : [], [eventRegistrations, user.id]);
+    const myOrders = useMemo(() => (uniformOrders || []).filter(o => o.user_id === user.id), [uniformOrders, user.id]);
 
     const beltColors = useMemo(() => {
         const b = (user.belt || '').toLowerCase();
@@ -467,6 +468,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [showNewPlanForm, setShowNewPlanForm] = useState(false);
     const [newPlanTitle, setNewPlanTitle] = useState('');
     const [newPlanContent, setNewPlanContent] = useState('');
+    const [savingPlan, setSavingPlan] = useState(false);
 
     // Student Details Tab State
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
@@ -1629,30 +1631,50 @@ export const DashboardAdmin: React.FC<Props> = ({
         onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
     };
 
+    // --- Lesson Plan handlers (use lesson_plans table, NOT class_sessions) ---
     const handleAddPlan = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newPlanTitle.trim()) return;
-        const today = new Date().toISOString().split('T')[0];
-        const now = new Date().toTimeString().slice(0, 5);
-        await onAddClassSession({
-            title: newPlanTitle,
-            date: today,
-            time: now,
-            instructor: user.nickname || user.name,
-            location: 'A definir',
-            level: 'Todos os Níveis',
-            professor_id: user.id,
-            planning: newPlanContent,
-        });
-        setNewPlanTitle('');
-        setNewPlanContent('');
-        setShowNewPlanForm(false);
-        onNotifyAdmin(`Adicionou planejamento: ${newPlanTitle}`, user);
+        if (!newPlanTitle.trim() || !onAddLessonPlan) return;
+        setSavingPlan(true);
+        try {
+            await onAddLessonPlan({
+                professor_id: user.id,
+                professor_name: user.nickname || user.name,
+                title: newPlanTitle,
+                content: newPlanContent,
+            });
+            setNewPlanTitle('');
+            setNewPlanContent('');
+            setShowNewPlanForm(false);
+            onNotifyAdmin(`Adicionou planejamento: ${newPlanTitle}`, user);
+        } catch (err: any) {
+            alert('Erro ao salvar planejamento: ' + err.message);
+        } finally {
+            setSavingPlan(false);
+        }
     };
 
-    const handleSavePlanContent = async (cls: ClassSession) => {
-        await onUpdateClassSession({ ...cls, title: editPlanTitle, planning: editPlanContent });
-        setEditingPlanId(null);
+    const handleSavePlanEdit = async (plan: LessonPlan) => {
+        if (!onUpdateLessonPlan) return;
+        setSavingPlan(true);
+        try {
+            await onUpdateLessonPlan({ ...plan, title: editPlanTitle, content: editPlanContent });
+            setEditingPlanId(null);
+        } catch (err: any) {
+            alert('Erro ao atualizar planejamento: ' + err.message);
+        } finally {
+            setSavingPlan(false);
+        }
+    };
+
+    const handleDeletePlan = async (planId: string) => {
+        if (!onDeleteLessonPlan) return;
+        if (!window.confirm('Tem certeza que deseja excluir este planejamento?')) return;
+        try {
+            await onDeleteLessonPlan(planId);
+        } catch (err: any) {
+            alert('Erro ao excluir planejamento: ' + err.message);
+        }
     };
 
     const handleOpenEvaluation = (studentId: string) => {
@@ -1891,7 +1913,6 @@ export const DashboardAdmin: React.FC<Props> = ({
             status: 'pending'
         };
         onAddOrder(newOrder);
-        setMyOrders([newOrder as UniformOrder, ...myOrders]); // Add to local state for immediate display
         onNotifyAdmin(`${user.role === 'admin' ? 'Admin' : 'Professor'} solicitou uniforme: ${itemName}`, user);
         alert('Pedido registrado!');
         setOrderForm({ item: 'combo', shirtSize: '', pantsSize: '' });
@@ -1923,8 +1944,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                 description: `Registro de aula por ${user.nickname || user.name}`
             });
 
-            // Update class records list for UI
-            setClassRecords(prev => [...prev, { name: uploadData.path, url: '', created_at: new Date().toISOString() }]);
+            // Update class records list for UI immediately with correct data
+            const newRecord = {
+                name: uploadData.path,
+                url: '',
+                created_at: new Date().toISOString(),
+                author_name: user.nickname || user.first_name || user.name || 'Professor',
+                description: `Registro de aula por ${user.nickname || user.name}`
+            };
+            setClassRecords(prev => [newRecord, ...prev]);
 
             onNotifyAdmin(`Registro de aula enviado`, user);
             alert('Registro de aula enviado com sucesso!');
@@ -1943,38 +1971,25 @@ export const DashboardAdmin: React.FC<Props> = ({
             // Fetch from database table instead of direct storage listing
             const { data, error } = await supabase
                 .from('class_records')
-                .select('*, profiles(nickname, name)')
+                .select('*, profiles:created_by (nickname, first_name)')
                 .order('created_at', { ascending: false })
                 .limit(40);
 
             if (error) throw error;
 
             const records = (data || []).map((it: any) => ({
-                name: it.photo_url, // This is the full path needed for createSignedUrl
+                name: it.photo_url,
                 url: '',
                 created_at: it.created_at,
                 author_id: it.created_by,
-                author_name: it.profiles?.nickname || it.profiles?.name || 'Professor',
+                author_name: it.profiles?.nickname || it.profiles?.first_name || 'Professor',
                 description: it.description
             }));
 
             setClassRecords(records);
         } catch (error) {
             console.error('Error fetching class records (from DB):', error);
-            // Fallback to storage listing if table fails for some reason
-            try {
-                const { data, error: storageError } = await supabase.storage.from('class_records').list('', { limit: 20 });
-                if (!storageError) {
-                    const storageRecords = (data || []).map((it: any) => ({
-                        name: it.name,
-                        url: '',
-                        created_at: it.created_at
-                    }));
-                    setClassRecords(storageRecords);
-                }
-            } catch (err) {
-                console.error('Final fallback failed:', err);
-            }
+            // We removed the storage fallback as it lacks metadata and was showing "ghost" entries
         }
     }, []);
 
@@ -2069,12 +2084,14 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
     // --- CALCULATED PROFESSORS DATA (Pedagogical Tab) ---
-    const professorsData: ProfessorClassData[] = useMemo(() => {
+    const professorsData: any[] = useMemo(() => {
+
         const professors = managedUsers.filter(u => u.role === 'professor' || u.role === 'admin');
         return professors.map(prof => {
             const profStudents = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (prof.nickname || prof.first_name || prof.name));
 
-            const studentsData: StudentAcademicData[] = profStudents
+            const studentsData: any[] = profStudents
+
                 .filter(u => u.status !== 'archived')
                 .map(s => {
                     const sGrades = studentGrades.filter(g => g.student_id === s.id);
@@ -3987,32 +4004,27 @@ export const DashboardAdmin: React.FC<Props> = ({
                 activeTab === 'my_classes' && (
                     <div className="space-y-6 animate-fade-in relative">
 
-                        {/* Top Actions Bar (Similar to Professor) */}
                         <div className="flex flex-wrap gap-2 justify-end bg-stone-800 p-4 rounded-xl border border-stone-700">
-                            <Button variant="secondary" onClick={() => setProfView('music_manager')} className="border border-stone-600">
-                                <Music size={18} className="text-yellow-400" /> Músicas
-                            </Button>
-                            <Button variant="secondary" onClick={() => setProfView('assignments')} className="border border-stone-600">
-                                <BookOpen size={18} className="text-blue-400" /> Trabalhos
-                            </Button>
-                            <Button variant="secondary" onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600">
+                            {profView === 'dashboard' && (
+                                <Button onClick={() => setProfView('new_class')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600">
+                                    <PlusCircle size={18} /> Nova Aula
+                                </Button>
+                            )}
+                            <Button variant="secondary" onClick={() => setProfView('planning')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
                                 <BookOpen size={18} /> Planejamento
-                            </Button>
-                            <Button variant="secondary" onClick={() => setProfView('uniform')} className="border border-stone-600">
-                                <Shirt size={18} className="text-emerald-400" /> Uniforme
                             </Button>
                             <Button variant="secondary" onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
                                 <Wallet size={18} /> Financeiro
                             </Button>
-                            {profView === 'dashboard' && (
-                                <Button onClick={() => setProfView('new_class')}>
-                                    <PlusCircle size={18} /> Nova Aula
-                                </Button>
-                            )}
-                            <Button variant="outline" onClick={handleCopyPix} className={pixCopied ? "border-green-500 text-green-500" : ""} title="PIX Mensalidade">
+                            <Button variant="outline" onClick={handleCopyPix} className={`transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "text-stone-300 border-stone-700"}`} title="PIX Mensalidade">
                                 {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />}
                                 {pixCopied ? 'Copiado!' : 'Mensalidade'}
                             </Button>
+                            <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
+                                <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none text-white">
+                                    <Instagram size={18} /> Instagram
+                                </Button>
+                            </a>
                         </div>
 
                         {/* --- PROF MODE: ASSIGN TO STUDENT MODAL --- */}
@@ -4918,66 +4930,66 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </div>
                                             <div>
                                                 <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
-                                                <p className="text-stone-400 text-sm">{myClasses.length} aula(s) planejada(s)</p>
+                                                <p className="text-stone-400 text-sm">{lessonPlans.length} plano(s) cadastrado(s)</p>
                                             </div>
                                         </div>
-                                        <Button onClick={() => { setShowNewPlanForm(true); setNewPlanTitle(`Aula ${myClasses.length + 1}`); setNewPlanContent(''); }} className="bg-purple-600 hover:bg-purple-500 shrink-0">
-                                            <PlusCircle size={16} className="mr-1" /> Nova Aula
+                                        <Button onClick={() => { setShowNewPlanForm(true); setNewPlanTitle(`Aula ${lessonPlans.length + 1}`); setNewPlanContent(''); }} className="bg-purple-600 hover:bg-purple-500 shrink-0">
+                                            <PlusCircle size={16} className="mr-1" /> Novo Plano
                                         </Button>
                                     </div>
                                     {showNewPlanForm && (
                                         <form onSubmit={handleAddPlan} className="mb-6 bg-stone-900/80 border border-purple-500/30 rounded-2xl p-5 space-y-4 animate-fade-in">
-                                            <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Nova Aula</h3>
-                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" required value={newPlanTitle} onChange={e => setNewPlanTitle(e.target.value)} placeholder="Ex: Aula 1..." className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
-                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Planejamento / Conteúdo</label><textarea value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} rows={4} placeholder="Descreva o conteúdo (ex: Aquecimento, Ginga, Jogo de dentro, Roda...)" className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
-                                            <div className="flex gap-3"><Button type="submit" className="bg-purple-600 hover:bg-purple-500"><Save size={14} className="mr-1" /> Salvar</Button><Button type="button" variant="ghost" onClick={() => setShowNewPlanForm(false)} className="text-stone-400"><X size={14} className="mr-1" /> Cancelar</Button></div>
+                                            <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Novo Planejamento</h3>
+                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" required value={newPlanTitle} onChange={e => setNewPlanTitle(e.target.value)} placeholder="Ex: Aula 1 – Ginga e Au" className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
+                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Conteúdo / Planejamento</label><textarea value={newPlanContent} onChange={e => setNewPlanContent(e.target.value)} rows={4} placeholder="Descreva o conteúdo (ex: Aquecimento, Ginga, Jogo de dentro, Roda...)" className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
+                                            <div className="flex gap-3"><Button type="submit" disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500"><Save size={14} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}</Button><Button type="button" variant="ghost" onClick={() => setShowNewPlanForm(false)} className="text-stone-400"><X size={14} className="mr-1" /> Cancelar</Button></div>
                                         </form>
                                     )}
 
                                     <div className="space-y-4">
-                                        {myClasses.length === 0 ? (
+                                        {lessonPlans.length === 0 ? (
                                             <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
                                                 <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
-                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula planejada ainda.</p>
-                                                <p className="text-stone-600 text-xs mt-2">Clique em "Nova Aula" para começar.</p>
+                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhum planejamento cadastrado ainda.</p>
+                                                <p className="text-stone-600 text-xs mt-2">Clique em "Novo Plano" para começar.</p>
                                             </div>
                                         ) : (
-                                            [...myClasses]
-                                                .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime())
-                                                .map((cls, idx) => (
-                                                    <div key={cls.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
-                                                        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
-                                                                <p className="font-black text-white">{cls.title || `Aula ${idx + 1}`}</p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' : cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' : 'bg-stone-800 text-stone-400'}`}>
-                                                                    {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
-                                                                </span>
-                                                                {editingPlanId !== cls.id && (
-                                                                    <button onClick={() => { setEditingPlanId(cls.id); setEditPlanTitle(cls.title || ''); setEditPlanContent(cls.planning || ''); }} className="text-stone-500 hover:text-purple-400 transition-colors p-1" title="Editar">
+                                            lessonPlans.map((plan, idx) => (
+                                                <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
+                                                    <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
+                                                            <p className="font-black text-white">{plan.title}</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {editingPlanId !== plan.id && (
+                                                                <>
+                                                                    <button onClick={() => { setEditingPlanId(plan.id); setEditPlanTitle(plan.title); setEditPlanContent(plan.content); }} className="text-stone-500 hover:text-purple-400 transition-colors p-1" title="Editar">
                                                                         <Edit2 size={14} />
                                                                     </button>
-                                                                )}
+                                                                    <button onClick={() => handleDeletePlan(plan.id)} className="text-stone-500 hover:text-red-400 transition-colors p-1" title="Excluir">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {editingPlanId !== plan.id ? (
+                                                        <div className="px-5 py-4 min-h-[70px]">
+                                                            {plan.content ? (<p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>) : (<p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>)}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="px-5 py-4 space-y-3 bg-stone-900/40">
+                                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" value={editPlanTitle} onChange={e => setEditPlanTitle(e.target.value)} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
+                                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Conteúdo / Planejamento</label><textarea value={editPlanContent} onChange={e => setEditPlanContent(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
+                                                            <div className="flex gap-2">
+                                                                <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs"><Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}</Button>
+                                                                <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs"><X size={12} className="mr-1" /> Cancelar</Button>
                                                             </div>
                                                         </div>
-                                                        {editingPlanId !== cls.id ? (
-                                                            <div className="px-5 py-4 min-h-[70px]">
-                                                                {cls.planning ? (<p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>) : (<p className="text-stone-600 text-sm italic">Sem planejamento. Clique em editar para adicionar.</p>)}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="px-5 py-4 space-y-3 bg-stone-900/40">
-                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" value={editPlanTitle} onChange={e => setEditPlanTitle(e.target.value)} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
-                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Planejamento / Conteúdo</label><textarea value={editPlanContent} onChange={e => setEditPlanContent(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
-                                                                <div className="flex gap-2">
-                                                                    <Button onClick={() => handleSavePlanContent(cls)} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs"><Save size={12} className="mr-1" /> Salvar</Button>
-                                                                    <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs"><X size={12} className="mr-1" /> Cancelar</Button>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))
+                                                    )}
+                                                </div>
+                                            ))
                                         )}
                                     </div>
                                 </div>
@@ -5222,7 +5234,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     <div className="flex flex-col gap-1 overflow-hidden">
                                                         <span className="text-white font-bold text-sm truncate capitalize">{(rec as any).author_name || 'Professor'}</span>
                                                         <span className="text-stone-500 text-[10px] flex items-center gap-1 font-mono">
-                                                            <Calendar size={10} /> {new Date(rec.created_at || '').toLocaleDateString('pt-BR')} - {new Date(rec.created_at || '').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                            <Calendar size={10} /> {rec.created_at ? `${new Date(rec.created_at).toLocaleDateString('pt-BR')} - ${new Date(rec.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Data não disponível'}
                                                         </span>
                                                     </div>
                                                     <button
@@ -5238,17 +5250,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         </div>
                                     </div>
 
-                                    {/* MAIN ACTIONS BAR - Same as Professor */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                    {/* MAIN ACTIONS BAR - Matching Professor + Planning */}
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                                         <Button onClick={() => setProfView('all_students')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-900 to-indigo-700 hover:from-indigo-800 hover:to-indigo-600 border border-indigo-500/30">
                                             <Users size={28} className="text-indigo-300" />
                                             <span className="text-sm font-bold">Meus Alunos</span>
                                             <span className="text-xs text-indigo-200">Ver Tudo</span>
-                                        </Button>
-                                        <Button onClick={() => setProfView('uniform')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-900 to-emerald-700 hover:from-emerald-800 hover:to-emerald-600 border border-emerald-500/30">
-                                            <Shirt size={28} className="text-emerald-300" />
-                                            <span className="text-sm font-bold">Uniforme</span>
-                                            <span className="text-xs text-emerald-200">Pedidos</span>
                                         </Button>
                                         <Button onClick={() => setProfView('assignments')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-cyan-900 to-cyan-700 hover:from-cyan-800 hover:to-cyan-600 border border-cyan-500/30">
                                             <BookOpen size={28} className="text-cyan-300" />
@@ -5259,6 +5266,21 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <Music size={28} className="text-purple-300" />
                                             <span className="text-sm font-bold">Músicas</span>
                                             <span className="text-xs text-purple-200">Acervo</span>
+                                        </Button>
+                                        <Button onClick={() => setProfView('uniform')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-900 to-emerald-700 hover:from-emerald-800 hover:to-emerald-600 border border-emerald-500/30">
+                                            <Shirt size={28} className="text-emerald-300" />
+                                            <span className="text-sm font-bold">Uniforme</span>
+                                            <span className="text-xs text-emerald-200">Pedidos</span>
+                                        </Button>
+                                        <Button onClick={() => setProfView('financial')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-900 to-stone-700 hover:from-stone-800 hover:to-stone-600 border border-stone-500/30">
+                                            <Wallet size={28} className="text-stone-300" />
+                                            <span className="text-sm font-bold">Financeiro</span>
+                                            <span className="text-xs text-stone-200">Minha Conta</span>
+                                        </Button>
+                                        <Button onClick={() => setProfView('planning')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-amber-900 to-amber-700 hover:from-amber-800 hover:to-amber-600 border border-amber-500/30">
+                                            <BookOpen size={28} className="text-amber-300" />
+                                            <span className="text-sm font-bold">Planos</span>
+                                            <span className="text-xs text-amber-200">Aulas</span>
                                         </Button>
                                     </div>
 

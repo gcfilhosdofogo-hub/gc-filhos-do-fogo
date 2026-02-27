@@ -8,7 +8,8 @@ import { DashboardAdmin } from './views/DashboardAdmin';
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan } from './types';
+
 
 
 function AppContent() {
@@ -30,7 +31,9 @@ function AppContent() {
   const [eventRegistrations, setEventRegistrations] = useState<EventRegistration[]>([]);
   const [allUsersProfiles, setAllUsersProfiles] = useState<User[]>([]); // NEW: State to hold all user profiles
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
   const [studentNotesNumericField, setStudentNotesNumericField] = useState<string>('numeric');
+
   const [studentNotesWrittenField, setStudentNotesWrittenField] = useState<string>('written');
   const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
   const [isGeneratingPayments, setIsGeneratingPayments] = useState(false);
@@ -151,6 +154,15 @@ function AppContent() {
       }));
       setClassSessions(mappedSessions);
     }
+
+    // Fetch Lesson Plans (professors see their own; admins see all)
+    let lessonPlanQuery = supabase.from('lesson_plans').select('*').order('created_at', { ascending: false });
+    if (userRole === 'professor') {
+      lessonPlanQuery = lessonPlanQuery.eq('professor_id', userId);
+    }
+    const { data: lessonPlanData, error: lessonPlanError } = await lessonPlanQuery;
+    if (lessonPlanError) console.error('Error fetching lesson plans:', lessonPlanError);
+    else setLessonPlans(lessonPlanData || []);
 
     // Fetch Event Registrations (all for admin, own for others)
     let eventRegQuery = supabase.from('event_registrations').select('*');
@@ -296,14 +308,14 @@ function AppContent() {
       const newPayments = students
         .filter(s => s.status !== 'archived')
         .map(s => ({
-        student_id: s.id,
-        student_name: s.nickname || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Aluno',
-        month: currentMonth,
-        due_date: dueDate,
-        amount: 50,
-        status: 'pending',
-        type: 'Mensalidade'
-      }));
+          student_id: s.id,
+          student_name: s.nickname || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Aluno',
+          month: currentMonth,
+          due_date: dueDate,
+          amount: 50,
+          status: 'pending',
+          type: 'Mensalidade'
+        }));
 
       const { error: insertError } = await supabase.from('monthly_payments').insert(newPayments);
       if (insertError) throw insertError;
@@ -735,6 +747,51 @@ function AppContent() {
     else setClassSessions(prev => prev.map(cs => cs.id === updatedSession.id ? data : cs));
   };
 
+  // --- Lesson Plan Handlers (separate from class_sessions) ---
+  const handleAddLessonPlan = async (newPlan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!session || !user) return;
+    const payload = {
+      professor_id: session.user.id,
+      professor_name: user.nickname || user.name,
+      title: newPlan.title,
+      content: newPlan.content,
+    };
+    const { data, error } = await supabase.from('lesson_plans').insert(payload).select().single();
+    if (error) {
+      console.error('Error adding lesson plan:', error);
+      throw error;
+    } else {
+      setLessonPlans(prev => [data, ...prev]);
+      handleNotifyAdmin(`Adicionou planejamento: ${newPlan.title}`, user);
+    }
+  };
+
+  const handleUpdateLessonPlan = async (updatedPlan: LessonPlan) => {
+    const { data, error } = await supabase
+      .from('lesson_plans')
+      .update({ title: updatedPlan.title, content: updatedPlan.content, updated_at: new Date().toISOString() })
+      .eq('id', updatedPlan.id)
+      .select()
+      .single();
+    if (error) {
+      console.error('Error updating lesson plan:', error);
+      throw error;
+    } else {
+      setLessonPlans(prev => prev.map(p => p.id === updatedPlan.id ? data : p));
+    }
+  };
+
+  const handleDeleteLessonPlan = async (planId: string) => {
+    const { error } = await supabase.from('lesson_plans').delete().eq('id', planId);
+    if (error) {
+      console.error('Error deleting lesson plan:', error);
+      throw error;
+    } else {
+      setLessonPlans(prev => prev.filter(p => p.id !== planId));
+      if (user) handleNotifyAdmin('Excluiu um planejamento de aula', user);
+    }
+  };
+
   // Event Registration Handlers
   const handleAddEventRegistration = async (newRegistration: Omit<EventRegistration, 'id' | 'registered_at'>) => {
     if (!session) return;
@@ -961,6 +1018,11 @@ function AppContent() {
               onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
+              lessonPlans={lessonPlans}
+              onAddLessonPlan={handleAddLessonPlan}
+              onUpdateLessonPlan={handleUpdateLessonPlan}
+              onDeleteLessonPlan={handleDeleteLessonPlan}
+              onDeleteMusic={handleDeleteMusic}
             />
           )}
 
@@ -1001,10 +1063,14 @@ function AppContent() {
               onAddClassRecord={handleAddClassRecord}
               allUsersProfiles={allUsersProfiles}
               onToggleBlockUser={handleToggleBlockUser}
-            onToggleArchiveUser={handleToggleArchiveUser}
+              onToggleArchiveUser={handleToggleArchiveUser}
               onUpdateOrderWithProof={handleUpdateOrderWithProof}
               onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
               onDeleteMusic={handleDeleteMusic}
+              lessonPlans={lessonPlans}
+              onAddLessonPlan={handleAddLessonPlan}
+              onUpdateLessonPlan={handleUpdateLessonPlan}
+              onDeleteLessonPlan={handleDeleteLessonPlan}
             />
           )}
         </div>

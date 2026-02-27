@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
-import { User, GroupEvent, MusicItem, UniformOrder, StudentAcademicData, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, ALL_BELTS } from '../types'; // Renamed Assignment to AssignmentType to avoid conflict
+import { User, GroupEvent, MusicItem, UniformOrder, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, LessonPlan } from '../types';
+
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
@@ -33,7 +34,13 @@ interface Props {
   onAddClassRecord: (record: { photo_url: string; created_by: string; description?: string }) => Promise<void>;
   allUsersProfiles: User[];
   onDeleteMusic?: (musicId: string) => Promise<void>;
+  // Lesson Plan props (separate table, not class_sessions)
+  lessonPlans: LessonPlan[];
+  onAddLessonPlan: (plan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onUpdateLessonPlan: (plan: LessonPlan) => Promise<void>;
+  onDeleteLessonPlan: (planId: string) => Promise<void>;
 }
+
 
 const BELT_COLOR_MAPPING: Record<string, { main: string, ponta?: string }> = {
   "Cordel Cinza": { main: "#808080" },
@@ -95,21 +102,27 @@ export const DashboardProfessor: React.FC<Props> = ({
   eventRegistrations,
   onAddClassRecord = async (record: { photo_url: string; created_by: string; description?: string }) => { },
   allUsersProfiles = [],
-  onDeleteMusic = async (_id: string) => { }
+  onDeleteMusic = async (_id: string) => { },
+  lessonPlans = [],
+  onAddLessonPlan,
+  onUpdateLessonPlan,
+  onDeleteLessonPlan,
 }) => {
+
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
   // New Class Form State (for Professor Mode)
   const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', planning: '' });
 
-  // Planning view states
+  // Planning view states (now for lesson_plans table)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [editPlanTitle, setEditPlanTitle] = useState('');
   const [editPlanContent, setEditPlanContent] = useState('');
   const [showNewPlanForm, setShowNewPlanForm] = useState(false);
   const [newPlanTitle, setNewPlanTitle] = useState('');
   const [newPlanContent, setNewPlanContent] = useState('');
+  const [savingPlan, setSavingPlan] = useState(false);
 
   // Attendance State
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null); // Changed to string
@@ -635,30 +648,48 @@ id,
     onNotifyAdmin(`Agendou nova aula: ${newClassData.title} `, user);
   };
 
+  // --- Lesson Plan handlers (use lesson_plans table, NOT class_sessions) ---
   const handleAddPlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlanTitle.trim()) return;
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().slice(0, 5);
-    await onAddClassSession({
-      title: newPlanTitle,
-      date: today,
-      time: now,
-      instructor: user.nickname || user.name,
-      location: 'A definir',
-      level: 'Todos os Níveis',
-      professor_id: user.id,
-      planning: newPlanContent,
-    });
-    setNewPlanTitle('');
-    setNewPlanContent('');
-    setShowNewPlanForm(false);
-    onNotifyAdmin(`Adicionou planejamento: ${newPlanTitle} `, user);
+    setSavingPlan(true);
+    try {
+      await onAddLessonPlan({
+        professor_id: user.id,
+        professor_name: user.nickname || user.name,
+        title: newPlanTitle,
+        content: newPlanContent,
+      });
+      setNewPlanTitle('');
+      setNewPlanContent('');
+      setShowNewPlanForm(false);
+      onNotifyAdmin(`Adicionou planejamento: ${newPlanTitle}`, user);
+    } catch (err: any) {
+      alert('Erro ao salvar planejamento: ' + err.message);
+    } finally {
+      setSavingPlan(false);
+    }
   };
 
-  const handleSavePlanContent = async (cls: ClassSession) => {
-    await onUpdateClassSession({ ...cls, title: editPlanTitle, planning: editPlanContent });
-    setEditingPlanId(null);
+  const handleSavePlanEdit = async (plan: LessonPlan) => {
+    setSavingPlan(true);
+    try {
+      await onUpdateLessonPlan({ ...plan, title: editPlanTitle, content: editPlanContent });
+      setEditingPlanId(null);
+    } catch (err: any) {
+      alert('Erro ao atualizar planejamento: ' + err.message);
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este planejamento?')) return;
+    try {
+      await onDeleteLessonPlan(planId);
+    } catch (err: any) {
+      alert('Erro ao excluir planejamento: ' + err.message);
+    }
   };
 
 
@@ -1233,25 +1264,26 @@ id,
               </div>
               <div>
                 <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
-                <p className="text-stone-400 text-sm">{myClasses.length} aula(s) planejada(s)</p>
+                <p className="text-stone-400 text-sm">{lessonPlans.length} plano(s) cadastrado(s)</p>
               </div>
             </div>
             <Button
               onClick={() => {
                 setShowNewPlanForm(true);
-                setNewPlanTitle(`Aula ${myClasses.length + 1}`);
+                setNewPlanTitle(`Aula ${lessonPlans.length + 1}`);
+
                 setNewPlanContent('');
               }}
               className="bg-purple-600 hover:bg-purple-500 shrink-0"
             >
-              <PlusCircle size={16} className="mr-1" /> Nova Aula
+              <PlusCircle size={16} className="mr-1" /> Novo Plano
             </Button>
           </div>
 
           {/* Form: Nova Aula */}
           {showNewPlanForm && (
             <form onSubmit={handleAddPlan} className="mb-6 bg-stone-900/80 border border-purple-500/30 rounded-2xl p-5 space-y-4 animate-fade-in">
-              <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Nova Aula</h3>
+              <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Novo Planejamento</h3>
               <div>
                 <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
                 <input
@@ -1274,8 +1306,8 @@ id,
                 />
               </div>
               <div className="flex gap-3">
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-500">
-                  <Save size={14} className="mr-1" /> Salvar
+                <Button type="submit" disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500">
+                  <Save size={14} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setShowNewPlanForm(false)} className="text-stone-400">
                   <X size={14} className="mr-1" /> Cancelar
@@ -1286,88 +1318,89 @@ id,
 
           {/* Lista de Planos */}
           <div className="space-y-4">
-            {myClasses.length === 0 ? (
+            {lessonPlans.length === 0 ? (
               <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
                 <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
-                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma aula planejada ainda.</p>
-                <p className="text-stone-600 text-xs mt-2">Clique em "Nova Aula" para começar.</p>
+                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhum planejamento cadastrado ainda.</p>
+                <p className="text-stone-600 text-xs mt-2">Clique em "Novo Plano" para começar.</p>
               </div>
             ) : (
-              [...myClasses]
-                .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime())
-                .map((cls, idx) => (
-                  <div key={cls.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
-                    {/* Card Header */}
-                    <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
-                        <p className="font-black text-white">{cls.title || `Aula ${idx + 1}`}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${cls.status === 'completed' ? 'bg-green-900/30 text-green-400' :
-                          cls.status === 'cancelled' ? 'bg-red-900/30 text-red-400' :
-                            'bg-stone-800 text-stone-400'
-                          }`}>
-                          {cls.status === 'completed' ? 'Concluída' : cls.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
-                        </span>
-                        {editingPlanId !== cls.id && (
+              lessonPlans.map((plan, idx) => (
+                <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
+                      <p className="font-black text-white">{plan.title}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {editingPlanId !== plan.id && (
+                        <>
                           <button
                             onClick={() => {
-                              setEditingPlanId(cls.id);
-                              setEditPlanTitle(cls.title || '');
-                              setEditPlanContent(cls.planning || '');
+                              setEditingPlanId(plan.id);
+                              setEditPlanTitle(plan.title);
+                              setEditPlanContent(plan.content);
                             }}
                             className="text-stone-500 hover:text-purple-400 transition-colors p-1"
                             title="Editar"
                           >
                             <Edit2 size={14} />
                           </button>
-                        )}
+                          <button
+                            onClick={() => handleDeletePlan(plan.id)}
+                            className="text-stone-500 hover:text-red-400 transition-colors p-1"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* View Mode */}
+                  {editingPlanId !== plan.id ? (
+                    <div className="px-5 py-4 min-h-[70px]">
+                      {plan.content ? (
+                        <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>
+                      ) : (
+                        <p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Edit Mode */
+                    <div className="px-5 py-4 space-y-3 bg-stone-900/40">
+                      <div>
+                        <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
+                        <input
+                          type="text"
+                          value={editPlanTitle}
+                          onChange={e => setEditPlanTitle(e.target.value)}
+                          className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
+                        <textarea
+                          value={editPlanContent}
+                          onChange={e => setEditPlanContent(e.target.value)}
+                          rows={4}
+                          className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs">
+                          <Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs">
+                          <X size={12} className="mr-1" /> Cancelar
+                        </Button>
                       </div>
                     </div>
-
-                    {/* View Mode */}
-                    {editingPlanId !== cls.id ? (
-                      <div className="px-5 py-4 min-h-[70px]">
-                        {cls.planning ? (
-                          <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{cls.planning}</p>
-                        ) : (
-                          <p className="text-stone-600 text-sm italic">Sem planejamento. Clique em editar para adicionar.</p>
-                        )}
-                      </div>
-                    ) : (
-                      /* Edit Mode */
-                      <div className="px-5 py-4 space-y-3 bg-stone-900/40">
-                        <div>
-                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
-                          <input
-                            type="text"
-                            value={editPlanTitle}
-                            onChange={e => setEditPlanTitle(e.target.value)}
-                            className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
-                          <textarea
-                            value={editPlanContent}
-                            onChange={e => setEditPlanContent(e.target.value)}
-                            rows={4}
-                            className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <Button onClick={() => handleSavePlanContent(cls)} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs">
-                            <Save size={12} className="mr-1" /> Salvar
-                          </Button>
-                          <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs">
-                            <X size={12} className="mr-1" /> Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>

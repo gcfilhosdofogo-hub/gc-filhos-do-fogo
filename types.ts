@@ -30,7 +30,17 @@ export interface ClassSession {
   level: string;
   professor_id?: string; // Link to professor's user ID
   status?: 'pending' | 'completed' | 'cancelled'; // Match database
-  planning?: string; // NEW: Aula planning/content
+  planning?: string; // Aula planning/content
+}
+
+export interface LessonPlan {
+  id: string;
+  professor_id: string; // Owner of the plan
+  professor_name?: string; // Denormalized for display
+  title: string; // e.g. "Aula 1 – Ginga e Au"
+  content: string; // Free-form description/plan
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface NewsItem {
