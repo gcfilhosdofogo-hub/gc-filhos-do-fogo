@@ -79,6 +79,13 @@ const ActivityFeed: React.FC<{
     onClearNotifications: () => void;
 }> = ({ notifications, allUsersProfiles, onClearNotifications }) => {
     const [activityTab, setActivityTab] = useState<'feed' | 'last_seen'>('feed');
+    const [nowTimer, setNowTimer] = useState(Date.now()); // Força o re-render 
+
+    // Atualiza a cada 30 segundos para a bolinha ficar cinza e o texto alterar em tempo real
+    useEffect(() => {
+        const interval = setInterval(() => setNowTimer(Date.now()), 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const cleanNotifications = useMemo(() => {
         return notifications.filter(n => !n.action.toLowerCase().includes('acessou'));
@@ -117,11 +124,10 @@ const ActivityFeed: React.FC<{
         return isNaN(time) ? 0 : time;
     }, [notifications]);
 
-    const formatLastSeenMs = (timeMs: number) => {
+    const formatLastSeenMs = useCallback((timeMs: number) => {
         if (timeMs === 0) return 'Nunca acessou';
         const d = new Date(timeMs);
-        const now = new Date();
-        const diffMs = now.getTime() - d.getTime();
+        const diffMs = nowTimer - d.getTime();
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
@@ -131,12 +137,14 @@ const ActivityFeed: React.FC<{
         if (diffDays === 1) return 'Ontem';
         if (diffDays < 7) return `Há ${diffDays} dias`;
         return d.toLocaleDateString('pt-BR');
-    };
+    }, [nowTimer]);
 
-    const isOnlineMs = (timeMs: number) => {
+    const isOnlineMs = useCallback((timeMs: number) => {
         if (timeMs === 0) return false;
-        return (new Date().getTime() - timeMs) < 10 * 60 * 1000;
-    };
+        const diff = nowTimer - timeMs;
+        // Evita bugar se o relógio local estiver um pouco dessincronizado do server
+        return diff >= -60000 && diff < 10 * 60 * 1000;
+    }, [nowTimer]);
 
     const activeUsers = useMemo(() =>
         (allUsersProfiles || [])
