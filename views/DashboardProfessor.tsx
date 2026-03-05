@@ -1325,7 +1325,9 @@ id,
                 <p className="text-stone-600 text-xs mt-2">Clique em "Novo Plano" para começar.</p>
               </div>
             ) : (
-              lessonPlans.map((plan, idx) => (
+              [...lessonPlans]
+                .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+                .map((plan, idx) => (
                 <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
                   {/* Card Header */}
                   <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
