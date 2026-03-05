@@ -18,6 +18,7 @@ export interface User {
   nextEvaluationDate?: string; // YYYY-MM-DD
   photo_url?: string; // Profile photo URL
   status?: 'active' | 'blocked' | 'archived'; // User account status
+  last_seen?: string; // ISO string of last login/access
 }
 
 export interface ClassSession {

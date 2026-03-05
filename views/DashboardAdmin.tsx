@@ -70,6 +70,171 @@ const UNIFORM_PRICES = {
 type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial' | 'planning';
 
+// ────────────────────────────────────────────────────────────
+// ActivityFeed — separate component so hooks are valid
+// ────────────────────────────────────────────────────────────
+const ActivityFeed: React.FC<{
+    notifications: AdminNotification[];
+    allUsersProfiles: User[];
+    onClearNotifications: () => void;
+}> = ({ notifications, allUsersProfiles, onClearNotifications }) => {
+    const [activityTab, setActivityTab] = useState<'feed' | 'last_seen'>('feed');
+
+    const formatLastSeen = (isoStr?: string) => {
+        if (!isoStr) return 'Nunca acessou';
+        const d = new Date(isoStr);
+        const now = new Date();
+        const diffMs = now.getTime() - d.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        if (diffMins < 2) return 'Agora mesmo';
+        if (diffMins < 60) return `Há ${diffMins} minuto${diffMins !== 1 ? 's' : ''}`;
+        if (diffHours < 24) return `Há ${diffHours} hora${diffHours !== 1 ? 's' : ''}`;
+        if (diffDays === 1) return 'Ontem';
+        if (diffDays < 7) return `Há ${diffDays} dias`;
+        return d.toLocaleDateString('pt-BR');
+    };
+
+    const isOnline = (isoStr?: string) => {
+        if (!isoStr) return false;
+        return (new Date().getTime() - new Date(isoStr).getTime()) < 10 * 60 * 1000;
+    };
+
+    const activeUsers = useMemo(() =>
+        (allUsersProfiles || [])
+            .filter(u => u.status !== 'archived')
+            .sort((a, b) => {
+                const aTime = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+                const bTime = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+                return bTime - aTime;
+            }),
+        [allUsersProfiles]
+    );
+
+    const getRoleColor = (role: string) => {
+        if (role === 'admin') return 'text-red-400 bg-red-400/10 border-red-400/20';
+        if (role === 'professor') return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+        return 'text-green-400 bg-green-400/10 border-green-400/20';
+    };
+
+    const getActionIcon = (action: string) => {
+        const a = action.toLowerCase();
+        if (a.includes('acessou')) return '🔐';
+        if (a.includes('chamada')) return '✅';
+        if (a.includes('trabalho') || a.includes('tarefa')) return '📝';
+        if (a.includes('música') || a.includes('musica')) return '🎵';
+        if (a.includes('uniforme')) return '👕';
+        if (a.includes('aula')) return '🥋';
+        if (a.includes('avali')) return '⭐';
+        if (a.includes('pagamento') || a.includes('comprovante')) return '💰';
+        if (a.includes('perfil')) return '👤';
+        if (a.includes('planejamento')) return '📋';
+        if (a.includes('foto') || a.includes('registro')) return '📷';
+        return '🔔';
+    };
+
+    return (
+        <div className="bg-stone-800 rounded-xl border border-stone-700 p-6 lg:col-span-1">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Activity className="text-yellow-500" />
+                    Atividades Recentes
+                </h3>
+                {notifications.length > 0 && (
+                    <button onClick={onClearNotifications} className="text-[10px] uppercase font-bold text-stone-500 hover:text-red-500 transition-colors">
+                        Limpar
+                    </button>
+                )}
+            </div>
+
+            {/* Tab switcher */}
+            <div className="flex gap-1 mb-4 bg-stone-900 rounded-lg p-1">
+                <button
+                    onClick={() => setActivityTab('feed')}
+                    className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${activityTab === 'feed' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'text-stone-500 hover:text-stone-300'}`}
+                >
+                    Feed
+                    {notifications.length > 0 && (
+                        <span className="ml-1.5 bg-yellow-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                            {notifications.length > 99 ? '99+' : notifications.length}
+                        </span>
+                    )}
+                </button>
+                <button
+                    onClick={() => setActivityTab('last_seen')}
+                    className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${activityTab === 'last_seen' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-stone-500 hover:text-stone-300'}`}
+                >
+                    Último Acesso
+                </button>
+            </div>
+
+            {/* Feed tab */}
+            {activityTab === 'feed' && (
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                    {notifications.length > 0 ? (
+                        notifications.map(notif => (
+                            <div key={notif.id} className="bg-stone-900/80 p-3 rounded-lg border-l-2 border-yellow-500/60 hover:border-yellow-500 transition-all">
+                                <div className="flex items-start gap-2">
+                                    <span className="text-base mt-0.5 shrink-0">{getActionIcon(notif.action)}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-white truncate">{notif.user_name}</p>
+                                        <p className="text-xs text-stone-300 leading-relaxed">{notif.action}</p>
+                                        <p className="text-[10px] text-stone-500 mt-1 flex items-center gap-1">
+                                            <Clock size={9} />
+                                            {notif.timestamp}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 text-stone-600">
+                            <Activity size={32} className="mb-2 opacity-30" />
+                            <p className="text-sm italic">Nenhuma atividade recente.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Last Seen tab */}
+            {activityTab === 'last_seen' && (
+                <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                    {activeUsers.map(u => (
+                        <div key={u.id} className="bg-stone-900/80 p-3 rounded-lg flex items-center gap-3 hover:bg-stone-900 transition-all">
+                            <div className="relative shrink-0">
+                                {u.photo_url ? (
+                                    <img src={u.photo_url} className="w-9 h-9 rounded-full object-cover border-2 border-stone-700" />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-stone-800 border-2 border-stone-700 flex items-center justify-center text-sm font-black text-stone-400">
+                                        {(u.nickname || u.name || '?').charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-stone-900 ${isOnline(u.last_seen) ? 'bg-green-500' : 'bg-stone-600'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-white truncate">{u.nickname || u.name}</p>
+                                <p className="text-[10px] text-stone-500 flex items-center gap-1">
+                                    <Clock size={9} />
+                                    {formatLastSeen(u.last_seen)}
+                                </p>
+                            </div>
+                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${getRoleColor(u.role)} shrink-0`}>
+                                {u.role === 'admin' ? 'ADM' : u.role === 'professor' ? 'PROF' : 'ALU'}
+                            </span>
+                        </div>
+                    ))}
+                    {activeUsers.length === 0 && (
+                        <p className="text-stone-600 text-sm italic text-center py-8">Nenhum usuário encontrado.</p>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+
 export const DashboardAdmin: React.FC<Props> = ({
     user,
     onAddEvent,
@@ -2464,38 +2629,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                        {/* Notifications Feed */}
-                        <div className="bg-stone-800 rounded-xl border border-stone-700 p-6 lg:col-span-1">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <Activity className="text-yellow-500" />
-                                    Atividades Recentes
-                                </h3>
-                                {notifications.length > 0 && (
-                                    <button
-                                        onClick={onClearNotifications}
-                                        className="text-[10px] uppercase font-bold text-stone-500 hover:text-red-500 transition-colors"
-                                    >
-                                        Limpar
-                                    </button>
-                                )}
-                            </div>
-                            <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                                {notifications.length > 0 ? (
-                                    notifications.map(notif => (
-                                        <div key={notif.id} className="bg-stone-900 p-3 rounded-lg border-l-2 border-yellow-500">
-                                            <p className="text-sm font-bold text-white">{notif.user_name}</p>
-                                            <p className="text-xs text-stone-300">{notif.action}</p>
-                                            <p className="text-[10px] text-stone-500 mt-1">{notif.timestamp}</p>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-stone-500 text-sm italic">Nenhuma atividade recente.</p>
-                                )}
-                            </div>
-                        </div>
-
+                        <ActivityFeed
+                            notifications={notifications}
+                            allUsersProfiles={allUsersProfiles}
+                            onClearNotifications={onClearNotifications}
+                        />
                     </div>
                 </div>
             )}

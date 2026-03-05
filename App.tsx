@@ -67,7 +67,8 @@ function AppContent() {
         graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0, // Safe cast
         nextEvaluationDate: p.next_evaluation_date || undefined,
         planning: p.planning || undefined,
-        phone: p.phone || undefined
+        phone: p.phone || undefined,
+        last_seen: p.last_seen || undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
@@ -91,9 +92,13 @@ function AppContent() {
     if (uniformError) console.error('Error fetching uniform orders:', uniformError);
     else setUniformOrders(uniformData || []);
 
-    // Fetch Admin Notifications (only for admin)
+    // Fetch Admin Notifications (for all admin users - shows all users' activities)
     if (userRole === 'admin') {
-      const { data: notifData, error: notifError } = await supabase.from('admin_notifications').select('*').order('created_at', { ascending: false });
+      const { data: notifData, error: notifError } = await supabase
+        .from('admin_notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (notifError) console.error('Error fetching notifications:', notifError);
       else setAdminNotifications(notifData || []);
     }
@@ -415,9 +420,29 @@ function AppContent() {
               nextEvaluationDate: profileData.next_evaluation_date || undefined,
               photo_url: profileData.avatar_url || undefined,
               status: profileData.status as 'active' | 'blocked' | undefined,
+              last_seen: profileData.last_seen || undefined,
             };
             setUser(fetchedUser);
             setCurrentView('dashboard');
+
+            // Update last_seen timestamp for this user
+            const nowIso = new Date().toISOString();
+            supabase.from('profiles').update({ last_seen: nowIso }).eq('id', session.user.id).then(({ error }) => {
+              if (error) console.warn('Could not update last_seen:', error.message);
+            });
+            // Register login activity for admin notifications
+            const displayName = profileData.nickname || profileData.first_name || session.user.email || 'Usuário';
+            supabase.from('admin_notifications').insert({
+              user_id: session.user.id,
+              user_name: displayName,
+              action: 'Acessou o aplicativo',
+              timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            }).then(({ data: notifData, error: notifError }) => {
+              if (!notifError && notifData) {
+                setAdminNotifications(prev => [notifData[0] || notifData, ...prev].slice(0, 100) as any);
+              }
+            });
+
           } else {
             // Profile missing or no role determined -> setup
             setUser(null);
