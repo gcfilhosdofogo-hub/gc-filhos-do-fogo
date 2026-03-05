@@ -68,7 +68,7 @@ function AppContent() {
         nextEvaluationDate: p.next_evaluation_date || undefined,
         planning: p.planning || undefined,
         phone: p.phone || undefined,
-        last_seen: p.last_seen || undefined,
+        last_seen: p.last_seen || p.updated_at || undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
@@ -427,8 +427,10 @@ function AppContent() {
 
             // Update last_seen timestamp for this user
             const nowIso = new Date().toISOString();
-            supabase.from('profiles').update({ last_seen: nowIso }).eq('id', session.user.id).then(({ error }) => {
+            supabase.from('profiles').update({ last_seen: nowIso, updated_at: nowIso }).eq('id', session.user.id).then(({ error }) => {
               if (error) console.warn('Could not update last_seen:', error.message);
+              // Optimistically update the state
+              setAllUsersProfiles(prev => prev.map(u => u.id === session.user.id ? { ...u, last_seen: nowIso } : u));
             });
 
           } else {

@@ -162,6 +162,7 @@ export interface AdminNotification {
   user_name: string;
   action: string; // Ex: "Copiou PIX Mensalidade"
   timestamp: string;
+  created_at?: string;
 }
 
 export interface UniformOrder {

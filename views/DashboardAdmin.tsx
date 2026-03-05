@@ -110,7 +110,8 @@ const ActivityFeed: React.FC<{
             // Se o BD não retornou data válida, tenta o log + recente em notifications
             const userNotifs = notifications.filter(n => n.user_id === u.id);
             if (userNotifs.length > 0) {
-                time = Math.max(...userNotifs.map(n => parseTimestampToMs(n.timestamp)));
+                // Tenta pegar pelo created_at (timestamp ISO real de criação), se não, usa o parse antigo
+                time = Math.max(...userNotifs.map(n => n.created_at ? new Date(n.created_at).getTime() : parseTimestampToMs(n.timestamp)));
             }
         }
         return isNaN(time) ? 0 : time;
