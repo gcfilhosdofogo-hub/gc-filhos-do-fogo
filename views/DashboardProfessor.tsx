@@ -1257,13 +1257,13 @@ id,
             <ArrowLeft size={16} /> Voltar ao Painel
           </button>
 
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-400">
                 <BookOpen size={28} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tighter uppercase">Planejamento de Aulas</h2>
                 <p className="text-stone-400 text-sm">{lessonPlans.length} plano(s) cadastrado(s)</p>
               </div>
             </div>
@@ -1274,7 +1274,7 @@ id,
 
                 setNewPlanContent('');
               }}
-              className="bg-purple-600 hover:bg-purple-500 shrink-0"
+              className="bg-purple-600 hover:bg-purple-500 shrink-0 w-full sm:w-auto"
             >
               <PlusCircle size={16} className="mr-1" /> Novo Plano
             </Button>

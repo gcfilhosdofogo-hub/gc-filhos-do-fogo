@@ -2316,35 +2316,35 @@ export const DashboardAdmin: React.FC<Props> = ({
                 })()}
             </div>
 
-            {/* Tabs Navigation - scrollable on mobile */}
-            <div className="tabs-scroll border-b border-stone-700 pb-1">
+            {/* Tabs Navigation */}
+            <div className="flex flex-wrap gap-2 border-b border-stone-700 pb-2">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'overview' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     Visão Geral
                 </button>
                 <button
                     onClick={() => setActiveTab('events')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'events' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'events' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <CalendarPlus size={14} /> Eventos
                 </button>
                 <button
                     onClick={() => setActiveTab('users')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'users' ? 'bg-stone-800 text-pink-500 border-t-2 border-pink-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'users' ? 'bg-pink-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     Usuários
                 </button>
                 <button
                     onClick={() => setActiveTab('student_details')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'student_details' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'student_details' ? 'bg-blue-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <Users size={14} /> Alunos
                 </button>
                 <button
                     onClick={() => setActiveTab('finance')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'finance' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'finance' ? 'bg-green-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     Financeiro
                     {(pendingUniformOrders.length > 0 || pendingEventRegistrations.length > 0) && (
@@ -2355,41 +2355,41 @@ export const DashboardAdmin: React.FC<Props> = ({
                 </button>
                 <button
                     onClick={() => setActiveTab('pedagogy')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'pedagogy' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'pedagogy' ? 'bg-blue-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     Pedagógico
                 </button>
                 <button
                     onClick={() => setActiveTab('grades')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'grades' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'grades' ? 'bg-green-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <Award size={14} /> Notas
                 </button>
                 <button
                     onClick={() => setActiveTab('my_classes')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'my_classes' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'my_classes' ? 'bg-purple-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <BookOpen size={14} /> Aulas
                 </button>
                 <button
                     onClick={() => setActiveTab('music')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'music' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'music' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <Music size={14} /> Músicas
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
-                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'reports' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'reports' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <FileText size={14} /> Relatórios
                 </button>
                 <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                    <button className="px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500">
+                    <button className="px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 hover:opacity-90">
                         <Instagram size={14} /> Instagram
                     </button>
                 </a>
                 <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                    <button className="px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm text-white" style={{ backgroundColor: '#5865F2' }}>
+                    <button className="px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm text-white hover:opacity-90" style={{ backgroundColor: '#5865F2' }}>
                         <MessageCircle size={14} /> Discord
                     </button>
                 </a>
