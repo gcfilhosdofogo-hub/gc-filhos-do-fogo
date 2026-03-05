@@ -9,6 +9,7 @@ import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
 import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan } from './types';
+import { GlobalChat } from './src/components/GlobalChat';
 
 
 
@@ -964,7 +965,8 @@ function AppContent() {
 
     if (user) {
       return (
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 relative">
+          <GlobalChat currentUser={user} />
           {user.role === 'aluno' && (
             <DashboardAluno
               user={user}
