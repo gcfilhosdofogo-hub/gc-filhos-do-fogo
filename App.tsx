@@ -966,7 +966,7 @@ function AppContent() {
     if (user) {
       return (
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8 relative">
-          <GlobalChat currentUser={user} />
+          <GlobalChat currentUser={user} allUsersProfiles={allUsersProfiles} />
           {user.role === 'aluno' && (
             <DashboardAluno
               user={user}
