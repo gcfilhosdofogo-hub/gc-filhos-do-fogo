@@ -47,6 +47,13 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
         }
     }, [messages, isOpen, isMinimized]);
 
+    // Request notification permission on mount
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
+
     useEffect(() => {
         const fetchMessages = async () => {
             const { data, error } = await supabase
@@ -68,8 +75,29 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                 const newMsg = payload.new as ChatMessage;
                 setMessages(prev => [...prev, newMsg]);
 
-                if (!isOpen || isMinimized) {
-                    setUnreadCount(prev => prev + 1);
+                if (newMsg.sender_id !== currentUser.id) {
+                    if (!isOpen || isMinimized) {
+                        setUnreadCount(prev => prev + 1);
+                    }
+
+                    // Play Notification Sound
+                    try {
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); // Quick subtle pop sound
+                        audio.volume = 0.5;
+                        audio.play().catch(() => { });
+                    } catch (e) {
+                        // ignore audio play errors (e.g. user hasn't interacted with document yet)
+                    }
+
+                    // Show Browser Notification if running in background/minimized
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        if (document.hidden || !isOpen || isMinimized) {
+                            new Notification(`Nova mensagem de ${newMsg.sender_name}`, {
+                                body: newMsg.text,
+                                icon: '/logo.png' // Adjust if there's a specific icon path
+                            });
+                        }
+                    }
                 }
             })
             .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'global_chat' }, payload => {
