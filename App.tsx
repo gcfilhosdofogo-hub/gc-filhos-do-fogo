@@ -425,10 +425,10 @@ function AppContent() {
             setUser(fetchedUser);
             setCurrentView('dashboard');
 
-            // Update last_seen timestamp for this user
+            // Update last_seen timestamp for this user (using updated_at on the DB since last_seen column does not exist)
             const nowIso = new Date().toISOString();
-            supabase.from('profiles').update({ last_seen: nowIso, updated_at: nowIso }).eq('id', session.user.id).then(({ error }) => {
-              if (error) console.warn('Could not update last_seen:', error.message);
+            supabase.from('profiles').update({ updated_at: nowIso }).eq('id', session.user.id).then(({ error }) => {
+              if (error) console.warn('Could not update last_seen / updated_at:', error.message);
               // Optimistically update the state
               setAllUsersProfiles(prev => prev.map(u => u.id === session.user.id ? { ...u, last_seen: nowIso } : u));
             });
