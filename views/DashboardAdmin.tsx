@@ -80,9 +80,45 @@ const ActivityFeed: React.FC<{
 }> = ({ notifications, allUsersProfiles, onClearNotifications }) => {
     const [activityTab, setActivityTab] = useState<'feed' | 'last_seen'>('feed');
 
-    const formatLastSeen = (isoStr?: string) => {
-        if (!isoStr) return 'Nunca acessou';
-        const d = new Date(isoStr);
+    const cleanNotifications = useMemo(() => {
+        return notifications.filter(n => !n.action.toLowerCase().includes('acessou'));
+    }, [notifications]);
+
+    const parseTimestampToMs = (dateStr?: string) => {
+        if (!dateStr) return 0;
+        if (dateStr.includes('T')) {
+            const time = new Date(dateStr).getTime();
+            return isNaN(time) ? 0 : time;
+        }
+        // Fallback para timestamp pt-BR do log: "DD/MM/YYYY, HH:mm:ss" ou "HH:mm"
+        const parts = dateStr.split(/[\s,]+/);
+        if (parts.length >= 2) {
+            const dateP = parts[0].split('/');
+            const timeP = parts[1].split(':');
+            if (dateP.length === 3) {
+                const [day, month, year] = dateP;
+                const time = new Date(`${year}-${month}-${day}T${timeP[0] || '00'}:${timeP[1] || '00'}:${timeP[2] || '00'}-03:00`).getTime();
+                return isNaN(time) ? 0 : time;
+            }
+        }
+        return 0;
+    };
+
+    const getUserLastSeenTimeMs = useCallback((u: User) => {
+        let time = u.last_seen ? new Date(u.last_seen).getTime() : 0;
+        if (!time || isNaN(time) || time === 0) {
+            // Se o BD não retornou data válida, tenta o log + recente em notifications
+            const userNotifs = notifications.filter(n => n.user_id === u.id);
+            if (userNotifs.length > 0) {
+                time = Math.max(...userNotifs.map(n => parseTimestampToMs(n.timestamp)));
+            }
+        }
+        return isNaN(time) ? 0 : time;
+    }, [notifications]);
+
+    const formatLastSeenMs = (timeMs: number) => {
+        if (timeMs === 0) return 'Nunca acessou';
+        const d = new Date(timeMs);
         const now = new Date();
         const diffMs = now.getTime() - d.getTime();
         const diffMins = Math.floor(diffMs / 60000);
@@ -96,20 +132,20 @@ const ActivityFeed: React.FC<{
         return d.toLocaleDateString('pt-BR');
     };
 
-    const isOnline = (isoStr?: string) => {
-        if (!isoStr) return false;
-        return (new Date().getTime() - new Date(isoStr).getTime()) < 10 * 60 * 1000;
+    const isOnlineMs = (timeMs: number) => {
+        if (timeMs === 0) return false;
+        return (new Date().getTime() - timeMs) < 10 * 60 * 1000;
     };
 
     const activeUsers = useMemo(() =>
         (allUsersProfiles || [])
             .filter(u => u.status !== 'archived')
             .sort((a, b) => {
-                const aTime = a.last_seen ? new Date(a.last_seen).getTime() : 0;
-                const bTime = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+                const aTime = getUserLastSeenTimeMs(a);
+                const bTime = getUserLastSeenTimeMs(b);
                 return bTime - aTime;
             }),
-        [allUsersProfiles]
+        [allUsersProfiles, getUserLastSeenTimeMs]
     );
 
     const getRoleColor = (role: string) => {
@@ -120,12 +156,11 @@ const ActivityFeed: React.FC<{
 
     const getActionIcon = (action: string) => {
         const a = action.toLowerCase();
-        if (a.includes('acessou')) return '🔐';
         if (a.includes('chamada')) return '✅';
-        if (a.includes('trabalho') || a.includes('tarefa')) return '📝';
+        if (a.includes('trabalho') || a.includes('tarefa') || a.includes('boletim')) return '📝';
         if (a.includes('música') || a.includes('musica')) return '🎵';
         if (a.includes('uniforme')) return '👕';
-        if (a.includes('aula')) return '🥋';
+        if (a.includes('aula') || a.includes('vídeo') || a.includes('video')) return '🥋';
         if (a.includes('avali')) return '⭐';
         if (a.includes('pagamento') || a.includes('comprovante')) return '💰';
         if (a.includes('perfil')) return '👤';
@@ -141,7 +176,7 @@ const ActivityFeed: React.FC<{
                     <Activity className="text-yellow-500" />
                     Atividades Recentes
                 </h3>
-                {notifications.length > 0 && (
+                {cleanNotifications.length > 0 && (
                     <button onClick={onClearNotifications} className="text-[10px] uppercase font-bold text-stone-500 hover:text-red-500 transition-colors">
                         Limpar
                     </button>
@@ -155,9 +190,9 @@ const ActivityFeed: React.FC<{
                     className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${activityTab === 'feed' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'text-stone-500 hover:text-stone-300'}`}
                 >
                     Feed
-                    {notifications.length > 0 && (
+                    {cleanNotifications.length > 0 && (
                         <span className="ml-1.5 bg-yellow-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                            {notifications.length > 99 ? '99+' : notifications.length}
+                            {cleanNotifications.length > 99 ? '99+' : cleanNotifications.length}
                         </span>
                     )}
                 </button>
@@ -172,8 +207,8 @@ const ActivityFeed: React.FC<{
             {/* Feed tab */}
             {activityTab === 'feed' && (
                 <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                    {notifications.length > 0 ? (
-                        notifications.map(notif => (
+                    {cleanNotifications.length > 0 ? (
+                        cleanNotifications.map(notif => (
                             <div key={notif.id} className="bg-stone-900/80 p-3 rounded-lg border-l-2 border-yellow-500/60 hover:border-yellow-500 transition-all">
                                 <div className="flex items-start gap-2">
                                     <span className="text-base mt-0.5 shrink-0">{getActionIcon(notif.action)}</span>
@@ -191,7 +226,7 @@ const ActivityFeed: React.FC<{
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 text-stone-600">
                             <Activity size={32} className="mb-2 opacity-30" />
-                            <p className="text-sm italic">Nenhuma atividade recente.</p>
+                            <p className="text-sm italic">Nenhuma atividade recente encontrada.</p>
                         </div>
                     )}
                 </div>
@@ -200,30 +235,33 @@ const ActivityFeed: React.FC<{
             {/* Last Seen tab */}
             {activityTab === 'last_seen' && (
                 <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
-                    {activeUsers.map(u => (
-                        <div key={u.id} className="bg-stone-900/80 p-3 rounded-lg flex items-center gap-3 hover:bg-stone-900 transition-all">
-                            <div className="relative shrink-0">
-                                {u.photo_url ? (
-                                    <img src={u.photo_url} className="w-9 h-9 rounded-full object-cover border-2 border-stone-700" />
-                                ) : (
-                                    <div className="w-9 h-9 rounded-full bg-stone-800 border-2 border-stone-700 flex items-center justify-center text-sm font-black text-stone-400">
-                                        {(u.nickname || u.name || '?').charAt(0).toUpperCase()}
-                                    </div>
-                                )}
-                                <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-stone-900 ${isOnline(u.last_seen) ? 'bg-green-500' : 'bg-stone-600'}`} />
+                    {activeUsers.map(u => {
+                        const timeMs = getUserLastSeenTimeMs(u);
+                        return (
+                            <div key={u.id} className="bg-stone-900/80 p-3 rounded-lg flex items-center gap-3 hover:bg-stone-900 transition-all">
+                                <div className="relative shrink-0">
+                                    {u.photo_url ? (
+                                        <img src={u.photo_url} className="w-9 h-9 rounded-full object-cover border-2 border-stone-700" />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-stone-800 border-2 border-stone-700 flex items-center justify-center text-sm font-black text-stone-400">
+                                            {(u.nickname || u.name || '?').charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-stone-900 ${isOnlineMs(timeMs) ? 'bg-green-500' : 'bg-stone-600'}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-white truncate">{u.nickname || u.name}</p>
+                                    <p className="text-[10px] text-stone-500 flex items-center gap-1">
+                                        <Clock size={9} />
+                                        {formatLastSeenMs(timeMs)}
+                                    </p>
+                                </div>
+                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${getRoleColor(u.role)} shrink-0`}>
+                                    {u.role === 'admin' ? 'ADM' : u.role === 'professor' ? 'PROF' : 'ALU'}
+                                </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold text-white truncate">{u.nickname || u.name}</p>
-                                <p className="text-[10px] text-stone-500 flex items-center gap-1">
-                                    <Clock size={9} />
-                                    {formatLastSeen(u.last_seen)}
-                                </p>
-                            </div>
-                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${getRoleColor(u.role)} shrink-0`}>
-                                {u.role === 'admin' ? 'ADM' : u.role === 'professor' ? 'PROF' : 'ALU'}
-                            </span>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {activeUsers.length === 0 && (
                         <p className="text-stone-600 text-sm italic text-center py-8">Nenhum usuário encontrado.</p>
                     )}

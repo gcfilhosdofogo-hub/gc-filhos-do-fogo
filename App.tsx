@@ -430,18 +430,6 @@ function AppContent() {
             supabase.from('profiles').update({ last_seen: nowIso }).eq('id', session.user.id).then(({ error }) => {
               if (error) console.warn('Could not update last_seen:', error.message);
             });
-            // Register login activity for admin notifications
-            const displayName = profileData.nickname || profileData.first_name || session.user.email || 'Usuário';
-            supabase.from('admin_notifications').insert({
-              user_id: session.user.id,
-              user_name: displayName,
-              action: 'Acessou o aplicativo',
-              timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-            }).then(({ data: notifData, error: notifError }) => {
-              if (!notifError && notifData) {
-                setAdminNotifications(prev => [notifData[0] || notifData, ...prev].slice(0, 100) as any);
-              }
-            });
 
           } else {
             // Profile missing or no role determined -> setup
