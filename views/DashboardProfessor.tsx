@@ -1094,15 +1094,15 @@ id,
     <div className="space-y-6 animate-fade-in relative">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-900 to-stone-900 p-8 rounded-2xl border border-purple-900/50 shadow-2xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-          <div className="relative group cursor-pointer" onClick={() => {
+      <div className="bg-gradient-to-r from-purple-900 to-stone-900 p-4 sm:p-8 rounded-2xl border border-purple-900/50 shadow-2xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative group cursor-pointer shrink-0" onClick={() => {
             if (!uploadingPhoto) {
               // Delay for mobile PWA
               setTimeout(() => photoInputRef.current?.click(), 100);
             }
           }} title="Clique para alterar a foto">
-            <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
+            <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
               {user.photo_url ? (
                 <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
               ) : (
@@ -1110,7 +1110,7 @@ id,
               )}
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Camera className="text-white" size={24} />
+                <Camera className="text-white" size={20} />
               </div>
             </div>
             {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center rounded-full"><div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div></div>}
@@ -1125,12 +1125,12 @@ id,
             disabled={uploadingPhoto}
           />
 
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
-              <Shield className="text-purple-500" /> {/* Changed icon color for professor */}
+          <div className="text-center sm:text-left">
+            <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+              <Shield className="text-purple-500 shrink-0" size={22} /> {/* Changed icon color for professor */}
               Painel do Professor
             </h1>
-            <p className="text-purple-200 mt-2">Olá, {user.nickname || user.name}!</p>
+            <p className="text-purple-200 mt-1 text-sm">Olá, {user.nickname || user.name}!</p>
           </div>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-purple-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -1154,31 +1154,31 @@ id,
         </div>
       )}
 
-      {/* Top Actions */}
-      <div className="flex flex-wrap gap-2 justify-end bg-stone-800 p-4 rounded-xl border border-stone-700">
+      {/* Top Actions - scrollable wrap on mobile */}
+      <div className="flex flex-wrap gap-2 justify-start sm:justify-end bg-stone-800 p-3 sm:p-4 rounded-xl border border-stone-700">
         {profView === 'dashboard' && (
-          <Button onClick={() => setProfView('new_class')}>
-            <PlusCircle size={18} /> Nova Aula
+          <Button onClick={() => setProfView('new_class')} className="text-xs sm:text-sm">
+            <PlusCircle size={16} /> Aula
           </Button>
         )}
-        <Button onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600">
-          <BookOpen size={18} /> Planejamento
+        <Button onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600 text-xs sm:text-sm">
+          <BookOpen size={16} /> <span>Planejamento</span>
         </Button>
-        <Button onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600">
-          <Wallet size={18} /> Financeiro
+        <Button onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600 text-xs sm:text-sm">
+          <Wallet size={16} /> <span>Financeiro</span>
         </Button>
-        <Button variant="outline" onClick={handleCopyPix} className={pixCopied ? "border-green-500 text-green-500" : ""} title="PIX Mensalidade">
-          {pixCopied ? <Check size={18} /> : <ArrowLeft size={18} className="rotate-180" />}
-          {pixCopied ? 'Copiado!' : 'Mensalidade'}
+        <Button variant="outline" onClick={handleCopyPix} className={`text-xs sm:text-sm ${pixCopied ? "border-green-500 text-green-500" : ""}`} title="PIX Mensalidade">
+          {pixCopied ? <Check size={16} /> : <ArrowLeft size={16} className="rotate-180" />}
+          {pixCopied ? 'Copiado!' : 'PIX'}
         </Button>
         <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
-          <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none text-white">
-            <Instagram size={18} /> Instagram
+          <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none text-white text-xs sm:text-sm">
+            <Instagram size={16} />
           </Button>
         </a>
         <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
-          <Button className="text-white border-none !bg-[#5865F2] hover:!bg-[#4752C4]" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
-            <MessageCircle size={18} /> Discord
+          <Button className="text-white border-none text-xs sm:text-sm !bg-[#5865F2] hover:!bg-[#4752C4]">
+            <MessageCircle size={16} />
           </Button>
         </a>
       </div>
@@ -1328,81 +1328,81 @@ id,
               [...lessonPlans]
                 .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
                 .map((plan, idx) => (
-                <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
-                      <p className="font-black text-white">{plan.title}</p>
+                  <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
+                        <p className="font-black text-white">{plan.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {editingPlanId !== plan.id && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingPlanId(plan.id);
+                                setEditPlanTitle(plan.title);
+                                setEditPlanContent(plan.content);
+                              }}
+                              className="text-stone-500 hover:text-purple-400 transition-colors p-1"
+                              title="Editar"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePlan(plan.id)}
+                              className="text-stone-500 hover:text-red-400 transition-colors p-1"
+                              title="Excluir"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {editingPlanId !== plan.id && (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingPlanId(plan.id);
-                              setEditPlanTitle(plan.title);
-                              setEditPlanContent(plan.content);
-                            }}
-                            className="text-stone-500 hover:text-purple-400 transition-colors p-1"
-                            title="Editar"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePlan(plan.id)}
-                            className="text-stone-500 hover:text-red-400 transition-colors p-1"
-                            title="Excluir"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* View Mode */}
-                  {editingPlanId !== plan.id ? (
-                    <div className="px-5 py-4 min-h-[70px]">
-                      {plan.content ? (
-                        <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>
-                      ) : (
-                        <p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>
-                      )}
-                    </div>
-                  ) : (
-                    /* Edit Mode */
-                    <div className="px-5 py-4 space-y-3 bg-stone-900/40">
-                      <div>
-                        <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
-                        <input
-                          type="text"
-                          value={editPlanTitle}
-                          onChange={e => setEditPlanTitle(e.target.value)}
-                          className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
-                        />
+                    {/* View Mode */}
+                    {editingPlanId !== plan.id ? (
+                      <div className="px-5 py-4 min-h-[70px]">
+                        {plan.content ? (
+                          <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>
+                        ) : (
+                          <p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>
+                        )}
                       </div>
-                      <div>
-                        <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
-                        <textarea
-                          value={editPlanContent}
-                          onChange={e => setEditPlanContent(e.target.value)}
-                          rows={4}
-                          className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y"
-                        />
+                    ) : (
+                      /* Edit Mode */
+                      <div className="px-5 py-4 space-y-3 bg-stone-900/40">
+                        <div>
+                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
+                          <input
+                            type="text"
+                            value={editPlanTitle}
+                            onChange={e => setEditPlanTitle(e.target.value)}
+                            className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
+                          <textarea
+                            value={editPlanContent}
+                            onChange={e => setEditPlanContent(e.target.value)}
+                            rows={4}
+                            className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs">
+                            <Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
+                          </Button>
+                          <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs">
+                            <X size={12} className="mr-1" /> Cancelar
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs">
-                          <Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
-                        </Button>
-                        <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs">
-                          <X size={12} className="mr-1" /> Cancelar
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
+                    )}
+                  </div>
+                ))
             )}
           </div>
         </div>

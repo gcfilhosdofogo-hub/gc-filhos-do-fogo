@@ -2163,11 +2163,11 @@ export const DashboardAdmin: React.FC<Props> = ({
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="bg-gradient-to-r from-red-900 to-stone-900 p-8 rounded-2xl border border-red-900/50 shadow-2xl relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="bg-gradient-to-r from-red-900 to-stone-900 p-4 sm:p-8 rounded-2xl border border-red-900/50 shadow-2xl relative overflow-hidden">
+                <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4">
 
-                    <div className="relative group cursor-pointer" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
-                        <div className="w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
+                    <div className="relative group cursor-pointer shrink-0" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+                        <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
                             {user.photo_url ? (
                                 <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
@@ -2175,7 +2175,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             )}
                             {/* Hover overlay */}
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <Camera className="text-white" size={24} />
+                                <Camera className="text-white" size={20} />
                             </div>
                         </div>
                         {uploadingPhoto && <div className="absolute inset-0 flex items-center justify-center rounded-full"><div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div></div>}
@@ -2189,12 +2189,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                         disabled={uploadingPhoto}
                     />
 
-                    <div className="text-center md:text-left">
-                        <h1 className="text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-3">
-                            <Shield className="text-red-500" />
+                    <div className="text-center sm:text-left">
+                        <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                            <Shield className="text-red-500 shrink-0" size={22} />
                             Painel do Admin
                         </h1>
-                        <p className="text-red-200 mt-2">Olá, {user.nickname || user.first_name || user.name}!</p>
+                        <p className="text-red-200 mt-1 text-sm">Olá, {user.nickname || user.first_name || user.name}!</p>
                     </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -2316,35 +2316,35 @@ export const DashboardAdmin: React.FC<Props> = ({
                 })()}
             </div>
 
-            {/* Tabs Navigation */}
-            <div className="flex flex-wrap gap-2 border-b border-stone-700 pb-1">
+            {/* Tabs Navigation - scrollable on mobile */}
+            <div className="tabs-scroll border-b border-stone-700 pb-1">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
                     Visão Geral
                 </button>
                 <button
                     onClick={() => setActiveTab('events')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'events' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'events' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <CalendarPlus size={16} /> Eventos
+                    <CalendarPlus size={14} /> Eventos
                 </button>
                 <button
                     onClick={() => setActiveTab('users')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'users' ? 'bg-stone-800 text-pink-500 border-t-2 border-pink-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'users' ? 'bg-stone-800 text-pink-500 border-t-2 border-pink-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    Gerenciar Usuários
+                    Usuários
                 </button>
                 <button
                     onClick={() => setActiveTab('student_details')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'student_details' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'student_details' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <Users size={16} /> Alunos Detalhes
+                    <Users size={14} /> Alunos
                 </button>
                 <button
                     onClick={() => setActiveTab('finance')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'finance' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'finance' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
                     Financeiro
                     {(pendingUniformOrders.length > 0 || pendingEventRegistrations.length > 0) && (
@@ -2355,46 +2355,44 @@ export const DashboardAdmin: React.FC<Props> = ({
                 </button>
                 <button
                     onClick={() => setActiveTab('pedagogy')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'pedagogy' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm ${activeTab === 'pedagogy' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
                     Pedagógico
                 </button>
                 <button
                     onClick={() => setActiveTab('grades')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'grades' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'grades' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <Award size={16} /> Notas
+                    <Award size={14} /> Notas
                 </button>
                 <button
                     onClick={() => setActiveTab('my_classes')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'my_classes' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'my_classes' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <BookOpen size={16} /> Minhas Aulas
+                    <BookOpen size={14} /> Aulas
                 </button>
                 <button
                     onClick={() => setActiveTab('music')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'music' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'music' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <Music size={16} /> Músicas
+                    <Music size={14} /> Músicas
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
-                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'reports' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
+                    className={`px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'reports' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
                 >
-                    <FileText size={16} /> Relatórios
+                    <FileText size={14} /> Relatórios
                 </button>
-                <div className="ml-auto flex gap-2">
-                    <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
-                        <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2 bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-pink-600">
-                            <Instagram size={16} /> Instagram
-                        </button>
-                    </a>
-                    <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
-                        <button className="px-4 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-2 text-white border-b-2" style={{ backgroundColor: '#5865F2', borderColor: '#5865F2' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4752C4'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#5865F2'}>
-                            <MessageCircle size={16} /> Discord
-                        </button>
-                    </a>
-                </div>
+                <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="shrink-0">
+                    <button className="px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500">
+                        <Instagram size={14} /> Instagram
+                    </button>
+                </a>
+                <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer" className="shrink-0">
+                    <button className="px-3 py-2 rounded-t-lg font-medium transition-colors flex items-center gap-1 text-sm text-white" style={{ backgroundColor: '#5865F2' }}>
+                        <MessageCircle size={14} /> Discord
+                    </button>
+                </a>
             </div>
 
             {/* --- TAB: OVERVIEW --- */}
@@ -2402,66 +2400,66 @@ export const DashboardAdmin: React.FC<Props> = ({
                 <div className="space-y-6 animate-fade-in">
 
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                         <button
                             onClick={() => setActiveTab('users')}
-                            className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-blue-500 transition-colors"
+                            className="bg-stone-800 p-3 sm:p-6 rounded-xl border border-stone-700 text-left hover:border-blue-500 transition-colors"
                         >
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-2 sm:mb-4">
                                 <div className={`p-2 rounded-lg bg-stone-900 text-blue-500`}>
-                                    <Users size={24} />
+                                    <Users size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">{totalStudentsCount}</h3>
-                            <p className="text-stone-400 text-sm">Total Alunos</p>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white">{totalStudentsCount}</h3>
+                            <p className="text-stone-400 text-xs sm:text-sm">Total Alunos</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('finance')}
-                            className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-green-500 transition-colors"
+                            className="bg-stone-800 p-3 sm:p-6 rounded-xl border border-stone-700 text-left hover:border-green-500 transition-colors"
                         >
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-2 sm:mb-4">
                                 <div className={`p-2 rounded-lg bg-stone-900 text-green-500`}>
-                                    <DollarSign size={24} />
+                                    <DollarSign size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">R$ {totalRevenue.toFixed(2).replace('.', ',')}</h3>
-                            <p className="text-stone-400 text-sm">Receita Confirmada</p>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {totalRevenue.toFixed(2).replace('.', ',')}</h3>
+                            <p className="text-stone-400 text-xs sm:text-sm">Receita Conf.</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('finance')}
-                            className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-red-500 transition-colors"
+                            className="bg-stone-800 p-3 sm:p-6 rounded-xl border border-stone-700 text-left hover:border-red-500 transition-colors"
                         >
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-2 sm:mb-4">
                                 <div className={`p-2 rounded-lg bg-stone-900 text-red-500`}>
-                                    <Wallet size={24} />
+                                    <Wallet size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</h3>
-                            <p className="text-stone-400 text-sm">Receita Pendente</p>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</h3>
+                            <p className="text-stone-400 text-xs sm:text-sm">Pendente</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('events')}
-                            className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-orange-500 transition-colors"
+                            className="bg-stone-800 p-3 sm:p-6 rounded-xl border border-stone-700 text-left hover:border-orange-500 transition-colors"
                         >
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-2 sm:mb-4">
                                 <div className={`p-2 rounded-lg bg-stone-900 text-orange-500`}>
-                                    <CalendarPlus size={24} />
+                                    <CalendarPlus size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">{events.length}</h3>
-                            <p className="text-stone-400 text-sm">Eventos Ativos</p>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white">{events.length}</h3>
+                            <p className="text-stone-400 text-xs sm:text-sm">Eventos Ativos</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('music')}
-                            className="bg-stone-800 p-6 rounded-xl border border-stone-700 text-left hover:border-yellow-500 transition-colors"
+                            className="bg-stone-800 p-3 sm:p-6 rounded-xl border border-stone-700 text-left hover:border-yellow-500 transition-colors"
                         >
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-2 sm:mb-4">
                                 <div className={`p-2 rounded-lg bg-stone-900 text-yellow-500`}>
-                                    <Music size={24} />
+                                    <Music size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white">{musicList.length}</h3>
-                            <p className="text-stone-400 text-sm">Músicas no Acervo</p>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white">{musicList.length}</h3>
+                            <p className="text-stone-400 text-xs sm:text-sm">Músicas no Acervo</p>
                         </button>
                     </div>
 
@@ -4957,41 +4955,41 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             [...lessonPlans]
                                                 .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
                                                 .map((plan, idx) => (
-                                                <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
-                                                    <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
-                                                            <p className="font-black text-white">{plan.title}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            {editingPlanId !== plan.id && (
-                                                                <>
-                                                                    <button onClick={() => { setEditingPlanId(plan.id); setEditPlanTitle(plan.title); setEditPlanContent(plan.content); }} className="text-stone-500 hover:text-purple-400 transition-colors p-1" title="Editar">
-                                                                        <Edit2 size={14} />
-                                                                    </button>
-                                                                    <button onClick={() => handleDeletePlan(plan.id)} className="text-stone-500 hover:text-red-400 transition-colors p-1" title="Excluir">
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {editingPlanId !== plan.id ? (
-                                                        <div className="px-5 py-4 min-h-[70px]">
-                                                            {plan.content ? (<p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>) : (<p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>)}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="px-5 py-4 space-y-3 bg-stone-900/40">
-                                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" value={editPlanTitle} onChange={e => setEditPlanTitle(e.target.value)} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
-                                                            <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Conteúdo / Planejamento</label><textarea value={editPlanContent} onChange={e => setEditPlanContent(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
-                                                            <div className="flex gap-2">
-                                                                <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs"><Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}</Button>
-                                                                <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs"><X size={12} className="mr-1" /> Cancelar</Button>
+                                                    <div key={plan.id} className="rounded-xl border border-stone-700 bg-stone-900/60 overflow-hidden">
+                                                        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-800 bg-stone-900/80">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-[10px] font-black text-purple-400 bg-purple-900/30 border border-purple-900/50 px-2 py-0.5 rounded-full uppercase">#{idx + 1}</span>
+                                                                <p className="font-black text-white">{plan.title}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {editingPlanId !== plan.id && (
+                                                                    <>
+                                                                        <button onClick={() => { setEditingPlanId(plan.id); setEditPlanTitle(plan.title); setEditPlanContent(plan.content); }} className="text-stone-500 hover:text-purple-400 transition-colors p-1" title="Editar">
+                                                                            <Edit2 size={14} />
+                                                                        </button>
+                                                                        <button onClick={() => handleDeletePlan(plan.id)} className="text-stone-500 hover:text-red-400 transition-colors p-1" title="Excluir">
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ))
+                                                        {editingPlanId !== plan.id ? (
+                                                            <div className="px-5 py-4 min-h-[70px]">
+                                                                {plan.content ? (<p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>) : (<p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>)}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="px-5 py-4 space-y-3 bg-stone-900/40">
+                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Título</label><input type="text" value={editPlanTitle} onChange={e => setEditPlanTitle(e.target.value)} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none" /></div>
+                                                                <div><label className="block text-xs text-stone-400 mb-1 font-bold uppercase">Conteúdo / Planejamento</label><textarea value={editPlanContent} onChange={e => setEditPlanContent(e.target.value)} rows={4} className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none resize-y" /></div>
+                                                                <div className="flex gap-2">
+                                                                    <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs"><Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}</Button>
+                                                                    <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs"><X size={12} className="mr-1" /> Cancelar</Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))
                                         )}
                                     </div>
                                 </div>

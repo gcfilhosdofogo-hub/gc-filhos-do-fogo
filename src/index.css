@@ -2,20 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Adicione estilos globais personalizados aqui, se necessário */
+/* ==============================
+   ESTILOS GLOBAIS
+   ============================== */
 body {
   @apply bg-stone-900 text-stone-200 font-sans;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
-/* Animações */
+* {
+  box-sizing: border-box;
+}
+
+/* ==============================
+   ANIMAÇÕES
+   ============================== */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -26,7 +48,192 @@ body {
   animation: fadeInDown 0.5s ease-out forwards;
 }
 
-/* Estilo para o input de data no modo escuro */
+/* ==============================
+   INPUTS DE DATA - MODO ESCURO
+   ============================== */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1); /* Inverte as cores do ícone do calendário para ser visível em temas escuros */
+  filter: invert(1);
+}
+
+/* ==============================
+   SCROLL HORIZONTAL PARA TABELAS
+   ============================== */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Wrapper para tabelas responsivas */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.5rem;
+}
+
+/* ==============================
+   SCROLLBAR CUSTOMIZADA
+   ============================== */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #44403c;
+  border-radius: 2px;
+}
+
+/* ==============================
+   TABS COM SCROLL HORIZONTAL (MOBILE)
+   ============================== */
+.tabs-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: 0.25rem;
+  padding-bottom: 0.25rem;
+  flex-wrap: nowrap;
+}
+
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs-scroll button,
+.tabs-scroll a {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ==============================
+   BOTÕES - TOUCH FRIENDLY
+   ============================== */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Botões de ação com min-touch-target */
+.btn-mobile {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ==============================
+   TEXTO RESPONSIVO
+   ============================== */
+@media (max-width: 640px) {
+
+  /* Padding reduzido no mobile */
+  .mobile-p-reduced {
+    padding: 1rem !important;
+  }
+
+  /* Grid de botões de ação do professor */
+  .action-buttons-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  /* Botões de ação menores no mobile */
+  .action-buttons-grid>* {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+}
+
+/* ==============================
+   CARDS RESPONSIVOS
+   ============================== */
+@media (max-width: 640px) {
+
+  /* Cards de overview do admin - garantir que não vazem */
+  .overview-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Texto em cards grandes */
+  .overview-card h3 {
+    font-size: 1.25rem;
+  }
+
+  /* Padding dos cards no mobile */
+  .mobile-card-p {
+    padding: 1rem;
+  }
+}
+
+/* ==============================
+   FORMULÁRIOS MOBILE
+   ============================== */
+input,
+textarea,
+select {
+  font-size: 16px;
+  /* Previne zoom automático no iOS */
+}
+
+@media (max-width: 640px) {
+
+  /* Labels menores no mobile */
+  .form-label-mobile {
+    font-size: 0.6875rem;
+  }
+
+  /* Inputs de formulário mobile */
+  input,
+  textarea,
+  select {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* ==============================
+   MODAL RESPONSIVO
+   ============================== */
+@media (max-width: 640px) {
+  .modal-container {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+}
+
+/* ==============================
+   FLEX WRAP FIXES
+   ============================== */
+.wrap-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ==============================
+   OVERFLOW PROTECTION
+   ============================== */
+.max-w-full-mobile {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ==============================
+   STATUS BADGES MOBILE
+   ============================== */
+@media (max-width: 640px) {
+  .status-badge {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+  }
 }

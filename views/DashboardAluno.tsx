@@ -1222,7 +1222,7 @@ export const DashboardAluno: React.FC<Props> = ({
         {/* Schedule & Content */}
         <div className="w-full md:w-2/3 space-y-6">
           {/* Tabs Navigation */}
-          <div className="flex flex-wrap gap-2 border-b border-stone-700 pb-1 overflow-x-auto">
+          <div className="tabs-scroll border-b border-stone-700 pb-1">
             <button
               onClick={() => setActiveMainTab('overview')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
