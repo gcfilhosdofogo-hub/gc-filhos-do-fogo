@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { Edit2, Check, Cake, MessageSquare, X, Send, Minus } from 'lucide-react';
+import { Edit2, Check, Cake, MessageSquare, X, Send, Minus, Mic, Square, Trash2 } from 'lucide-react';
 import { User } from '../../types';
 
 interface ChatMessage {
@@ -10,6 +10,7 @@ interface ChatMessage {
     text: string;
     created_at: string;
     is_edited?: boolean; // We can use this locally or wait for backend update
+    audio_url?: string; // NEW: URL do áudio, caso seja mensagem de voz
 }
 
 interface GlobalChatProps {
@@ -26,6 +27,14 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
     const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
     const [editMsgText, setEditMsgText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Audio Recording States
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const timerIntervalRef = useRef<number | null>(null);
 
     // Compute Birthdays today
     const [birthdaysToday, setBirthdaysToday] = useState<User[]>([]);
@@ -131,6 +140,111 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
             alert('Não foi possível enviar a mensagem. Verifique sua conexão ou se a tabela global_chat foi criada.');
             setNewMessage(messageText); // restore if failed
         }
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(audioBlob);
+                stream.getTracks().forEach(track => track.stop()); // release mic
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            setRecordingTime(0);
+
+            timerIntervalRef.current = window.setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+        } catch (err) {
+            console.error("Error accessing mic:", err);
+            alert("Não foi possível acessar seu microfone. Verifique as permissões do navegador.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            if (timerIntervalRef.current) {
+                clearInterval(timerIntervalRef.current);
+            }
+        }
+    };
+
+    const cancelRecording = () => {
+        stopRecording();
+        setAudioBlob(null);
+        audioChunksRef.current = [];
+        setRecordingTime(0);
+    };
+
+    const handleSendAudio = async () => {
+        if (!audioBlob) return;
+
+        const fileName = `chat-audio-${currentUser.id}-${Date.now()}.webm`;
+
+        try {
+            // Upload to Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('chat_audio')
+                .upload(fileName, audioBlob, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                console.error("Error uploading audio:", uploadError);
+                alert("Falha ao salvar áudio. Verifique se o bucket 'chat_audio' existe e se as políticas (RLS) permitem inserção.");
+                return;
+            }
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('chat_audio')
+                .getPublicUrl(fileName);
+
+            const audioUrl = urlData.publicUrl;
+
+            // Send standard message with audioUrl
+            const { error: dbError } = await supabase
+                .from('global_chat')
+                .insert({
+                    sender_id: currentUser.id,
+                    sender_name: currentUser.nickname || currentUser.name,
+                    text: '🎵 Mensagem de voz',
+                    audio_url: audioUrl
+                });
+
+            if (dbError) throw dbError;
+
+            // Clear recording state
+            setAudioBlob(null);
+            audioChunksRef.current = [];
+            setRecordingTime(0);
+
+        } catch (err) {
+            console.error("Error sending audio message:", err);
+            alert("Falha ao enviar áudio.");
+        }
+    };
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
     const handleSaveEdit = async () => {
@@ -278,7 +392,15 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                 )}
 
                                                 <div className={`rounded-2xl px-4 py-2 flex flex-col ${isMe ? 'bg-pink-600 text-white rounded-tr-sm' : 'bg-stone-800 border border-stone-700 text-stone-200 rounded-tl-sm'}`}>
-                                                    <p className="text-sm break-words whitespace-pre-wrap">{msg.text}</p>
+                                                    {msg.audio_url ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <p className="text-sm italic opacity-80">{msg.text}</p>
+                                                            <audio controls src={msg.audio_url} className="h-8 max-w-[200px]" />
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm break-words whitespace-pre-wrap">{msg.text}</p>
+                                                    )}
+
                                                     <div className={`flex items-center gap-1 mt-1 justify-end ${isMe ? 'text-pink-200' : 'text-stone-500'}`}>
                                                         {msg.is_edited && <span className="text-[8px] italic opacity-80">(editado)</span>}
                                                         <span className="text-[9px]">
@@ -297,22 +419,54 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
 
                     {/* Input Area */}
                     <div className="p-3 bg-stone-900 border-t border-stone-800 rounded-b-2xl">
-                        <form onSubmit={handleSendMessage} className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={e => setNewMessage(e.target.value)}
-                                placeholder="Digite sua mensagem..."
-                                className="flex-1 bg-stone-800 border border-stone-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-pink-500 transition-colors"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newMessage.trim()}
-                                className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2 rounded-full transition-colors flex items-center justify-center w-10 h-10 flex-shrink-0"
-                            >
-                                <Send size={16} className="ml-0.5" />
-                            </button>
-                        </form>
+                        {isRecording ? (
+                            <div className="flex items-center justify-between bg-stone-800 border-pink-500 border rounded-full px-4 py-2">
+                                <span className="text-pink-500 text-sm font-bold flex items-center gap-2 animate-pulse">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                    Gravando... {formatTime(recordingTime)}
+                                </span>
+                                <button onClick={stopRecording} className="text-stone-300 hover:text-white bg-red-500 hover:bg-red-600 p-1.5 rounded-full transition-colors">
+                                    <Square size={14} fill="currentColor" />
+                                </button>
+                            </div>
+                        ) : audioBlob ? (
+                            <div className="flex items-center gap-2 bg-stone-800 rounded-full pl-4 pr-1 py-1">
+                                <span className="text-sm text-stone-300 flex-1">Áudio gravado ({formatTime(recordingTime)})</span>
+                                <button onClick={cancelRecording} className="text-stone-400 hover:text-red-500 p-2 rounded-full transition-colors" title="Descartar">
+                                    <Trash2 size={16} />
+                                </button>
+                                <button onClick={handleSendAudio} className="bg-pink-600 hover:bg-pink-500 text-white p-2 rounded-full transition-colors flex items-center justify-center w-8 h-8 flex-shrink-0" title="Enviar áudio">
+                                    <Send size={14} className="ml-0.5" />
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSendMessage} className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newMessage}
+                                    onChange={e => setNewMessage(e.target.value)}
+                                    placeholder="Digite sua mensagem..."
+                                    className="flex-1 bg-stone-800 border border-stone-700 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-pink-500 transition-colors"
+                                />
+                                {newMessage.trim() ? (
+                                    <button
+                                        type="submit"
+                                        className="bg-pink-600 hover:bg-pink-500 text-white p-2 rounded-full transition-colors flex items-center justify-center w-10 h-10 flex-shrink-0"
+                                    >
+                                        <Send size={16} className="ml-0.5" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={startRecording}
+                                        className="bg-stone-700 hover:bg-stone-600 text-white p-2 rounded-full transition-colors flex items-center justify-center w-10 h-10 flex-shrink-0 border border-stone-600"
+                                        title="Enviar áudio"
+                                    >
+                                        <Mic size={18} />
+                                    </button>
+                                )}
+                            </form>
+                        )}
                     </div>
                 </>
             )}
