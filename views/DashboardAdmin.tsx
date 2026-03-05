@@ -2793,8 +2793,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                             {pendingUniformOrders.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingUniformOrders.length} pendentes</span>}
                         </h2>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="table-wrapper">
+                            <table className="w-full text-left border-collapse whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
                                         <th className="p-4">Solicitante</th>
@@ -2878,15 +2878,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                             {pendingEventRegistrations.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingEventRegistrations.length} pendentes</span>}
                         </h2>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="table-wrapper">
+                            <table className="w-full text-left border-collapse whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Participante</th>
+                                        <th className="p-4 min-w-[150px]">Participante</th>
                                         <th className="p-4">Evento</th>
                                         <th className="p-4">Valor Pago</th>
                                         <th className="p-4">Status</th>
-                                        <th className="p-4">Comprovante</th> {/* NEW COLUMN */}
+                                        <th className="p-4">Comprovante</th>
                                         <th className="p-4 text-right">Ações</th>
                                     </tr>
                                 </thead>
@@ -3025,16 +3025,16 @@ export const DashboardAdmin: React.FC<Props> = ({
                             </div>
 
                             {/* Table */}
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="table-wrapper">
+                                <table className="w-full text-left border-collapse whitespace-nowrap">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4">Aluno</th>
+                                            <th className="p-4 min-w-[150px]">Aluno</th>
                                             <th className="p-4">Mês Ref.</th>
                                             <th className="p-4">Vencimento</th>
                                             <th className="p-4">Valor</th>
                                             <th className="p-4">Status</th>
-                                            <th className="p-4">Comprovante</th> {/* New column for proof */}
+                                            <th className="p-4">Comprovante</th>
                                             <th className="p-4 text-right">Ação</th>
                                         </tr>
                                     </thead>
@@ -3156,11 +3156,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
 
                         <div className="p-6">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="table-wrapper">
+                                <table className="w-full text-left border-collapse whitespace-nowrap">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4">Aluno</th>
+                                            <th className="p-4 min-w-[150px]">Aluno</th>
                                             <th className="p-4">Identificador</th>
                                             <th className="p-4">Vencimento</th>
                                             <th className="p-4">Valor</th>
@@ -3419,15 +3419,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="table-wrapper">
+                                <table className="w-full text-left border-collapse whitespace-nowrap">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4 rounded-tl-lg">Usuário</th>
+                                            <th className="p-4 rounded-tl-lg min-w-[200px]">Usuário</th>
                                             <th className="p-4">Função</th>
                                             <th className="p-4">Contato</th>
                                             <th className="p-4">Graduação</th>
-                                            <th className="p-4">Próxima Avaliação</th> {/* New column */}
+                                            <th className="p-4">Próxima Avaliação</th>
                                             <th className="p-4">Status</th>
                                             <th className="p-4 rounded-tr-lg text-right">Ações</th>
                                         </tr>
