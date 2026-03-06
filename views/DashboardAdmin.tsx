@@ -1024,6 +1024,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         setEventFormData({
             title: event.title,
             date: event.date,
+            event_time: event.event_time || '',
             description: event.description,
             price: event.price ? event.price.toString() : ''
         });
@@ -1035,7 +1036,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleCancelEdit = () => {
         setShowEventForm(false);
         setEditingId(null);
-        setEventFormData({ title: '', date: '', description: '', price: '' });
+        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
     };
 
     const handleDeleteEvent = (e: React.MouseEvent, id: string) => {
@@ -1087,7 +1088,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 alert(`Evento criado com ${targets.length} participantes registrados.`);
             }
         }
-        setEventFormData({ title: '', date: '', description: '', price: '' });
+        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
         setShowEventForm(false);
     };
 
@@ -2739,6 +2740,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-sm text-stone-400 mb-1">Horário (Opcional)</label>
+                                        <input
+                                            type="time"
+                                            value={eventFormData.event_time}
+                                            onChange={e => setEventFormData({ ...eventFormData, event_time: e.target.value })}
+                                            className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white [color-scheme:dark]"
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="text-xs text-stone-400 block mb-1">Valor do Evento (R$)</label>
                                         <input
                                             type="number"
@@ -2792,7 +2802,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="text-orange-400 text-sm mb-1">{event.date}</p>
+                                    <p className="text-orange-400 text-sm mb-1">
+                                        {event.date} {event.event_time && <span className="text-stone-400 ml-2">às {event.event_time}</span>}
+                                    </p>
                                     {event.price ? (
                                         <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 mb-2 inline-block">
                                             R$ {event.price.toFixed(2).replace('.', ',')}
