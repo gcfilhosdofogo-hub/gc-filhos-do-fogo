@@ -2554,20 +2554,28 @@ id,
                 </h3>
                 <div className="space-y-4">
                   {events.length > 0 ? (
-                    events.map(event => (
-                      <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative overflow-hidden group">
-                        <h4 className="font-bold text-white mb-1 relative z-10">{event.title}</h4>
-                        <p className="text-orange-400 text-sm mb-2 relative z-10">{event.date}</p>
-                        <p className="text-stone-400 text-xs relative z-10">{event.description}</p>
-                        {event.price ? (
-                          <span className="inline-block mt-2 bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded border border-green-900/50">
-                            Valor: R$ {event.price.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="inline-block mt-2 bg-stone-800 text-stone-400 text-xs px-2 py-1 rounded">Gratuito</span>
-                        )}
-                      </div>
-                    ))
+                    events.map(event => {
+                      const timeMatch = (event.description || '').match(/^\[Horário:\s*(.*?)\]\n?/);
+                      const displayTime = event.event_time || (timeMatch ? timeMatch[1] : null);
+                      const displayDesc = timeMatch ? event.description.replace(/^\[Horário:\s*(.*?)\]\n?/, '') : event.description;
+
+                      return (
+                        <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative overflow-hidden group">
+                          <h4 className="font-bold text-white mb-1 relative z-10">{event.title}</h4>
+                          <p className="text-orange-400 text-sm mb-2 relative z-10">
+                            {event.date} {displayTime && <span className="text-stone-400 ml-2">às {displayTime}</span>}
+                          </p>
+                          <p className="text-stone-400 text-xs relative z-10">{displayDesc}</p>
+                          {event.price ? (
+                            <span className="inline-block mt-2 bg-green-900/30 text-green-400 text-xs px-2 py-1 rounded border border-green-900/50">
+                              Valor: R$ {event.price.toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="inline-block mt-2 bg-stone-800 text-stone-400 text-xs px-2 py-1 rounded">Gratuito</span>
+                          )}
+                        </div>
+                      );
+                    })
                   ) : (
                     <p className="text-stone-500 italic text-sm">Nenhum evento programado.</p>
                   )}

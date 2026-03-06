@@ -1021,11 +1021,21 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleStartEdit = (e: React.MouseEvent, event: GroupEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        let extractedTime = event.event_time || '';
+        let cleanedDescription = event.description || '';
+
+        const timeMatch = cleanedDescription.match(/^\[Horário:\s*(.*?)\]\n?/);
+        if (timeMatch) {
+            extractedTime = timeMatch[1];
+            cleanedDescription = cleanedDescription.replace(/^\[Horário:\s*(.*?)\]\n?/, '');
+        }
+
         setEventFormData({
             title: event.title,
             date: event.date,
-            event_time: event.event_time || '',
-            description: event.description,
+            event_time: extractedTime,
+            description: cleanedDescription,
             price: event.price ? event.price.toString() : ''
         });
         setEditingId(event.id);
@@ -1054,11 +1064,15 @@ export const DashboardAdmin: React.FC<Props> = ({
         e.preventDefault();
         if (!eventFormData.title || !eventFormData.date) return;
         const eventPrice = eventFormData.price ? parseFloat(eventFormData.price) : 0;
+        let finalDescription = eventFormData.description;
+        if (eventFormData.event_time) {
+            finalDescription = `[Horário: ${eventFormData.event_time}]\n${finalDescription}`;
+        }
+
         const eventPayload = {
             title: eventFormData.title,
             date: eventFormData.date,
-            event_time: eventFormData.event_time,
-            description: eventFormData.description,
+            description: finalDescription,
             price: eventPrice
         };
 
@@ -2779,75 +2793,81 @@ export const DashboardAdmin: React.FC<Props> = ({
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {events.filter(e => !e.status || e.status === 'active').map(event => (
-                                <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative group">
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-bold text-white">{event.title}</h4>
-                                        <div className="flex gap-2">
+                            {events.filter(e => !e.status || e.status === 'active').map(event => {
+                                const timeMatch = (event.description || '').match(/^\[Horário:\s*(.*?)\]\n?/);
+                                const displayTime = event.event_time || (timeMatch ? timeMatch[1] : null);
+                                const displayDesc = timeMatch ? event.description.replace(/^\[Horário:\s*(.*?)\]\n?/, '') : event.description;
+
+                                return (
+                                    <div key={event.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-yellow-500 relative group">
+                                        <div className="flex justify-between items-start">
+                                            <h4 className="font-bold text-white">{event.title}</h4>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleStartEdit(e, event)}
+                                                    className="bg-stone-800 p-2 rounded text-stone-400 hover:text-blue-500 hover:bg-stone-700 active:bg-stone-600 transition-colors z-20 cursor-pointer"
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleDeleteEvent(e, event.id)}
+                                                    className="bg-stone-800 p-2 rounded text-stone-400 hover:text-red-500 hover:bg-stone-700 active:bg-stone-600 transition-colors z-20 cursor-pointer"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-orange-400 text-sm mb-1">
+                                            {event.date.split('-').reverse().join('/')} {displayTime && <span className="text-stone-400 ml-2">às {displayTime}</span>}
+                                        </p>
+                                        {event.price ? (
+                                            <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 mb-2 inline-block">
+                                                R$ {event.price.toFixed(2).replace('.', ',')}
+                                            </span>
+                                        ) : (
+                                            <span className="text-stone-500 text-xs font-bold bg-stone-800 px-2 py-0.5 rounded mb-2 inline-block">
+                                                Gratuito
+                                            </span>
+                                        )}
+                                        <p className="text-stone-400 text-xs mt-2">{displayDesc}</p>
+
+                                        {/* Participants List */}
+                                        <div className="mt-4 border-t border-stone-700 pt-4">
                                             <button
-                                                type="button"
-                                                onClick={(e) => handleStartEdit(e, event)}
-                                                className="bg-stone-800 p-2 rounded text-stone-400 hover:text-blue-500 hover:bg-stone-700 active:bg-stone-600 transition-colors z-20 cursor-pointer"
-                                                title="Editar"
+                                                onClick={() => setExpandedEventParticipants(expandedEventParticipants === event.id ? null : event.id)}
+                                                className="flex items-center gap-2 text-stone-400 hover:text-white text-sm font-medium"
                                             >
-                                                <Edit2 size={18} />
+                                                <Users size={16} />
+                                                Participantes ({eventRegistrations.filter(reg => reg.event_id === event.id).length})
+                                                {expandedEventParticipants === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                             </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => handleDeleteEvent(e, event.id)}
-                                                className="bg-stone-800 p-2 rounded text-stone-400 hover:text-red-500 hover:bg-stone-700 active:bg-stone-600 transition-colors z-20 cursor-pointer"
-                                                title="Excluir"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                            {expandedEventParticipants === event.id && (
+                                                <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-2">
+                                                    {eventRegistrations.filter(reg => reg.event_id === event.id).length > 0 ? (
+                                                        eventRegistrations.filter(reg => reg.event_id === event.id).map(reg => (
+                                                            <div key={reg.id} className="flex items-center justify-between bg-stone-800 p-2 rounded">
+                                                                <span className="text-white text-sm">{reg.user_name}</span>
+                                                                <span className={`text-xs font-bold px-2 py-1 rounded ${reg.status === 'paid' ? 'bg-green-900/30 text-green-400' :
+                                                                    reg.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                                        'bg-red-900/30 text-red-400'
+                                                                    }`}>
+                                                                    {reg.status === 'paid' ? 'Pago' : reg.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                                                                </span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-stone-500 text-xs italic">Nenhum participante registrado ainda.</p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <p className="text-orange-400 text-sm mb-1">
-                                        {event.date} {event.event_time && <span className="text-stone-400 ml-2">às {event.event_time}</span>}
-                                    </p>
-                                    {event.price ? (
-                                        <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 mb-2 inline-block">
-                                            R$ {event.price.toFixed(2).replace('.', ',')}
-                                        </span>
-                                    ) : (
-                                        <span className="text-stone-500 text-xs font-bold bg-stone-800 px-2 py-0.5 rounded mb-2 inline-block">
-                                            Gratuito
-                                        </span>
-                                    )}
-                                    <p className="text-stone-400 text-xs mt-2">{event.description}</p>
-
-                                    {/* Participants List */}
-                                    <div className="mt-4 border-t border-stone-700 pt-4">
-                                        <button
-                                            onClick={() => setExpandedEventParticipants(expandedEventParticipants === event.id ? null : event.id)}
-                                            className="flex items-center gap-2 text-stone-400 hover:text-white text-sm font-medium"
-                                        >
-                                            <Users size={16} />
-                                            Participantes ({eventRegistrations.filter(reg => reg.event_id === event.id).length})
-                                            {expandedEventParticipants === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                        </button>
-                                        {expandedEventParticipants === event.id && (
-                                            <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-2">
-                                                {eventRegistrations.filter(reg => reg.event_id === event.id).length > 0 ? (
-                                                    eventRegistrations.filter(reg => reg.event_id === event.id).map(reg => (
-                                                        <div key={reg.id} className="flex items-center justify-between bg-stone-800 p-2 rounded">
-                                                            <span className="text-white text-sm">{reg.user_name}</span>
-                                                            <span className={`text-xs font-bold px-2 py-1 rounded ${reg.status === 'paid' ? 'bg-green-900/30 text-green-400' :
-                                                                reg.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
-                                                                    'bg-red-900/30 text-red-400'
-                                                                }`}>
-                                                                {reg.status === 'paid' ? 'Pago' : reg.status === 'pending' ? 'Pendente' : 'Cancelado'}
-                                                            </span>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <p className="text-stone-500 text-xs italic">Nenhum participante registrado ainda.</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                             {events.length === 0 && (
                                 <div className="text-stone-500 text-sm col-span-full text-center py-4">Nenhum evento ativo.</div>
                             )}

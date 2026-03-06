@@ -1435,27 +1435,35 @@ export const DashboardAluno: React.FC<Props> = ({
                 </p>
                 <div className="space-y-3">
                   {events.filter(e => !e.status || e.status === 'active').length > 0 ? (
-                    events.filter(e => !e.status || e.status === 'active').map((event) => (
-                      <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-4 border-red-500">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="text-white font-bold text-lg">{event.title}</h4>
-                            <p className="text-stone-400 text-sm mt-1">{event.description}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold">{event.date.split('-').reverse().join('/')}</span>
-                            {event.price && event.price > 0 && (
-                              <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                <DollarSign size={12} /> R$ {event.price.toFixed(2).replace('.', ',')}
+                    events.filter(e => !e.status || e.status === 'active').map((event) => {
+                      const timeMatch = (event.description || '').match(/^\[Horário:\s*(.*?)\]\n?/);
+                      const displayTime = event.event_time || (timeMatch ? timeMatch[1] : null);
+                      const displayDesc = timeMatch ? event.description.replace(/^\[Horário:\s*(.*?)\]\n?/, '') : event.description;
+
+                      return (
+                        <div key={event.id} className="flex flex-col p-4 bg-stone-900/50 rounded-lg border-l-4 border-red-500">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-white font-bold text-lg">{event.title}</h4>
+                              <p className="text-stone-400 text-sm mt-1">{displayDesc}</p>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <span className="bg-stone-800 text-orange-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">
+                                {event.date.split('-').reverse().join('/')} {displayTime && <span className="text-stone-400 ml-1">às {displayTime}</span>}
                               </span>
-                            )}
-                            <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
-                              <AlertCircle size={12} /> Obrigatório
-                            </span>
+                              {event.price && event.price > 0 && (
+                                <span className="flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
+                                  <DollarSign size={12} /> R$ {event.price.toFixed(2).replace('.', ',')}
+                                </span>
+                              )}
+                              <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                <AlertCircle size={12} /> Obrigatório
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="text-stone-500 italic">Nenhum evento programado.</p>
                   )}

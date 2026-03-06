@@ -538,9 +538,12 @@ function AppContent() {
   // --- Event Handlers (Supabase Interactions) ---
   const handleAddEvent = async (newEvent: Omit<GroupEvent, 'id' | 'created_at'>) => {
     if (!session) return null;
-    const { data, error } = await supabase.from('group_events').insert({ ...newEvent, created_by: session.user.id }).select().single();
+    // Safety strip: event_time column doesn't exist in DB
+    const { event_time, ...payload } = newEvent as any;
+    const { data, error } = await supabase.from('group_events').insert({ ...payload, created_by: session.user.id }).select().single();
     if (error) {
       console.error('Error adding event:', error);
+      alert('Erro ao criar evento: ' + error.message);
       return null;
     } else {
       setEvents(prev => [...prev, data]);
@@ -550,9 +553,16 @@ function AppContent() {
   };
 
   const handleEditEvent = async (updatedEvent: GroupEvent) => {
-    const { data, error } = await supabase.from('group_events').update(updatedEvent).eq('id', updatedEvent.id).select().single();
-    if (error) console.error('Error editing event:', error);
-    else setEvents(prev => prev.map(event => event.id === updatedEvent.id ? data : event));
+    // Safety strip: event_time column doesn't exist in DB
+    const { event_time, ...payload } = updatedEvent as any;
+    const { data, error } = await supabase.from('group_events').update(payload).eq('id', updatedEvent.id).select().single();
+    if (error) {
+      console.error('Error editing event:', error);
+      alert('Erro ao editar evento: ' + error.message);
+    } else {
+      setEvents(prev => prev.map(event => event.id === updatedEvent.id ? data : event));
+      alert('Evento atualizado com sucesso!');
+    }
   };
 
   const handleCancelEvent = async (eventId: string) => {
