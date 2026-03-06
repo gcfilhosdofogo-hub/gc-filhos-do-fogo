@@ -956,6 +956,15 @@ function AppContent() {
     // O useEffect de gerenciamento de sessão/perfil irá re-avaliar e confirmar que o perfil está completo.
   };
 
+  // --- Responsive fixes ---
+  useEffect(() => {
+    const handleResize = () => {
+      // Logic for mobile viewport adjustments if needed
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const renderContent = () => {
     // Mostra um loader enquanto a sessão e o perfil estão sendo verificados
     if (isLoading || !isProfileChecked) {

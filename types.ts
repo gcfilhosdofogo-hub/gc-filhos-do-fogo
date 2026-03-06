@@ -56,6 +56,7 @@ export interface GroupEvent {
   id: string;
   title: string;
   date: string;
+  event_time?: string; // Horário do evento
   description: string;
   price?: number; // Valor do evento definido pelo Admin
   created_by?: string; // User ID of the creator (admin/professor)

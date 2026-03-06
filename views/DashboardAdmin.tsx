@@ -336,7 +336,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     // Event Management State
     const [showEventForm, setShowEventForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [eventFormData, setEventFormData] = useState({ title: '', date: '', description: '', price: '' });
+    const [eventFormData, setEventFormData] = useState({ title: '', date: '', event_time: '', description: '', price: '' });
     const [expandedEventParticipants, setExpandedEventParticipants] = useState<string | null>(null); // New state for event participants
 
     // Uniform State
@@ -1056,6 +1056,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         const eventPayload = {
             title: eventFormData.title,
             date: eventFormData.date,
+            event_time: eventFormData.event_time,
             description: eventFormData.description,
             price: eventPrice
         };
@@ -2697,7 +2698,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <button
                                 onClick={() => {
                                     setEditingId(null);
-                                    setEventFormData({ title: '', date: '', description: '', price: '' });
+                                    setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
                                     setShowEventForm(!showEventForm);
                                 }}
                                 className="text-sm bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
