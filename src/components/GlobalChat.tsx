@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { Edit2, Check, Cake, MessageSquare, X, Send, Minus, Mic, Square, Trash2 } from 'lucide-react';
+import { Edit2, Check, Cake, MessageSquare, X, Send, Minus, Mic, Square, Trash2, Reply, Smile } from 'lucide-react';
 import { User } from '../../types';
 
 interface ChatMessage {
@@ -11,6 +11,10 @@ interface ChatMessage {
     created_at: string;
     is_edited?: boolean; // We can use this locally or wait for backend update
     audio_url?: string; // NEW: URL do áudio, caso seja mensagem de voz
+    reply_to_id?: string;
+    reply_text?: string;
+    reply_sender_name?: string;
+    reactions?: Record<string, string[]>; // emoji -> array of user_ids
 }
 
 interface GlobalChatProps {
@@ -26,7 +30,11 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
     const [unreadCount, setUnreadCount] = useState(0);
     const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
     const [editMsgText, setEditMsgText] = useState('');
+    const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+    const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const COMMON_EMOJIS = ['❤️', '😂', '🔥', '👏', '😮', '😢'];
 
     // Audio Recording States
     const [isRecording, setIsRecording] = useState(false);
@@ -132,14 +140,52 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
             .insert({
                 sender_id: currentUser.id,
                 sender_name: currentUser.nickname || currentUser.name,
-                text: messageText
+                text: messageText,
+                reply_to_id: replyTo?.id,
+                reply_text: replyTo?.text,
+                reply_sender_name: replyTo?.sender_name
             });
 
         if (error) {
             console.error('Error sending message:', error);
             alert('Não foi possível enviar a mensagem. Verifique sua conexão ou se a tabela global_chat foi criada.');
             setNewMessage(messageText); // restore if failed
+        } else {
+            setReplyTo(null);
         }
+    };
+
+    const handleReaction = async (message: ChatMessage, emoji: string) => {
+        const userId = currentUser.id;
+        const currentReactions = message.reactions || {};
+        const userIds = currentReactions[emoji] || [];
+
+        let newUserIds;
+        if (userIds.includes(userId)) {
+            newUserIds = userIds.filter(id => id !== userId);
+        } else {
+            newUserIds = [...userIds, userId];
+        }
+
+        const updatedReactions = {
+            ...currentReactions,
+            [emoji]: newUserIds
+        };
+
+        // If no one is reacting with this emoji anymore, remove the key
+        if (newUserIds.length === 0) {
+            delete updatedReactions[emoji];
+        }
+
+        const { error } = await supabase
+            .from('global_chat')
+            .update({ reactions: updatedReactions })
+            .eq('id', message.id);
+
+        if (error) {
+            console.error('Error updating reactions:', error);
+        }
+        setShowReactionPicker(null);
     };
 
     const startRecording = async () => {
@@ -391,7 +437,15 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                     </button>
                                                 )}
 
-                                                <div className={`rounded-2xl px-4 py-2 flex flex-col ${isMe ? 'bg-pink-600 text-white rounded-tr-sm' : 'bg-stone-800 border border-stone-700 text-stone-200 rounded-tl-sm'}`}>
+                                                <div className={`rounded-2xl px-4 py-2 flex flex-col relative ${isMe ? 'bg-pink-600 text-white rounded-tr-sm' : 'bg-stone-800 border border-stone-700 text-stone-200 rounded-tl-sm'}`}>
+                                                    {/* Reply Content */}
+                                                    {msg.reply_to_id && (
+                                                        <div className={`text-[10px] mb-1 p-2 rounded border-l-2 bg-black/20 ${isMe ? 'border-pink-300' : 'border-stone-500'}`}>
+                                                            <p className="font-bold opacity-70">{msg.reply_sender_name}</p>
+                                                            <p className="line-clamp-1 opacity-60">{msg.reply_text}</p>
+                                                        </div>
+                                                    )}
+
                                                     {msg.audio_url ? (
                                                         <div className="flex flex-col gap-2">
                                                             <p className="text-sm italic opacity-80">{msg.text}</p>
@@ -407,7 +461,89 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                             {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
+
+                                                    {/* Reactions Display */}
+                                                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                                        <div className={`absolute -bottom-3 flex flex-wrap gap-1 ${isMe ? 'right-0' : 'left-0'}`}>
+                                                            {Object.entries(msg.reactions).map(([emoji, userIds]) => {
+                                                                const users = userIds as string[];
+                                                                return (
+                                                                    <button
+                                                                        key={emoji}
+                                                                        onClick={() => handleReaction(msg, emoji)}
+                                                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border shadow-sm transition-colors ${users.includes(currentUser.id) ? 'bg-pink-900/40 border-pink-500 text-pink-200' : 'bg-stone-800 border-stone-700 text-stone-300'}`}
+                                                                    >
+                                                                        <span>{emoji}</span>
+                                                                        <span>{users.length}</span>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
+
+                                                {/* Action Buttons (Reply/React) */}
+                                                {!isMe && (
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                        <button
+                                                            onClick={() => setReplyTo(msg)}
+                                                            className="text-stone-500 hover:text-stone-300 p-1"
+                                                            title="Responder"
+                                                        >
+                                                            <Reply size={14} />
+                                                        </button>
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
+                                                                className="text-stone-500 hover:text-stone-300 p-1"
+                                                                title="Reagir"
+                                                            >
+                                                                <Smile size={14} />
+                                                            </button>
+                                                            {showReactionPicker === msg.id && (
+                                                                <div className="absolute bottom-full mb-2 left-0 bg-stone-800 border border-stone-700 rounded-full p-1 shadow-2xl flex gap-1 z-20 animate-in fade-in zoom-in duration-200">
+                                                                    {COMMON_EMOJIS.map(emoji => (
+                                                                        <button
+                                                                            key={emoji}
+                                                                            onClick={() => handleReaction(msg, emoji)}
+                                                                            className="hover:scale-125 transition-transform p-1"
+                                                                        >
+                                                                            {emoji}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Action Buttons for Me (React only) */}
+                                                {isMe && (
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 order-first">
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
+                                                                className="text-stone-500 hover:text-stone-300 p-1"
+                                                                title="Reagir"
+                                                            >
+                                                                <Smile size={12} />
+                                                            </button>
+                                                            {showReactionPicker === msg.id && (
+                                                                <div className="absolute bottom-full mb-2 right-0 bg-stone-800 border border-stone-700 rounded-full p-1 shadow-2xl flex gap-1 z-20 animate-in fade-in zoom-in duration-200">
+                                                                    {COMMON_EMOJIS.map(emoji => (
+                                                                        <button
+                                                                            key={emoji}
+                                                                            onClick={() => handleReaction(msg, emoji)}
+                                                                            className="hover:scale-125 transition-transform p-1"
+                                                                        >
+                                                                            {emoji}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -419,6 +555,18 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
 
                     {/* Input Area */}
                     <div className="p-3 bg-stone-900 border-t border-stone-800 rounded-b-2xl">
+                        {/* Reply Preview */}
+                        {replyTo && (
+                            <div className="flex items-center justify-between bg-stone-800/80 border-l-4 border-pink-500 p-2 mb-2 rounded-lg animate-in slide-in-from-bottom-2 duration-200">
+                                <div className="overflow-hidden">
+                                    <p className="text-[10px] font-bold text-pink-500">Respondendo a {replyTo.sender_name}</p>
+                                    <p className="text-xs text-stone-400 line-clamp-1">{replyTo.text}</p>
+                                </div>
+                                <button onClick={() => setReplyTo(null)} className="text-stone-500 hover:text-white p-1">
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
                         {isRecording ? (
                             <div className="flex items-center justify-between bg-stone-800 border-pink-500 border rounded-full px-4 py-2">
                                 <span className="text-pink-500 text-sm font-bold flex items-center gap-2 animate-pulse">

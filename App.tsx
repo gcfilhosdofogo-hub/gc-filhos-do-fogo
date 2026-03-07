@@ -39,6 +39,60 @@ function AppContent() {
   const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
   const [isGeneratingPayments, setIsGeneratingPayments] = useState(false);
 
+  const VAPID_PUBLIC_KEY = 'BL5P1s73wlZ-bfXBccIbatEviexmryii1etDhzDuZWHGlcX0RVcZ5YxS25HW2puTXAXaVmjOfkEdaBkcPht_r5U';
+
+  const base64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // --- Push Notification Subscription ---
+  useEffect(() => {
+    const subscribeToPush = async () => {
+      if (!session || !user || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+
+        // Check for existing subscription
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          // Subscribe the user
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: base64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+          console.log('[Push] User subscribed:', subscription);
+        }
+
+        // Save/Update subscription in Supabase
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            user_id: session.user.id,
+            subscription: subscription.toJSON()
+          }, { onConflict: 'user_id, subscription' });
+
+        if (error) {
+          console.error('[Push] Error saving subscription to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('[Push] Error during push subscription:', err);
+      }
+    };
+
+    if (session && user) {
+      subscribeToPush();
+    }
+  }, [session, user]);
+
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
     if (!session || !user) return; // Depende do usuário estar definido
