@@ -427,6 +427,8 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                             </div>
                                         ) : (
                                             <div className="group flex items-center gap-2 max-w-[85%]">
+
+
                                                 <div
                                                     onClick={() => setActiveMessageId(activeMessageId === msg.id ? null : msg.id)}
                                                     className={`rounded-2xl px-4 py-2 flex flex-col relative cursor-pointer transition-all ${activeMessageId === msg.id ? 'ring-2 ring-pink-500/50 scale-[1.02]' : ''} ${isMe ? 'bg-pink-600 text-white rounded-tr-sm' : 'bg-stone-800 border border-stone-700 text-stone-200 rounded-tl-sm'}`}
@@ -451,20 +453,19 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                     <div className={`flex items-center gap-1 mt-1 justify-end ${isMe ? 'text-pink-200' : 'text-stone-500'}`}>
                                                         {msg.is_edited && <span className="text-[8px] italic opacity-80">(editado)</span>}
                                                         <span className="text-[9px]">
-                                                            {new Date(msg.created_at || Date.now()).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                            {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
 
                                                     {/* Reactions Display */}
-                                                    {msg.reactions && (Object.keys(msg.reactions).length > 0) && (
+                                                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                                         <div className={`absolute -bottom-3 flex flex-wrap gap-1 ${isMe ? 'right-0' : 'left-0'}`}>
                                                             {Object.entries(msg.reactions).map(([emoji, userIds]) => {
-                                                                const users = Array.isArray(userIds) ? userIds : [];
-                                                                if (users.length === 0) return null;
+                                                                const users = userIds as string[];
                                                                 return (
                                                                     <button
                                                                         key={emoji}
-                                                                        onClick={(e) => { e.stopPropagation(); handleReaction(msg, emoji); }}
+                                                                        onClick={() => handleReaction(msg, emoji)}
                                                                         className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border shadow-sm transition-colors ${users.includes(currentUser.id) ? 'bg-pink-900/40 border-pink-500 text-pink-200' : 'bg-stone-800 border-stone-700 text-stone-300'}`}
                                                                     >
                                                                         <span>{emoji}</span>
@@ -476,9 +477,9 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                     )}
                                                 </div>
 
-                                                {/* Action Buttons (Reply/React/Edit) */}
-                                                <div className={`transition-opacity flex items-center gap-1 ${isMe ? 'order-first' : ''} ${activeMessageId === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                                    {!isMe && (
+                                                {/* Action Buttons (Reply/React) */}
+                                                {!isMe && (
+                                                    <div className={`transition-opacity flex items-center gap-1 ${activeMessageId === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setReplyTo(msg); setActiveMessageId(null); }}
                                                             className="text-stone-500 hover:text-stone-300 p-1.5 bg-stone-800/50 rounded-full"
@@ -486,9 +487,35 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                         >
                                                             <Reply size={16} />
                                                         </button>
-                                                    )}
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id); }}
+                                                                className="text-stone-500 hover:text-stone-300 p-1.5 bg-stone-800/50 rounded-full"
+                                                                title="Reagir"
+                                                            >
+                                                                <Smile size={16} />
+                                                            </button>
+                                                            {showReactionPicker === msg.id && (
+                                                                <div className="absolute bottom-full mb-2 left-0 bg-stone-800 border border-stone-700 rounded-full p-1.5 shadow-2xl flex gap-2 z-20 animate-in fade-in zoom-in duration-200">
+                                                                    {COMMON_EMOJIS.map(emoji => (
+                                                                        <button
+                                                                            key={emoji}
+                                                                            onClick={(e) => { e.stopPropagation(); handleReaction(msg, emoji); setActiveMessageId(null); }}
+                                                                            className="hover:scale-125 transition-transform text-lg"
+                                                                        >
+                                                                            {emoji}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                                                    {isMe && (
+                                                {/* Action Buttons for Me (Edit/React) */}
+                                                {isMe && (
+                                                    <div className={`transition-opacity flex items-center gap-1 order-first ${activeMessageId === msg.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                                        {/* Edit Button moved here for consistency */}
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setEditingMsgId(msg.id); setEditMsgText(msg.text); setActiveMessageId(null); }}
                                                             className="text-stone-500 hover:text-stone-300 p-1.5 bg-stone-800/50 rounded-full"
@@ -496,32 +523,31 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({ currentUser, allUsersPro
                                                         >
                                                             <Edit2 size={14} />
                                                         </button>
-                                                    )}
 
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id); }}
-                                                            className="text-stone-500 hover:text-stone-300 p-1.5 bg-stone-800/50 rounded-full"
-                                                            title="Reagir"
-                                                        >
-                                                            <Smile size={16} />
-                                                        </button>
-                                                        {showReactionPicker === msg.id && (
-                                                            <div className={`absolute bottom-full mb-2 ${isMe ? 'right-0' : 'left-0'} bg-stone-800 border border-stone-700 rounded-full p-1.5 shadow-2xl flex gap-2 z-20 animate-in fade-in zoom-in duration-200`}>
-                                                                {COMMON_EMOJIS.map(emoji => (
-                                                                    <button
-                                                                        key={emoji}
-                                                                        onClick={(e) => { e.stopPropagation(); handleReaction(msg, emoji); setActiveMessageId(null); }}
-                                                                        className="hover:scale-125 transition-transform text-lg"
-                                                                    >
-                                                                        {emoji}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                        <div className="relative">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id); }}
+                                                                className="text-stone-500 hover:text-stone-300 p-1.5 bg-stone-800/50 rounded-full"
+                                                                title="Reagir"
+                                                            >
+                                                                <Smile size={14} />
+                                                            </button>
+                                                            {showReactionPicker === msg.id && (
+                                                                <div className="absolute bottom-full mb-2 right-0 bg-stone-800 border border-stone-700 rounded-full p-1.5 shadow-2xl flex gap-2 z-20 animate-in fade-in zoom-in duration-200">
+                                                                    {COMMON_EMOJIS.map(emoji => (
+                                                                        <button
+                                                                            key={emoji}
+                                                                            onClick={(e) => { e.stopPropagation(); handleReaction(msg, emoji); setActiveMessageId(null); }}
+                                                                            className="hover:scale-125 transition-transform text-lg"
+                                                                        >
+                                                                            {emoji}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-
+                                                )}
                                             </div>
                                         )}
                                     </div>

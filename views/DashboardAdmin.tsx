@@ -6244,6 +6244,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                 )
             }
             {/* End of DashboardAdmin */}
-        </div>
+        </div >
     );
 };
