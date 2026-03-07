@@ -58,12 +58,23 @@ function AppContent() {
       if (!session || !user || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
       try {
-        const registration = await navigator.serviceWorker.ready;
+        // Step 1: Explicitly register or get the Service Worker
+        // This is crucial for offline notifications
+        let registration = await navigator.serviceWorker.getRegistration();
 
-        // Check for existing subscription
+        if (!registration) {
+          console.log('[Push] Registering Service Worker...');
+          registration = await navigator.serviceWorker.register('/sw.ts', { type: 'module' });
+        }
+
+        // Wait until it's ready
+        await navigator.serviceWorker.ready;
+
+        // Step 2: Check for existing subscription
         let subscription = await registration.pushManager.getSubscription();
 
         if (!subscription) {
+          console.log('[Push] Creating new subscription...');
           // Subscribe the user
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
@@ -72,7 +83,7 @@ function AppContent() {
           console.log('[Push] User subscribed:', subscription);
         }
 
-        // Save/Update subscription in Supabase
+        // Step 3: Save/Update subscription in Supabase
         const { error } = await supabase
           .from('push_subscriptions')
           .upsert({
