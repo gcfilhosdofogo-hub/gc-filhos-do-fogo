@@ -95,18 +95,42 @@ function AppContent() {
 
   // --- Data Fetching from Supabase ---
   const fetchData = useCallback(async () => {
-    if (!session || !user) return; // Depende do usuário estar definido
+    if (!session || !user) return;
 
     const userId = session.user.id;
-    const userRole = user.role; // Use a role do usuário atual
+    const userRole = user.role;
 
-    // Fetch ALL profiles
+    // Parallel fetch for independent datasets
+    const [
+      profilesRes,
+      eventsRes,
+      musicRes,
+      uniformRes,
+      notifRes,
+      homeTrainingRes,
+      schoolReportRes,
+      paymentRes,
+      classSessionRes,
+      lessonPlanRes,
+      eventRegRes
+    ] = await Promise.all([
+      supabase.from('profiles').select('id, first_name, last_name, nickname, email, role, avatar_url, belt, belt_color, professor_name, graduation_cost, next_evaluation_date, planning, phone, updated_at'),
+      supabase.from('group_events').select('*').filter('status', 'neq', 'cancelled'),
+      supabase.from('music_items').select('*'),
+      (userRole === 'admin' ? supabase.from('uniform_orders').select('*') : supabase.from('uniform_orders').select('*').eq('user_id', userId)),
+      (userRole === 'admin' ? supabase.from('admin_notifications').select('*').order('created_at', { ascending: false }).limit(100) : Promise.resolve({ data: [] })),
+      (userRole === 'aluno' ? supabase.from('home_trainings').select('*').eq('user_id', userId) : supabase.from('home_trainings').select('*')),
+      (userRole === 'aluno' ? supabase.from('school_reports').select('*').eq('user_id', userId) : supabase.from('school_reports').select('*')),
+      (userRole === 'aluno' ? supabase.from('monthly_payments').select('*').eq('student_id', userId) : supabase.from('monthly_payments').select('*')),
+      supabase.from('class_sessions').select('*'),
+      (userRole === 'professor' ? supabase.from('lesson_plans').select('*').eq('professor_id', userId).order('created_at', { ascending: false }) : supabase.from('lesson_plans').select('*').order('created_at', { ascending: false })),
+      (userRole === 'admin' ? supabase.from('event_registrations').select('*') : supabase.from('event_registrations').select('*').eq('user_id', userId))
+    ]);
+
+    // Process Profiles first as they are needed for others
     let mappedProfiles: User[] = [];
-    const { data: allProfilesData, error: allProfilesError } = await supabase.from('profiles').select('*'); // Use * to be safe
-    if (allProfilesError) {
-      console.error('Error fetching all profiles:', allProfilesError);
-    } else {
-      mappedProfiles = (allProfilesData || []).map(p => ({
+    if (profilesRes.data) {
+      mappedProfiles = profilesRes.data.map(p => ({
         id: p.id,
         name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.nickname || 'Usuário',
         nickname: p.nickname || undefined,
@@ -115,141 +139,63 @@ function AppContent() {
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
-        photo_url: p.avatar_url || p.photo_url || undefined, // Unify to favor avatar_url
-        status: p.status as 'active' | 'blocked' | undefined,
+        photo_url: p.avatar_url || undefined,
         belt: p.belt || undefined,
-        graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0, // Safe cast
+        beltColor: p.belt_color || undefined,
+        graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0,
         nextEvaluationDate: p.next_evaluation_date || undefined,
         planning: p.planning || undefined,
         phone: p.phone || undefined,
-        last_seen: p.last_seen || p.updated_at || undefined,
+        last_seen: p.updated_at || undefined,
+        status: p.status as 'active' | 'blocked' | undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
     }
 
-    // Fetch Group Events
-    const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
-    if (eventsError) console.error('Error fetching events:', eventsError);
-    else setEvents((eventsData || []).filter(ev => ev.status !== 'cancelled'));
+    // Update other states
+    if (eventsRes.data) setEvents(eventsRes.data);
+    if (musicRes.data) setMusicList(musicRes.data);
+    if (uniformRes.data) setUniformOrders(uniformRes.data);
+    if (notifRes.data) setAdminNotifications(notifRes.data);
+    if (homeTrainingRes.data) setHomeTrainings(homeTrainingRes.data);
+    if (schoolReportRes.data) setSchoolReports(schoolReportRes.data);
+    if (paymentRes.data) setMonthlyPayments(paymentRes.data);
+    if (classSessionRes.data) setClassSessions(classSessionRes.data.map(s => ({ ...s, planning: s.planning || '' })));
+    if (lessonPlanRes.data) setLessonPlans(lessonPlanRes.data);
+    if (eventRegRes.data) setEventRegistrations(eventRegRes.data);
 
-    // Fetch Music Items
-    const { data: musicData, error: musicError } = await supabase.from('music_items').select('*');
-    if (musicError) console.error('Error fetching music:', musicError);
-    else setMusicList(musicData || []);
-
-    // Fetch Uniform Orders (all for admin, own for others)
-    let uniformQuery = supabase.from('uniform_orders').select('*');
-    if (userRole !== 'admin') {
-      uniformQuery = uniformQuery.eq('user_id', userId);
-    }
-    const { data: uniformData, error: uniformError } = await uniformQuery;
-    if (uniformError) console.error('Error fetching uniform orders:', uniformError);
-    else setUniformOrders(uniformData || []);
-
-    // Fetch Admin Notifications (for all admin users - shows all users' activities)
-    if (userRole === 'admin') {
-      const { data: notifData, error: notifError } = await supabase
-        .from('admin_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (notifError) console.error('Error fetching notifications:', notifError);
-      else setAdminNotifications(notifData || []);
-    }
-
-    // Fetch Home Trainings (own for student, all for admin/professor)
-    let homeTrainingQuery = supabase.from('home_trainings').select('*');
-    if (userRole === 'aluno') {
-      homeTrainingQuery = homeTrainingQuery.eq('user_id', userId);
-    }
-    const { data: homeTrainingData, error: homeTrainingError } = await homeTrainingQuery;
-    if (homeTrainingError) console.error('Error fetching home trainings:', homeTrainingError);
-    else setHomeTrainings(homeTrainingData || []);
-
-    // Fetch School Reports (own for student, all for admin/professor)
-    let schoolReportQuery = supabase.from('school_reports').select('*');
-    // Admin and Professor can see all reports, students only their own
-    if (userRole === 'aluno') {
-      schoolReportQuery = schoolReportQuery.eq('user_id', userId);
-    }
-    const { data: schoolReportData, error: schoolReportError } = await schoolReportQuery;
-    if (schoolReportError) console.error('Error fetching school reports:', schoolReportError);
-    else setSchoolReports(schoolReportData || []);
-
-    // Fetch Assignments (all for admin/professor, relevant for student)
+    // Fetch dependent data (Assignments and Grades)
     let assignmentQuery = supabase.from('assignments').select('*');
     if (userRole === 'aluno') {
-      // Find the professor's ID based on the student's professorName
-      const studentProfessorProfile = mappedProfiles.find( // <-- mappedProfiles agora estará definida
+      const studentProfessorProfile = mappedProfiles.find(
         (p) => (p.nickname === user.professorName || p.name === user.professorName) && (p.role === 'professor' || p.role === 'admin')
       );
       const professorId = studentProfessorProfile?.id;
-
       if (professorId) {
         assignmentQuery = assignmentQuery.or(`student_id.eq.${userId},created_by.eq.${professorId}`);
       } else {
-        assignmentQuery = assignmentQuery.eq('student_id', userId); // Fallback: only show assignments directly assigned to student
+        assignmentQuery = assignmentQuery.eq('student_id', userId);
       }
     }
-    const { data: assignmentData, error: assignmentError } = await assignmentQuery;
-    if (assignmentError) console.error('Error fetching assignments:', assignmentError);
-    else setAssignments(assignmentData || []);
 
-    // Fetch Monthly Payments (own for student, all for admin)
-    let paymentQuery = supabase.from('monthly_payments').select('*');
-    if (userRole === 'aluno') {
-      paymentQuery = paymentQuery.eq('student_id', userId);
-    }
-    const { data: paymentData, error: paymentError } = await paymentQuery;
-    if (paymentError) console.error('Error fetching payments:', paymentError);
-    else setMonthlyPayments(paymentData || []);
-
-    // Fetch Class Sessions
-    const { data: classSessionData, error: classSessionError } = await supabase.from('class_sessions').select('*');
-    if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
-    else {
-      const mappedSessions = (classSessionData || []).map(s => ({
-        ...s,
-        planning: s.planning || ''
-      }));
-      setClassSessions(mappedSessions);
-    }
-
-    // Fetch Lesson Plans (professors see their own; admins see all)
-    let lessonPlanQuery = supabase.from('lesson_plans').select('*').order('created_at', { ascending: false });
-    if (userRole === 'professor') {
-      lessonPlanQuery = lessonPlanQuery.eq('professor_id', userId);
-    }
-    const { data: lessonPlanData, error: lessonPlanError } = await lessonPlanQuery;
-    if (lessonPlanError) console.error('Error fetching lesson plans:', lessonPlanError);
-    else setLessonPlans(lessonPlanData || []);
-
-    // Fetch Event Registrations (all for admin, own for others)
-    let eventRegQuery = supabase.from('event_registrations').select('*');
-    if (userRole !== 'admin') {
-      eventRegQuery = eventRegQuery.eq('user_id', userId);
-    }
-    const { data: eventRegData, error: eventRegError } = await eventRegQuery;
-    if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
-    else setEventRegistrations(eventRegData || []);
+    const { data: assignmentData } = await assignmentQuery;
+    if (assignmentData) setAssignments(assignmentData);
 
     let gradesData: any[] | null = null;
     let gradesError: any = null;
+
     if (userRole === 'aluno') {
       const idCandidates = ['student_id', 'user_id', 'aluno_id'];
       for (const col of idCandidates) {
         const { data, error } = await supabase.from('student_notes').select('*').eq(col, userId);
-        if (!error) {
-          const rows = data || [];
-          if (rows.length > 0) {
-            gradesData = rows;
-            break;
-          } else {
-            continue;
-          }
+        if (!error && data && data.length > 0) {
+          gradesData = data;
+          break;
         }
-        const code = String((error as any)?.code || '');
-        if (error && code !== '42703' && code !== 'PGRST204') { gradesError = error; break; }
+        if (error && (error as any).code !== '42703' && (error as any).code !== 'PGRST204') {
+          gradesError = error;
+          break;
+        }
       }
       if (!gradesData && !gradesError) {
         const { data, error } = await supabase.from('student_notes').select('*');
@@ -261,41 +207,25 @@ function AppContent() {
       gradesData = data || [];
       gradesError = error || null;
     }
-    if (gradesError) console.error('Error fetching student grades:', gradesError);
-    else {
-      const allCols = Array.from(new Set((gradesData || []).flatMap((row: any) => Object.keys(row || {}))));
+
+    if (gradesError) {
+      console.error('Error fetching student grades:', gradesError);
+    } else if (gradesData) {
+      const allCols = Array.from(new Set(gradesData.flatMap((row: any) => Object.keys(row || {}))));
       setStudentNotesAvailableColumns(allCols);
+
       const idCandidates = ['student_id', 'user_id', 'aluno_id'];
       const detectedIdKey = idCandidates.find(k => allCols.includes(k)) || 'student_id';
-      const numericCandidates = [
-        'numeric',
-        'nota',
-        'score',
-        'grade',
-        'value',
-        'nota_numerica',
-        'nota_numero',
-        'pontuacao',
-        'pontuacao_numerica',
-      ];
+
+      const numericCandidates = ['numeric', 'nota', 'score', 'grade', 'value', 'nota_numerica', 'nota_numero', 'pontuacao', 'pontuacao_numerica'];
       const detectedNumeric = numericCandidates.find(k => allCols.includes(k));
       const numericKey = detectedNumeric || 'numeric';
-      const writtenCandidates = [
-        'written',
-        'avaliacao',
-        'avaliacao_escrita',
-        'avaliacao_texto',
-        'comment',
-        'comentario',
-        'comentarios',
-        'texto',
-        'descricao',
-        'observacao',
-        'observacoes',
-      ];
+
+      const writtenCandidates = ['written', 'avaliacao', 'avaliacao_escrita', 'avaliacao_texto', 'comment', 'comentario', 'comentarios', 'texto', 'descricao', 'observacao', 'observacoes'];
       const detectedWritten = writtenCandidates.find(k => allCols.includes(k));
       const writtenKey = detectedWritten || 'written';
-      const normalized = (gradesData || []).map((g: any) => {
+
+      const normalized = gradesData.map((g: any) => {
         const studentId = g[detectedIdKey] ?? g.student_id ?? g.user_id ?? g.aluno_id ?? '';
         const profId = g.professor_id ?? '';
         const student = mappedProfiles.find(p => p.id === studentId);
@@ -307,16 +237,8 @@ function AppContent() {
           student_name: student?.name || 'Aluno',
           professor_id: profId,
           professor_name: professor?.name || 'Professor',
-          written:
-            typeof g[writtenKey] === 'string'
-              ? g[writtenKey]
-              : g[writtenKey] !== null && g[writtenKey] !== undefined
-                ? String(g[writtenKey])
-                : '',
-          numeric:
-            typeof g[numericKey] === 'number'
-              ? g[numericKey]
-              : Number(g[numericKey]),
+          written: typeof g[writtenKey] === 'string' ? g[writtenKey] : g[writtenKey] != null ? String(g[writtenKey]) : '',
+          numeric: typeof g[numericKey] === 'number' ? g[numericKey] : Number(g[numericKey]),
         };
       });
 
@@ -324,7 +246,6 @@ function AppContent() {
       if (detectedNumeric) setStudentNotesNumericField(detectedNumeric);
       if (detectedWritten) setStudentNotesWrittenField(writtenKey);
     }
-
   }, [session, user]); // Re-fetch if session or user changes
 
   const generateMonthlyPayments = useCallback(async () => {
@@ -420,11 +341,11 @@ function AppContent() {
     };
   }, [session, user?.role]);
 
-  // Função para buscar o perfil do usuário
+  // Função para buscar o perfil do usuário - Otimizada
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('*') // Use * to avoid errors if specific columns (like phone/graduation_cost) are missing
+      .select('id, first_name, last_name, nickname, email, role, belt, belt_color, professor_name, birth_date, graduation_cost, phone, avatar_url, status, updated_at')
       .eq('id', userId)
       .single();
 
