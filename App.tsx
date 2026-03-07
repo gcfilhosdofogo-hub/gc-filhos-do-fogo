@@ -114,7 +114,7 @@ function AppContent() {
       lessonPlanRes,
       eventRegRes
     ] = await Promise.all([
-      supabase.from('profiles').select('id, first_name, last_name, nickname, email, role, avatar_url, belt, belt_color, professor_name, graduation_cost, next_evaluation_date, planning, phone, updated_at'),
+      supabase.from('profiles').select('id, first_name, last_name, nickname, email, role, avatar_url, photo_url, belt, belt_color, professor_name, graduation_cost, next_evaluation_date, planning, phone, updated_at, last_seen, status'),
       supabase.from('group_events').select('*').filter('status', 'neq', 'cancelled'),
       supabase.from('music_items').select('*'),
       (userRole === 'admin' ? supabase.from('uniform_orders').select('*') : supabase.from('uniform_orders').select('*').eq('user_id', userId)),
@@ -139,14 +139,14 @@ function AppContent() {
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
-        photo_url: p.avatar_url || undefined,
+        photo_url: p.avatar_url || p.photo_url || undefined,
         belt: p.belt || undefined,
         beltColor: p.belt_color || undefined,
         graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0,
         nextEvaluationDate: p.next_evaluation_date || undefined,
         planning: p.planning || undefined,
         phone: p.phone || undefined,
-        last_seen: p.updated_at || undefined,
+        last_seen: p.last_seen || p.updated_at || undefined,
         status: p.status as 'active' | 'blocked' | undefined,
       }));
       setAllUsersProfiles(mappedProfiles);
@@ -345,7 +345,7 @@ function AppContent() {
   const fetchUserProfile = useCallback(async (userId: string) => {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, nickname, email, role, belt, belt_color, professor_name, birth_date, graduation_cost, phone, avatar_url, status, updated_at')
+      .select('id, first_name, last_name, nickname, email, role, belt, belt_color, professor_name, birth_date, graduation_cost, phone, avatar_url, photo_url, status, updated_at, last_seen')
       .eq('id', userId)
       .single();
 
@@ -400,11 +400,13 @@ function AppContent() {
             setUser(fetchedUser);
             setCurrentView('dashboard');
 
-            // Update last_seen timestamp for this user (using updated_at on the DB since last_seen column does not exist)
+            // Update last_seen timestamp in DB and state
             const nowIso = new Date().toISOString();
-            supabase.from('profiles').update({ updated_at: nowIso }).eq('id', session.user.id).then(({ error }) => {
-              if (error) console.warn('Could not update last_seen / updated_at:', error.message);
-              // Optimistically update the state
+            supabase.from('profiles').update({
+              updated_at: nowIso,
+              last_seen: nowIso
+            }).eq('id', session.user.id).then(({ error }) => {
+              if (error) console.warn('Could not update last_seen:', error.message);
               setAllUsersProfiles(prev => prev.map(u => u.id === session.user.id ? { ...u, last_seen: nowIso } : u));
             });
 
