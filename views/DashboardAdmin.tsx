@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
-import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan } from '../types';
+import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan, EventBanner } from '../types';
 
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
@@ -67,7 +67,7 @@ const UNIFORM_PRICES = {
     pants_train: 80.00
 };
 
-type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial' | 'planning';
 
 // ────────────────────────────────────────────────────────────
@@ -341,6 +341,13 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // Uniform State
     const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
+
+    // Banner State
+    const [banners, setBanners] = useState<EventBanner[]>([]);
+    const [bannerFormData, setBannerFormData] = useState({ title: '', file: null as File | null });
+    const [uploadingBanner, setUploadingBanner] = useState(false);
+    const bannerFileInputRef = useRef<HTMLInputElement>(null);
+
     const uniformFileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingUniformProof, setUploadingUniformProof] = useState(false);
     const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
@@ -1457,6 +1464,99 @@ export const DashboardAdmin: React.FC<Props> = ({
         } finally {
             setUploadingUniformProof(false);
             if (uniformFileInputRef.current) uniformFileInputRef.current.value = '';
+        }
+    };
+
+    // --- BANNER MANAGEMENT HANDLERS ---
+    const fetchBanners = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('event_banners')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) console.error('Error fetching banners:', error);
+        else setBanners(data || []);
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'banner') {
+            fetchBanners();
+        }
+    }, [activeTab, fetchBanners]);
+
+    const handleSaveBanner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bannerFormData.file) return;
+
+        setUploadingBanner(true);
+        try {
+            let file = bannerFormData.file;
+            file = await convertToStandardImage(file);
+            const fileExt = file.name.split('.').pop();
+            const filePath = `banners/${Date.now()}.${fileExt}`;
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('event-banners')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('event-banners')
+                .getPublicUrl(uploadData.path);
+
+            const { error: dbError } = await supabase
+                .from('event_banners')
+                .insert({
+                    image_url: publicUrl,
+                    title: bannerFormData.title,
+                    active: true,
+                    created_by: user.id
+                });
+
+            if (dbError) throw dbError;
+
+            alert('Banner enviado com sucesso!');
+            setBannerFormData({ title: '', file: null });
+            if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
+            fetchBanners();
+            onNotifyAdmin(`Adicionou novo banner de evento: ${bannerFormData.title || 'Sem título'}`, user);
+        } catch (error: any) {
+            console.error('Error saving banner:', error);
+            alert('Erro ao salvar banner: ' + error.message);
+        } finally {
+            setUploadingBanner(false);
+        }
+    };
+
+    const handleToggleBanner = async (bannerId: string, currentStatus: boolean) => {
+        const { error } = await supabase
+            .from('event_banners')
+            .update({ active: !currentStatus })
+            .eq('id', bannerId);
+
+        if (error) {
+            console.error('Error toggling banner:', error);
+            alert('Erro ao alterar status do banner.');
+        } else {
+            fetchBanners();
+            onNotifyAdmin(`${currentStatus ? 'Desativou' : 'Ativou'} banner de evento`, user);
+        }
+    };
+
+    const handleDeleteBanner = async (bannerId: string) => {
+        if (!confirm('Deseja excluir este banner? Esta ação removerá o banner para todos os usuários.')) return;
+
+        const { error } = await supabase
+            .from('event_banners')
+            .delete()
+            .eq('id', bannerId);
+
+        if (error) {
+            console.error('Error deleting banner:', error);
+            alert('Erro ao excluir banner.');
+        } else {
+            fetchBanners();
+            onNotifyAdmin(`Excluiu banner de evento`, user);
         }
     };
 
@@ -2611,6 +2711,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                 >
                     <FileText size={14} /> Relatórios
                 </button>
+                <button
+                    onClick={() => setActiveTab('banner')}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'banner' ? 'bg-indigo-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
+                >
+                    <UploadCloud size={14} /> Banner
+                </button>
                 <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="shrink-0">
                     <button className="px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 hover:opacity-90">
                         <Instagram size={14} /> Instagram
@@ -3087,6 +3193,98 @@ export const DashboardAdmin: React.FC<Props> = ({
                             </table>
                         </div>
                     </div>
+
+                    {/* --- TAB: BANNER --- */}
+                    {activeTab === 'banner' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
+                                    <UploadCloud className="text-indigo-500" />
+                                    Gerenciar Banners de Eventos
+                                </h2>
+
+                                <form onSubmit={handleSaveBanner} className="bg-stone-900 p-6 rounded-lg border border-stone-700 mb-8">
+                                    <h3 className="text-lg font-bold text-white mb-4">Novo Banner</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm text-stone-400 mb-1">Título (Opcional)</label>
+                                            <input
+                                                type="text"
+                                                value={bannerFormData.title}
+                                                onChange={e => setBannerFormData({ ...bannerFormData, title: e.target.value })}
+                                                placeholder="Ex: Próximo Batizado"
+                                                className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-stone-400 mb-1">Imagem do Banner</label>
+                                            <input
+                                                type="file"
+                                                ref={bannerFileInputRef}
+                                                onChange={e => setBannerFormData({ ...bannerFormData, file: e.target.files?.[0] || null })}
+                                                accept="image/*"
+                                                className="w-full text-sm text-stone-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
+                                                required
+                                            />
+                                            <p className="text-[10px] text-stone-500 mt-1">* Recomendado: Proporção 16:9 ou 21:9</p>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex justify-end">
+                                        <Button type="submit" disabled={uploadingBanner || !bannerFormData.file}>
+                                            {uploadingBanner ? 'Enviando...' : 'Enviar Banner'}
+                                        </Button>
+                                    </div>
+                                </form>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {banners.map(banner => (
+                                        <div key={banner.id} className="bg-stone-900 rounded-xl overflow-hidden border border-stone-700 relative group">
+                                            <div className="aspect-video w-full bg-stone-800 relative">
+                                                <img
+                                                    src={banner.image_url}
+                                                    alt={banner.title || 'Banner'}
+                                                    className={`w-full h-full object-cover ${!banner.active && 'opacity-30 grayscale'}`}
+                                                />
+                                                {!banner.active && (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">Inativo</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-4 flex justify-between items-center bg-stone-900">
+                                                <div>
+                                                    <h4 className="text-white font-bold truncate max-w-[200px]">{banner.title || 'Sem título'}</h4>
+                                                    <p className="text-[10px] text-stone-500">{new Date(banner.created_at).toLocaleDateString()}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleToggleBanner(banner.id, banner.active)}
+                                                        className={`p-2 rounded-lg transition-colors ${banner.active ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-stone-800 text-stone-400 hover:bg-stone-700'}`}
+                                                        title={banner.active ? 'Desativar' : 'Ativar'}
+                                                    >
+                                                        {banner.active ? <CheckCircle size={18} /> : <X size={18} />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteBanner(banner.id)}
+                                                        className="p-2 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {banners.length === 0 && (
+                                        <div className="col-span-full py-12 flex flex-col items-center justify-center text-stone-600 border-2 border-dashed border-stone-800 rounded-xl">
+                                            <UploadCloud size={48} className="mb-2 opacity-20" />
+                                            <p className="italic">Nenhum banner cadastrado ainda.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* EVENT REGISTRATIONS PANEL */}
                     <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">

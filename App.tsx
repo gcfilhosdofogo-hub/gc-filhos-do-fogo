@@ -8,8 +8,9 @@ import { DashboardAdmin } from './views/DashboardAdmin';
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan, EventBanner } from './types';
 import { GlobalChat } from './src/components/GlobalChat';
+import { BannerPopup } from './src/components/BannerPopup';
 
 
 
@@ -36,6 +37,7 @@ function AppContent() {
   const [studentNotesNumericField, setStudentNotesNumericField] = useState<string>('numeric');
 
   const [studentNotesWrittenField, setStudentNotesWrittenField] = useState<string>('written');
+  const [activeBanner, setActiveBanner] = useState<EventBanner | null>(null);
   const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
   const [isGeneratingPayments, setIsGeneratingPayments] = useState(false);
 
@@ -142,6 +144,18 @@ function AppContent() {
     const { data: eventsData, error: eventsError } = await supabase.from('group_events').select('*');
     if (eventsError) console.error('Error fetching events:', eventsError);
     else setEvents((eventsData || []).filter(ev => ev.status !== 'cancelled'));
+
+    // Fetch Active Banner
+    const { data: bannerData, error: bannerError } = await supabase
+      .from('event_banners')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (bannerError) console.error('Error fetching banner:', bannerError);
+    else setActiveBanner(bannerData);
 
     // Fetch Music Items
     const { data: musicData, error: musicError } = await supabase.from('music_items').select('*');
@@ -1188,6 +1202,7 @@ function AppContent() {
         onLogout={handleLogout}
         onNavigate={navigate}
       />
+      <BannerPopup banner={activeBanner} />
       <main>
         {renderContent()}
       </main>

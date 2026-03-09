@@ -197,6 +197,15 @@ export interface StudentGrade {
   updated_at?: string;
 }
 
+export interface EventBanner {
+  id: string;
+  image_url: string;
+  title?: string;
+  active: boolean;
+  created_at: string;
+  created_by: string;
+}
+
 // All Belts List for Configuration
 export const ALL_BELTS = [
   "Cordel Cinza",
