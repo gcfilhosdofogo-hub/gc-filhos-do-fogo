@@ -1496,13 +1496,13 @@ export const DashboardAdmin: React.FC<Props> = ({
             const filePath = `banners/${Date.now()}.${fileExt}`;
 
             const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('event-banners')
+                .from('event_banners')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabase.storage
-                .from('event-banners')
+                .from('event_banners')
                 .getPublicUrl(uploadData.path);
 
             const { error: dbError } = await supabase
