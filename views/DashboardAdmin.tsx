@@ -590,6 +590,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [selectedStudentForEval, setSelectedStudentForEval] = useState<string | null>(null);
     const [studentName, setStudentName] = useState('');
     const [attendanceHistory, setAttendanceHistory] = useState<{ id: string; class_date: string; session_id: string; student_id: string; student_name: string; status: 'present' | 'absent' | 'justified'; justification?: string }[]>([]);
+    const [allAttendance, setAllAttendance] = useState<{ student_id: string; status: string }[]>([]);
     const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
     const [savingGrades, setSavingGrades] = useState(false);
 
@@ -2337,6 +2338,18 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
     };
 
+    const fetchAllAttendance = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('attendance')
+                .select('student_id, status');
+            if (error) throw error;
+            if (data) setAllAttendance(data);
+        } catch (err) {
+            console.error("Error fetching all attendance", err);
+        }
+    }, []);
+
     const fetchAttendanceHistory = useCallback(async () => {
         // Fetch real attendance records from DB
         try {
@@ -2385,7 +2398,8 @@ export const DashboardAdmin: React.FC<Props> = ({
     useEffect(() => {
         fetchClassRecords();
         fetchAttendanceHistory();
-    }, [fetchClassRecords, fetchAttendanceHistory]);
+        fetchAllAttendance();
+    }, [fetchClassRecords, fetchAttendanceHistory, fetchAllAttendance]);
 
 
     // --- Student Details Handlers ---
@@ -2413,13 +2427,24 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // --- CALCULATED PROFESSORS DATA (Pedagogical Tab) ---
     const professorsData: any[] = useMemo(() => {
-
         const professors = managedUsers.filter(u => u.role === 'professor' || u.role === 'admin');
+
+        // Calculate attendance rates by student
+        const attendanceStats: Record<string, { present: number; total: number }> = {};
+        allAttendance.forEach(att => {
+            if (!attendanceStats[att.student_id]) {
+                attendanceStats[att.student_id] = { present: 0, total: 0 };
+            }
+            attendanceStats[att.student_id].total++;
+            if (att.status === 'present') {
+                attendanceStats[att.student_id].present++;
+            }
+        });
+
         return professors.map(prof => {
             const profStudents = managedUsers.filter(u => u.role === 'aluno' && u.professorName === (prof.nickname || prof.first_name || prof.name));
 
             const studentsData: any[] = profStudents
-
                 .filter(u => u.status !== 'archived')
                 .map(s => {
                     const sGrades = studentGrades.filter(g => g.student_id === s.id);
@@ -2428,10 +2453,16 @@ export const DashboardAdmin: React.FC<Props> = ({
                     const movementGrade = sGrades.find(g => g.category === 'movement')?.numeric || 0;
                     const musicalityGrade = sGrades.find(g => g.category === 'musicality')?.numeric || 0;
 
+                    // Calculate real attendance rate
+                    const stats = attendanceStats[s.id];
+                    const attendanceRate = stats && stats.total > 0
+                        ? Math.round((stats.present / stats.total) * 100)
+                        : 0;
+
                     return {
                         studentId: s.id,
                         studentName: s.nickname || s.name,
-                        attendanceRate: 85, // Mock data or derive from attendance table if available
+                        attendanceRate,
                         theoryGrade: Number(theoryGrade),
                         movementGrade: Number(movementGrade),
                         musicalityGrade: Number(musicalityGrade),
@@ -2449,7 +2480,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 students: studentsData
             };
         });
-    }, [managedUsers, studentGrades]);
+    }, [managedUsers, studentGrades, allAttendance]);
 
     const filteredMonthlyPayments = monthlyPayments.filter(p => {
         const student = managedUsers.find(u => u.id === p.student_id);
@@ -3194,97 +3225,6 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    {/* --- TAB: BANNER --- */}
-                    {activeTab === 'banner' && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
-                                    <UploadCloud className="text-indigo-500" />
-                                    Gerenciar Banners de Eventos
-                                </h2>
-
-                                <form onSubmit={handleSaveBanner} className="bg-stone-900 p-6 rounded-lg border border-stone-700 mb-8">
-                                    <h3 className="text-lg font-bold text-white mb-4">Novo Banner</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Título (Opcional)</label>
-                                            <input
-                                                type="text"
-                                                value={bannerFormData.title}
-                                                onChange={e => setBannerFormData({ ...bannerFormData, title: e.target.value })}
-                                                placeholder="Ex: Próximo Batizado"
-                                                className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Imagem do Banner</label>
-                                            <input
-                                                type="file"
-                                                ref={bannerFileInputRef}
-                                                onChange={e => setBannerFormData({ ...bannerFormData, file: e.target.files?.[0] || null })}
-                                                accept="image/*"
-                                                className="w-full text-sm text-stone-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
-                                                required
-                                            />
-                                            <p className="text-[10px] text-stone-500 mt-1">* Recomendado: Proporção 16:9 ou 21:9</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex justify-end">
-                                        <Button type="submit" disabled={uploadingBanner || !bannerFormData.file}>
-                                            {uploadingBanner ? 'Enviando...' : 'Enviar Banner'}
-                                        </Button>
-                                    </div>
-                                </form>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {banners.map(banner => (
-                                        <div key={banner.id} className="bg-stone-900 rounded-xl overflow-hidden border border-stone-700 relative group">
-                                            <div className="aspect-video w-full bg-stone-800 relative">
-                                                <img
-                                                    src={banner.image_url}
-                                                    alt={banner.title || 'Banner'}
-                                                    className={`w-full h-full object-cover ${!banner.active && 'opacity-30 grayscale'}`}
-                                                />
-                                                {!banner.active && (
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">Inativo</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="p-4 flex justify-between items-center bg-stone-900">
-                                                <div>
-                                                    <h4 className="text-white font-bold truncate max-w-[200px]">{banner.title || 'Sem título'}</h4>
-                                                    <p className="text-[10px] text-stone-500">{new Date(banner.created_at).toLocaleDateString()}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => handleToggleBanner(banner.id, banner.active)}
-                                                        className={`p-2 rounded-lg transition-colors ${banner.active ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-stone-800 text-stone-400 hover:bg-stone-700'}`}
-                                                        title={banner.active ? 'Desativar' : 'Ativar'}
-                                                    >
-                                                        {banner.active ? <CheckCircle size={18} /> : <X size={18} />}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteBanner(banner.id)}
-                                                        className="p-2 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors"
-                                                        title="Excluir"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {banners.length === 0 && (
-                                        <div className="col-span-full py-12 flex flex-col items-center justify-center text-stone-600 border-2 border-dashed border-stone-800 rounded-xl">
-                                            <UploadCloud size={48} className="mb-2 opacity-20" />
-                                            <p className="italic">Nenhum banner cadastrado ainda.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* EVENT REGISTRATIONS PANEL */}
                     <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
@@ -4091,6 +4031,104 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* --- TAB: BANNER --- */}
+            {
+                activeTab === 'banner' && (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* DEBUG: REMOVE LATER */}
+                        <div className="bg-indigo-900/30 p-2 text-indigo-400 text-xs font-bold rounded text-center border border-indigo-500/30">
+                            Modo Gerenciamento de Banner Ativo
+                        </div>
+                        <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
+                                <UploadCloud className="text-indigo-500" />
+                                Gerenciar Banners de Eventos
+                            </h2>
+
+                            <form onSubmit={handleSaveBanner} className="bg-stone-900 p-6 rounded-lg border border-stone-700 mb-8">
+                                <h3 className="text-lg font-bold text-white mb-4">Novo Banner</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm text-stone-400 mb-1">Título (Opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={bannerFormData.title}
+                                            onChange={e => setBannerFormData({ ...bannerFormData, title: e.target.value })}
+                                            placeholder="Ex: Próximo Batizado"
+                                            className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-stone-400 mb-1">Imagem do Banner</label>
+                                        <input
+                                            type="file"
+                                            ref={bannerFileInputRef}
+                                            onChange={e => setBannerFormData({ ...bannerFormData, file: e.target.files?.[0] || null })}
+                                            accept="image/*"
+                                            className="w-full text-sm text-stone-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
+                                            required
+                                        />
+                                        <p className="text-[10px] text-stone-500 mt-1">* Recomendado: Proporção 16:9 ou 21:9</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <Button type="submit" disabled={uploadingBanner || !bannerFormData.file}>
+                                        {uploadingBanner ? 'Enviando...' : 'Enviar Banner'}
+                                    </Button>
+                                </div>
+                            </form>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {banners.map(banner => (
+                                    <div key={banner.id} className="bg-stone-900 rounded-xl overflow-hidden border border-stone-700 relative group">
+                                        <div className="aspect-video w-full bg-stone-800 relative">
+                                            <img
+                                                src={banner.image_url}
+                                                alt={banner.title || 'Banner'}
+                                                className={`w-full h-full object-cover ${!banner.active && 'opacity-30 grayscale'}`}
+                                            />
+                                            {!banner.active && (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">Inativo</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-4 flex justify-between items-center bg-stone-900">
+                                            <div>
+                                                <h4 className="text-white font-bold truncate max-w-[200px]">{banner.title || 'Sem título'}</h4>
+                                                <p className="text-[10px] text-stone-500">{banner.created_at ? new Date(banner.created_at).toLocaleDateString('pt-BR') : '-'}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleToggleBanner(banner.id, banner.active)}
+                                                    className={`p-2 rounded-lg transition-colors ${banner.active ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50' : 'bg-stone-800 text-stone-400 hover:bg-stone-700'}`}
+                                                    title={banner.active ? 'Desativar' : 'Ativar'}
+                                                >
+                                                    {banner.active ? <CheckCircle size={18} /> : <X size={18} />}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteBanner(banner.id)}
+                                                    className="p-2 bg-red-900/30 text-red-400 rounded-lg hover:bg-red-900/50 transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {banners.length === 0 && (
+                                    <div className="col-span-full py-12 flex flex-col items-center justify-center text-stone-600 border-2 border-dashed border-stone-800 rounded-xl">
+                                        <UploadCloud size={48} className="mb-2 opacity-20" />
+                                        <p className="italic">Nenhum banner cadastrado ainda.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
