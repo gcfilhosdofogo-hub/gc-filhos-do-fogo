@@ -42,6 +42,17 @@ Preferred communication style: Simple, everyday language.
 ### Data Models
 - TypeScript interfaces defined in `types.ts` at root level
 - Key entities: User, ClassSession, GroupEvent, Assignment, PaymentRecord, UniformOrder, StudentGrade, MusicItem, HomeTraining, SchoolReport, EventRegistration
+- FFPoints system: FFTask, FFTaskCompletion, FFReward, FFRedemption
+
+### FFPoints Rewards System
+- Points currency called "FFPoints" earned by completing admin-created tasks
+- Points redeemed for rewards (uniforms, instruments, accessories, etc.)
+- All users (alunos, professors, admins) can earn and redeem points
+- Admin creates/manages tasks and rewards; approves/rejects completion and redemption requests
+- View: `views/FFPoints.tsx` — self-contained component with its own Supabase queries
+- Database tables: `ff_tasks`, `ff_task_completions`, `ff_rewards`, `ff_redemptions`
+- SQL migration: `supabase_ffpoints_migration.sql` — must be run in Supabase SQL Editor
+- Integrated as a tab in all three dashboards (Admin: ⭐ FFPoints tab; Professor: button in action grid; Aluno: ⭐ FFPoints tab)
 
 ### PWA Configuration
 - Vite PWA plugin configured in `vite.config.ts`

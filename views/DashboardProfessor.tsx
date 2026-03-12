@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
 import { User, GroupEvent, MusicItem, UniformOrder, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, LessonPlan } from '../types';
+import { FFPoints } from './FFPoints';
 
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2 } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -74,7 +75,7 @@ const UNIFORM_PRICES = {
   pants_train: 80.00
 };
 
-type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial' | 'planning';
+type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial' | 'planning' | 'ffpoints';
 
 export const DashboardProfessor: React.FC<Props> = ({
   user,
@@ -2511,6 +2512,11 @@ id,
                 <span className="text-sm font-bold">Financeiro</span>
                 <span className="text-xs text-stone-200">Minha Conta</span>
               </Button>
+              <Button onClick={() => setProfView('ffpoints')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-yellow-900 to-orange-800 hover:from-yellow-800 hover:to-orange-700 border border-yellow-600/30">
+                <span className="text-3xl leading-none">⭐</span>
+                <span className="text-sm font-bold">FFPoints</span>
+                <span className="text-xs text-yellow-200">Recompensas</span>
+              </Button>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -2801,6 +2807,15 @@ id,
         )
       }
 
+      {/* ── FFPoints ── */}
+      {profView === 'ffpoints' && (
+        <div>
+          <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
+            <ArrowLeft size={16} /> Voltar ao Painel
+          </button>
+          <FFPoints user={user} allUsersProfiles={allUsersProfiles} />
+        </div>
+      )}
     </div >
   );
 };

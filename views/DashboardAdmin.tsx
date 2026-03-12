@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
 import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan, EventBanner } from '../types';
+import { FFPoints } from './FFPoints';
 
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
@@ -67,7 +68,7 @@ const UNIFORM_PRICES = {
     pants_train: 80.00
 };
 
-type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner' | 'ffpoints';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial' | 'planning';
 
 // ────────────────────────────────────────────────────────────
@@ -2747,6 +2748,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'banner' ? 'bg-indigo-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <UploadCloud size={14} /> Banner
+                </button>
+                <button
+                    onClick={() => setActiveTab('ffpoints')}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'ffpoints' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
+                >
+                    ⭐ FFPoints
                 </button>
                 <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="shrink-0">
                     <button className="px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 hover:opacity-90">
@@ -6479,6 +6486,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                     </div>
                 )
             }
+            {/* ── FFPoints ── */}
+            {activeTab === 'ffpoints' && (
+                <FFPoints user={user} allUsersProfiles={allUsersProfiles} />
+            )}
             {/* End of DashboardAdmin */}
         </div >
     );

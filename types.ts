@@ -206,6 +206,57 @@ export interface EventBanner {
   created_by: string;
 }
 
+// ─── FFPoints System ────────────────────────────────────────────────────────
+
+export interface FFTask {
+  id: string;
+  title: string;
+  description: string;
+  points: number;
+  is_active: boolean;
+  created_by: string;
+  created_at?: string;
+}
+
+export type FFTaskCompletionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface FFTaskCompletion {
+  id: string;
+  task_id: string;
+  task_title?: string; // denormalized
+  user_id: string;
+  user_name?: string; // denormalized
+  status: FFTaskCompletionStatus;
+  note?: string; // optional user note
+  created_at?: string;
+}
+
+export interface FFReward {
+  id: string;
+  title: string;
+  description: string;
+  points_cost: number;
+  category: string; // 'uniforme' | 'instrumento' | 'outro'
+  stock: number; // -1 = unlimited
+  is_active: boolean;
+  image_url?: string;
+  created_by: string;
+  created_at?: string;
+}
+
+export type FFRedemptionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface FFRedemption {
+  id: string;
+  reward_id: string;
+  reward_title?: string; // denormalized
+  user_id: string;
+  user_name?: string; // denormalized
+  points_cost: number;
+  status: FFRedemptionStatus;
+  created_at?: string;
+}
+
 // All Belts List for Configuration
 export const ALL_BELTS = [
   "Cordel Cinza",
