@@ -215,6 +215,7 @@ export interface FFTask {
   description: string;
   points: number;
   is_active: boolean;
+  target_role?: 'all' | 'staff' | 'aluno'; // all = todos, staff = admin/professor, aluno = somente alunos
   created_by: string;
   created_at?: string;
 }

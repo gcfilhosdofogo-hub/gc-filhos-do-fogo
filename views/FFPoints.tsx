@@ -46,7 +46,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
     // ─── Admin forms ──────────────────────────────────────────────────────────
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [editingTask, setEditingTask] = useState<FFTask | null>(null);
-    const [taskForm, setTaskForm] = useState({ title: '', description: '', points: '' });
+    const [taskForm, setTaskForm] = useState({ title: '', description: '', points: '', target_role: 'all' as 'all' | 'staff' | 'aluno' });
 
     const [showRewardForm, setShowRewardForm] = useState(false);
     const [editingReward, setEditingReward] = useState<FFReward | null>(null);
@@ -153,10 +153,15 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
     const openTaskForm = (task?: FFTask) => {
         if (task) {
             setEditingTask(task);
-            setTaskForm({ title: task.title, description: task.description, points: String(task.points) });
+            setTaskForm({ 
+                title: task.title, 
+                description: task.description, 
+                points: String(task.points),
+                target_role: task.target_role || 'all'
+            });
         } else {
             setEditingTask(null);
-            setTaskForm({ title: '', description: '', points: '' });
+            setTaskForm({ title: '', description: '', points: '', target_role: 'all' });
         }
         setShowTaskForm(true);
     };
@@ -166,15 +171,21 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
         const pts = parseInt(taskForm.points);
         if (!taskForm.title || isNaN(pts) || pts <= 0) { alert('Preencha todos os campos corretamente.'); return; }
 
+        const payload = {
+            title: taskForm.title, 
+            description: taskForm.description, 
+            points: pts,
+            target_role: taskForm.target_role
+        };
+
         if (editingTask) {
-            const { error } = await supabase.from('ff_tasks').update({
-                title: taskForm.title, description: taskForm.description, points: pts
-            }).eq('id', editingTask.id);
+            const { error } = await supabase.from('ff_tasks').update(payload).eq('id', editingTask.id);
             if (error) { alert('Erro: ' + error.message); return; }
         } else {
             const { error } = await supabase.from('ff_tasks').insert({
-                title: taskForm.title, description: taskForm.description, points: pts,
-                is_active: true, created_by: user.id,
+                ...payload,
+                is_active: true, 
+                created_by: user.id,
             });
             if (error) { alert('Erro: ' + error.message); return; }
         }
@@ -262,7 +273,13 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
     };
 
     // ─── Render ───────────────────────────────────────────────────────────────
-    const activeTasks = tasks.filter(t => t.is_active);
+    const activeTasks = tasks.filter(t => {
+        if (!t.is_active) return false;
+        if (!t.target_role || t.target_role === 'all') return true;
+        if (t.target_role === 'staff') return user.role === 'admin' || user.role === 'professor';
+        if (t.target_role === 'aluno') return user.role === 'aluno';
+        return true;
+    });
     const activeRewards = rewards.filter(r => r.is_active);
     const myCompletions = completions.filter(c => c.user_id === user.id);
     const myRedemptions = redemptions.filter(r => r.user_id === user.id);
@@ -682,6 +699,18 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                     />
                                 </div>
                                 <div>
+                                    <label className="text-xs text-stone-400 block mb-1">Público-alvo (Quem pode ver?)</label>
+                                    <select
+                                        value={taskForm.target_role}
+                                        onChange={e => setTaskForm(f => ({ ...f, target_role: e.target.value as any }))}
+                                        className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm"
+                                    >
+                                        <option value="all">Todos (Alunos e Professores)</option>
+                                        <option value="staff">Administradores e Professores</option>
+                                        <option value="aluno">Somente Alunos</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="text-xs text-stone-400 block mb-1">FFPoints ao completar</label>
                                     <input
                                         type="number" required min="1" value={taskForm.points}
@@ -704,6 +733,13 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                             <span className="text-white text-sm font-medium">{task.title}</span>
                                             <span className="text-xs flex items-center gap-0.5 text-yellow-400">
                                                 <Star className="fill-yellow-400 w-3 h-3" />{task.points}
+                                            </span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold ${
+                                                task.target_role === 'staff' ? 'border-purple-500/50 text-purple-400' :
+                                                task.target_role === 'aluno' ? 'border-blue-500/50 text-blue-400' :
+                                                'border-stone-500/50 text-stone-500'
+                                            }`}>
+                                                {task.target_role === 'staff' ? 'Staff' : task.target_role === 'aluno' ? 'Alunos' : 'Todos'}
                                             </span>
                                             {!task.is_active && <span className="text-xs text-stone-500">(inativa)</span>}
                                         </div>
