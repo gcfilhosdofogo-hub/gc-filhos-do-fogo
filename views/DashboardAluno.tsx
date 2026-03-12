@@ -13,7 +13,7 @@ interface Props {
   events: GroupEvent[];
   musicList: MusicItem[];
   uniformOrders: UniformOrder[];
-  onAddOrder: (order: UniformOrder) => void;
+  onAddOrder: (order: Omit<UniformOrder, 'id' | 'created_at'>) => void;
   onNotifyAdmin: (action: string, user: User) => void;
   onUpdateProfile: (data: Partial<User>) => void;
   homeTrainings: HomeTraining[];

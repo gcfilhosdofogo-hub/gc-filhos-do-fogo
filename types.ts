@@ -70,6 +70,7 @@ export interface MusicItem {
   lyrics: string;
   file_url?: string; // URL do arquivo de áudio
   created_by?: string; // User ID of the creator (professor/admin)
+  created_at?: string;
 }
 
 export interface HomeTraining {

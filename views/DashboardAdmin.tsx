@@ -527,7 +527,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         phone: '',
         professorName: '',
         birthDate: '',
-        status: 'active' as 'active' | 'blocked'
+        status: 'active' as 'active' | 'blocked' | 'archived'
     });
     // State for inline graduation cost editing
     const [editingGradCostId, setEditingGradCostId] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { EventBanner } from '../types';
+import { EventBanner } from '../../types';
 
 interface BannerPopupProps {
     banner: EventBanner | null;
