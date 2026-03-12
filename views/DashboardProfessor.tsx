@@ -3,7 +3,7 @@ import heic2any from "heic2any";
 import { User, GroupEvent, MusicItem, UniformOrder, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, LessonPlan } from '../types';
 import { FFPoints } from './FFPoints';
 
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2 } from 'lucide-react';
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2, Star } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -76,6 +76,12 @@ const UNIFORM_PRICES = {
 };
 
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'grades' | 'financial' | 'planning' | 'ffpoints';
+
+const DiscordIcon = ({ size = 20 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size}>
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.858-1.297 1.185-1.999a.076.076 0 0 0-.04-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.196.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.33.702.728 1.369 1.185 2c.019.024.05.034.081.02a19.825 19.825 0 0 0 6.007-3.034.076.076 0 0 0 .03-.056c.552-5.18-.894-9.673-3.053-13.66a.066.066 0 0 0-.032-.027ZM8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418Zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418Z" />
+  </svg>
+);
 
 export const DashboardProfessor: React.FC<Props> = ({
   user,
@@ -1172,6 +1178,9 @@ id,
           {pixCopied ? <Check size={16} /> : <ArrowLeft size={16} className="rotate-180" />}
           {pixCopied ? 'Copiado!' : 'PIX'}
         </Button>
+        <Button onClick={() => setProfView('ffpoints')} className="bg-orange-600 hover:bg-orange-500 text-white border-orange-500 text-xs sm:text-sm">
+          <Star size={16} /> <span>FFPoints</span>
+        </Button>
         <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer">
           <Button className="bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 border-none text-white text-xs sm:text-sm">
             <Instagram size={16} />
@@ -1179,7 +1188,7 @@ id,
         </a>
         <a href="https://discord.gg/AY2kk9Ubk" target="_blank" rel="noopener noreferrer">
           <Button className="text-white border-none text-xs sm:text-sm !bg-[#5865F2] hover:!bg-[#4752C4]">
-            <MessageCircle size={16} />
+            <DiscordIcon size={16} />
           </Button>
         </a>
       </div>
