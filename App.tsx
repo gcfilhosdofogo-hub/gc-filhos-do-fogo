@@ -233,11 +233,7 @@ function AppContent() {
     const { data: classSessionData, error: classSessionError } = await supabase.from('class_sessions').select('*');
     if (classSessionError) console.error('Error fetching class sessions:', classSessionError);
     else {
-      const mappedSessions = (classSessionData || []).map(s => ({
-        ...s,
-        planning: s.planning || ''
-      }));
-      setClassSessions(mappedSessions);
+      setClassSessions(classSessionData || []);
     }
 
     // Fetch Lesson Plans (professors see their own; admins see all)
@@ -838,8 +834,9 @@ function AppContent() {
 
   const handleAddClassSession = async (newSession: Omit<ClassSession, 'id' | 'created_at'>) => {
     if (!session) return;
+    const { planning: _p, ...rest } = newSession as any;
     const payload = {
-      ...newSession,
+      ...rest,
       professor_id: session.user.id,
       status: newSession.status || 'pending',
     };
@@ -854,7 +851,8 @@ function AppContent() {
   };
 
   const handleUpdateClassSession = async (updatedSession: ClassSession) => {
-    const { data, error } = await supabase.from('class_sessions').update(updatedSession).eq('id', updatedSession.id).select().single();
+    const { planning: _planning, ...sessionPayload } = updatedSession as any;
+    const { data, error } = await supabase.from('class_sessions').update(sessionPayload).eq('id', updatedSession.id).select().single();
     if (error) console.error('Error updating class session:', error);
     else setClassSessions(prev => prev.map(cs => cs.id === updatedSession.id ? data : cs));
   };

@@ -648,7 +648,6 @@ id,
       level: 'Todos os Níveis',
       professor_id: user.id,
       status: 'pending' as const,
-      planning: newClassData.planning,
     };
     try {
       await onAddClassSession(newSession);

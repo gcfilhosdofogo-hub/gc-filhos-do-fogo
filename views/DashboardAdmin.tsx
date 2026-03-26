@@ -1961,7 +1961,6 @@ export const DashboardAdmin: React.FC<Props> = ({
             level: 'Todos os Níveis',
             professor_id: user.id,
             status: 'pending',
-            planning: newClassData.planning,
         };
         try {
             await onAddClassSession(newSessionPayload);
