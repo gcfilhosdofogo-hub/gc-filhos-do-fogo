@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { LanguageProvider } from './src/i18n/LanguageContext';
 import { Navbar } from './components/Navbar';
 import { Landing } from './views/Landing';
 import { Auth } from './views/Auth';
@@ -1217,9 +1218,11 @@ function AppContent() {
 
 function App() {
   return (
-    <SessionContextProvider>
-      <AppContent />
-    </SessionContextProvider>
+    <LanguageProvider>
+      <SessionContextProvider>
+        <AppContent />
+      </SessionContextProvider>
+    </LanguageProvider>
   );
 }
 

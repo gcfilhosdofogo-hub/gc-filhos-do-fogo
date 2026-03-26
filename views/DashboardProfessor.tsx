@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
 import { User, GroupEvent, MusicItem, UniformOrder, ClassSession, Assignment as AssignmentType, StudentGrade, GradeCategory, LessonPlan } from '../types';
 import { FFPoints } from './FFPoints';
+import { useLanguage } from '../src/i18n/LanguageContext';
 
 import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2, Star } from 'lucide-react';
 import { Button } from '../components/Button';
@@ -116,6 +117,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   onDeleteLessonPlan,
 }) => {
 
+  const { t } = useLanguage();
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
@@ -1173,10 +1175,10 @@ id,
           </Button>
         )}
         <Button onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600 text-xs sm:text-sm">
-          <BookOpen size={16} /> <span>Planejamento</span>
+          <BookOpen size={16} /> <span>{t('prof.view.planning')}</span>
         </Button>
         <Button onClick={() => setProfView('financial')} className="bg-stone-700 hover:bg-stone-600 text-white border-stone-600 text-xs sm:text-sm">
-          <Wallet size={16} /> <span>Financeiro</span>
+          <Wallet size={16} /> <span>{t('prof.view.financial')}</span>
         </Button>
         <Button variant="outline" onClick={handleCopyPix} className={`text-xs sm:text-sm ${pixCopied ? "border-green-500 text-green-500" : ""}`} title="PIX Mensalidade">
           {pixCopied ? <Check size={16} /> : <ArrowLeft size={16} className="rotate-180" />}
@@ -2502,33 +2504,33 @@ id,
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Button onClick={() => setProfView('all_students')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-indigo-900 to-indigo-700 hover:from-indigo-800 hover:to-indigo-600 border border-indigo-500/30">
                 <Users size={28} className="text-indigo-300" />
-                <span className="text-sm font-bold">Meus Alunos</span>
-                <span className="text-xs text-indigo-200">Ver Tudo</span>
+                <span className="text-sm font-bold">{t('prof.action.students')}</span>
+                <span className="text-xs text-indigo-200">{t('prof.action.students_sub')}</span>
               </Button>
               <Button onClick={() => setProfView('assignments')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-cyan-900 to-cyan-700 hover:from-cyan-800 hover:to-cyan-600 border border-cyan-500/30">
                 <BookOpen size={28} className="text-cyan-300" />
-                <span className="text-sm font-bold">Trabalhos</span>
-                <span className="text-xs text-cyan-200">Gerenciar</span>
+                <span className="text-sm font-bold">{t('prof.action.assignments')}</span>
+                <span className="text-xs text-cyan-200">{t('prof.action.assignments_sub')}</span>
               </Button>
               <Button onClick={() => setProfView('music_manager')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-amber-900 to-amber-700 hover:from-amber-800 hover:to-amber-600 border border-amber-500/30">
                 <Music size={28} className="text-amber-300" />
-                <span className="text-sm font-bold">Músicas</span>
-                <span className="text-xs text-amber-200">Acervo</span>
+                <span className="text-sm font-bold">{t('prof.action.music')}</span>
+                <span className="text-xs text-amber-200">{t('prof.action.music_sub')}</span>
               </Button>
               <Button onClick={() => setProfView('uniform')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-900 to-emerald-700 hover:from-emerald-800 hover:to-emerald-600 border border-emerald-500/30">
                 <Shirt size={28} className="text-emerald-300" />
-                <span className="text-sm font-bold">Uniforme</span>
-                <span className="text-xs text-emerald-200">Pedidos</span>
+                <span className="text-sm font-bold">{t('prof.action.uniform')}</span>
+                <span className="text-xs text-emerald-200">{t('prof.action.uniform_sub')}</span>
               </Button>
               <Button onClick={() => setProfView('financial')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-stone-900 to-stone-700 hover:from-stone-800 hover:to-stone-600 border border-stone-500/30">
                 <Wallet size={28} className="text-stone-300" />
-                <span className="text-sm font-bold">Financeiro</span>
-                <span className="text-xs text-stone-200">Minha Conta</span>
+                <span className="text-sm font-bold">{t('prof.action.financial')}</span>
+                <span className="text-xs text-stone-200">{t('prof.action.financial_sub')}</span>
               </Button>
               <Button onClick={() => setProfView('ffpoints')} className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-yellow-900 to-orange-800 hover:from-yellow-800 hover:to-orange-700 border border-yellow-600/30">
                 <span className="text-3xl leading-none">⭐</span>
-                <span className="text-sm font-bold">FFPoints</span>
-                <span className="text-xs text-yellow-200">Recompensas</span>
+                <span className="text-sm font-bold">{t('prof.action.ffpoints')}</span>
+                <span className="text-xs text-yellow-200">{t('prof.action.ffpoints_sub')}</span>
               </Button>
             </div>
 

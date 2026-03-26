@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, FFTask, FFTaskCompletion, FFReward, FFRedemption } from '../types';
 import { supabase } from '../src/integrations/supabase/client';
+import { useLanguage } from '../src/i18n/LanguageContext';
 import {
     Star, Plus, CheckCircle, XCircle, Clock, Gift, Award,
     Trash2, Edit2, X, Save, Package, Zap, Trophy, ChevronDown,
@@ -30,6 +31,7 @@ const statusBadge = (status: string) => {
 
 export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
     const isAdmin = user.role === 'admin';
+    const { t } = useLanguage();
 
     // ─── Tab ─────────────────────────────────────────────────────────────────
     type Tab = 'store' | 'tasks' | 'history' | 'manage';
@@ -314,7 +316,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                             <span className="text-2xl font-bold text-yellow-400">{myPoints.toLocaleString()}</span>
                             <span className="text-stone-400 text-sm">pts</span>
                         </div>
-                        <span className="text-xs text-stone-500 mt-1">Seu saldo atual</span>
+                        <span className="text-xs text-stone-500 mt-1">{t('ffp.balance')}</span>
                     </div>
                 </div>
             </div>
@@ -322,10 +324,10 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
             {/* ── Tabs ── */}
             <div className="flex gap-1 bg-stone-900 rounded-xl p-1 overflow-x-auto">
                 {([
-                    { id: 'store', label: 'Loja', icon: Gift },
-                    { id: 'tasks', label: 'Tarefas', icon: Zap },
-                    { id: 'history', label: 'Histórico', icon: Trophy },
-                    ...(isAdmin ? [{ id: 'manage', label: `Gerenciar${totalPending > 0 ? ` (${totalPending})` : ''}`, icon: Award }] : []),
+                    { id: 'store', label: t('ffp.tab.store'), icon: Gift },
+                    { id: 'tasks', label: t('ffp.tab.tasks'), icon: Zap },
+                    { id: 'history', label: t('ffp.tab.history'), icon: Trophy },
+                    ...(isAdmin ? [{ id: 'manage', label: `${t('ffp.tab.manage')}${totalPending > 0 ? ` (${totalPending})` : ''}`, icon: Award }] : []),
                 ] as { id: Tab; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
                     <button
                         key={id}
@@ -406,7 +408,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                 <div className="space-y-4">
                     <h2 className="text-white font-bold text-lg flex items-center gap-2">
                         <Zap className="text-yellow-400" size={20} />
-                        Tarefas para Ganhar Pontos
+                        {t('ffp.tasks.title')}
                     </h2>
                     {activeTasks.length === 0 ? (
                         <div className="text-center text-stone-500 py-12 bg-stone-900 rounded-xl border border-stone-700">
@@ -458,7 +460,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                     <div>
                         <h2 className="text-white font-bold text-lg flex items-center gap-2 mb-3">
                             <Zap className="text-yellow-400" size={18} />
-                            Minhas Tarefas
+                            {t('ffp.history.tasks')}
                         </h2>
                         {myCompletions.length === 0 ? (
                             <p className="text-stone-500 text-sm bg-stone-900 rounded-xl p-4 border border-stone-700">Nenhuma tarefa solicitada ainda.</p>
@@ -491,7 +493,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                     <div>
                         <h2 className="text-white font-bold text-lg flex items-center gap-2 mb-3">
                             <Gift className="text-orange-400" size={18} />
-                            Meus Resgates
+                            {t('ffp.history.redemptions')}
                         </h2>
                         {myRedemptions.length === 0 ? (
                             <p className="text-stone-500 text-sm bg-stone-900 rounded-xl p-4 border border-stone-700">Nenhum resgate realizado ainda.</p>
@@ -521,7 +523,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                     <div>
                         <h2 className="text-white font-bold text-lg flex items-center gap-2 mb-3">
                             <Trophy className="text-yellow-400" size={18} />
-                            Ranking FFPoints
+                            {t('ffp.ranking')}
                         </h2>
                         <div className="space-y-2">
                             {allUsersProfiles
@@ -554,7 +556,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                         <div>
                             <h2 className="text-white font-bold text-lg flex items-center gap-2 mb-3">
                                 <AlertCircle className="text-yellow-400" size={20} />
-                                Pendente de Aprovação ({totalPending})
+                                {t('ffp.manage.pending')} ({totalPending})
                             </h2>
 
                             {/* Task completions */}
@@ -640,7 +642,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                     <div>
                         <h2 className="text-white font-bold text-lg flex items-center gap-2 mb-3">
                             <Trophy className="text-yellow-400" size={20} />
-                            Saldo de Todos os Usuários
+                            {t('ffp.manage.balances')}
                         </h2>
                         <div className="space-y-2">
                             {allUsersProfiles

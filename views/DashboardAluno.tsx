@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade } from '../types';
 import { FFPoints } from './FFPoints';
+import { useLanguage } from '../src/i18n/LanguageContext';
 import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp, MessageCircle, PlusCircle, Activity, BookOpen, CheckCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
@@ -176,6 +177,7 @@ export const DashboardAluno: React.FC<Props> = ({
   onUpdateOrderWithProof,
 }) => {
 
+  const { t } = useLanguage();
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('overview'); // State for main tabs
   const [pixCopied, setPixCopied] = useState(false);
   const [costPixCopied, setCostPixCopied] = useState(false);
@@ -1234,55 +1236,55 @@ export const DashboardAluno: React.FC<Props> = ({
               onClick={() => setActiveMainTab('overview')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'overview' ? 'bg-stone-800 text-orange-500 border-t-2 border-orange-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Visão Geral
+              {t('aluno.tab.overview')}
             </button>
             <button
               onClick={() => setActiveMainTab('finance_resources')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'finance_resources' ? 'bg-stone-800 text-green-500 border-t-2 border-green-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Financeiro
+              {t('aluno.tab.finance')}
             </button>
             <button
               onClick={() => setActiveMainTab('assignments')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'assignments' ? 'bg-stone-800 text-cyan-500 border-t-2 border-cyan-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Trabalhos
+              {t('aluno.tab.assignments')}
             </button>
             <button
               onClick={() => setActiveMainTab('music')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'music' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Músicas
+              {t('aluno.tab.music')}
             </button>
             <button
               onClick={() => setActiveMainTab('home_training')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'home_training' ? 'bg-stone-800 text-purple-500 border-t-2 border-purple-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Treino em Casa
+              {t('aluno.tab.training')}
             </button>
             <button
               onClick={() => setActiveMainTab('school_report')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'school_report' ? 'bg-stone-800 text-indigo-500 border-t-2 border-indigo-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Boletim
+              {t('aluno.tab.report')}
             </button>
             <button
               onClick={() => setActiveMainTab('uniform')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'uniform' ? 'bg-stone-800 text-emerald-500 border-t-2 border-emerald-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Uniforme
+              {t('aluno.tab.uniform')}
             </button>
             <button
               onClick={() => setActiveMainTab('grades')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap ${activeMainTab === 'grades' ? 'bg-stone-800 text-blue-500 border-t-2 border-blue-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              Notas
+              {t('aluno.tab.grades')}
             </button>
             <button
               onClick={() => setActiveMainTab('ffpoints')}
               className={`px-3 py-2 rounded-t-lg font-medium transition-colors text-sm whitespace-nowrap flex items-center gap-1 ${activeMainTab === 'ffpoints' ? 'bg-stone-800 text-yellow-500 border-t-2 border-yellow-500' : 'text-stone-400 hover:text-white hover:bg-stone-800'}`}
             >
-              ⭐ FFPoints
+              {t('aluno.tab.ffpoints')}
             </button>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import heic2any from "heic2any";
 import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan, EventBanner } from '../types';
 import { FFPoints } from './FFPoints';
+import { useLanguage } from '../src/i18n/LanguageContext';
 
 import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
 import { Button } from '../components/Button';
@@ -336,6 +337,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 }) => {
 
     const { session } = useSession();
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
     const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('all');
@@ -2694,31 +2696,31 @@ export const DashboardAdmin: React.FC<Props> = ({
                     onClick={() => setActiveTab('overview')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'overview' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    Visão Geral
+                    {t('admin.tab.overview')}
                 </button>
                 <button
                     onClick={() => setActiveTab('events')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'events' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <CalendarPlus size={14} /> Eventos
+                    <CalendarPlus size={14} /> {t('admin.tab.events')}
                 </button>
                 <button
                     onClick={() => setActiveTab('users')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'users' ? 'bg-pink-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    Usuários
+                    {t('admin.tab.users')}
                 </button>
                 <button
                     onClick={() => setActiveTab('student_details')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'student_details' ? 'bg-blue-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <Users size={14} /> Alunos
+                    <Users size={14} /> {t('admin.tab.student_details')}
                 </button>
                 <button
                     onClick={() => setActiveTab('finance')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'finance' ? 'bg-green-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    Financeiro
+                    {t('admin.tab.finance')}
                     {(pendingUniformOrders.length > 0 || pendingEventRegistrations.length > 0) && (
                         <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
                             {pendingUniformOrders.length + pendingEventRegistrations.length}
@@ -2729,43 +2731,43 @@ export const DashboardAdmin: React.FC<Props> = ({
                     onClick={() => setActiveTab('pedagogy')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'pedagogy' ? 'bg-blue-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    Pedagógico
+                    {t('admin.tab.pedagogy')}
                 </button>
                 <button
                     onClick={() => setActiveTab('grades')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'grades' ? 'bg-green-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <Award size={14} /> Notas
+                    <Award size={14} /> {t('admin.tab.grades')}
                 </button>
                 <button
                     onClick={() => setActiveTab('my_classes')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'my_classes' ? 'bg-purple-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <BookOpen size={14} /> Aulas
+                    <BookOpen size={14} /> {t('admin.tab.my_classes')}
                 </button>
                 <button
                     onClick={() => setActiveTab('music')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'music' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <Music size={14} /> Músicas
+                    <Music size={14} /> {t('admin.tab.music')}
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'reports' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <FileText size={14} /> Relatórios
+                    <FileText size={14} /> {t('admin.tab.reports')}
                 </button>
                 <button
                     onClick={() => setActiveTab('banner')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'banner' ? 'bg-indigo-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    <UploadCloud size={14} /> Banner
+                    <UploadCloud size={14} /> {t('admin.tab.banner')}
                 </button>
                 <button
                     onClick={() => setActiveTab('ffpoints')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'ffpoints' ? 'bg-yellow-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    ⭐ FFPoints
+                    {t('admin.tab.ffpoints')}
                 </button>
                 <a href="https://www.instagram.com/filhosdofogo2005" target="_blank" rel="noopener noreferrer" className="shrink-0">
                     <button className="px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-orange-500 hover:opacity-90">

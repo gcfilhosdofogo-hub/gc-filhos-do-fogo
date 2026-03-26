@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../components/Button';
-import { UserRole, User } from '../types';
-import { ArrowLeft, Mail, Lock, User as UserIcon, Eye, EyeOff, GraduationCap, Calendar } from 'lucide-react';
+import { User } from '../types';
+import { Mail, Lock, User as UserIcon, Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { Auth as SupabaseAuth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '../src/integrations/supabase/client'; // Corrected path
+import { supabase } from '../src/integrations/supabase/client';
+import { useLanguage } from '../src/i18n/LanguageContext';
 
 interface Props {
-  onLogin: (user: User) => void; // This prop will now be less critical as Supabase handles login state
+  onLogin: (user: User) => void;
   onBack: () => void;
 }
 
 export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -37,14 +37,13 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
           }
         });
         if (error) throw error;
-        alert('Verifique seu e-mail para confirmar o cadastro!');
+        alert(t('auth.verify_email'));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // onLogin will be handled by the session listener in App.tsx
       }
     } catch (error: any) {
-      alert(error.message || 'Erro de autenticação');
+      alert(error.message || t('auth.error'));
     } finally {
       setLoading(false);
     }
@@ -61,13 +60,12 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
           </div>
 
           <h2 className="relative z-10 text-2xl font-bold text-white">
-            {isSignUp ? 'Criar Conta' : 'Acesse sua Conta'}
+            {isSignUp ? t('auth.signup.title') : t('auth.login.title')}
           </h2>
           <p className="relative z-10 text-white/80 text-sm mt-2">
-            {isSignUp ? 'Preencha os dados para se cadastrar' : 'Entre para acessar seu painel'}
+            {isSignUp ? t('auth.signup.subtitle') : t('auth.login.subtitle')}
           </p>
 
-          {/* Background decoration */}
           <div className="absolute top-0 left-0 w-full h-full bg-black/10"></div>
         </div>
 
@@ -75,7 +73,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
         <div className="p-8">
           <form onSubmit={handleAuth} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-stone-400 mb-1">Email</label>
+              <label className="block text-sm font-medium text-stone-400 mb-1">{t('common.email')}</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 text-stone-500" size={18} />
                 <input
@@ -92,7 +90,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
             {isSignUp && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-stone-400 mb-1">Nome Completo</label>
+                  <label className="block text-sm font-medium text-stone-400 mb-1">{t('auth.full_name')}</label>
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-3 text-stone-500" size={18} />
                     <input
@@ -100,14 +98,14 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       className="w-full bg-stone-900 border border-stone-600 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-orange-500 transition-colors"
-                      placeholder="Seu nome"
+                      placeholder={t('common.name')}
                       required={isSignUp}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-stone-400 mb-1">Apelido (Capoeira)</label>
+                  <label className="block text-sm font-medium text-stone-400 mb-1">{t('auth.nickname')}</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-3 top-3 text-stone-500" size={18} />
                     <input
@@ -115,7 +113,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
                       className="w-full bg-stone-900 border border-stone-600 rounded-lg py-2 pl-10 pr-4 text-white focus:outline-none focus:border-orange-500 transition-colors"
-                      placeholder="Seu apelido"
+                      placeholder={t('profile.nickname')}
                       required={isSignUp}
                     />
                   </div>
@@ -124,7 +122,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-stone-400 mb-1">Senha</label>
+              <label className="block text-sm font-medium text-stone-400 mb-1">{t('auth.password')}</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-stone-500" size={18} />
                 <input
@@ -139,7 +137,7 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-stone-500 hover:text-white transition-colors"
-                  title={showPassword ? "Ocultar senha" : "Revelar senha"}
+                  title={showPassword ? t('auth.hide_pw') : t('auth.show_pw')}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -152,23 +150,23 @@ export const Auth: React.FC<Props> = ({ onLogin, onBack }) => {
               disabled={loading}
               className="mt-6 bg-orange-600 hover:bg-orange-500 text-white font-bold py-3"
             >
-              {loading ? 'Carregando...' : (isSignUp ? 'Cadastrar' : 'Entrar')}
+              {loading ? t('common.loading') : (isSignUp ? t('auth.register') : t('nav.login'))}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-stone-400">
             {isSignUp ? (
               <p>
-                Já tem uma conta?{' '}
+                {t('auth.have_account')}{' '}
                 <button onClick={() => setIsSignUp(false)} className="text-orange-500 hover:text-orange-400 font-bold hover:underline">
-                  Entrar
+                  {t('nav.login')}
                 </button>
               </p>
             ) : (
               <p>
-                Não tem uma conta?{' '}
+                {t('auth.no_account')}{' '}
                 <button onClick={() => setIsSignUp(true)} className="text-orange-500 hover:text-orange-400 font-bold hover:underline">
-                  Cadastre-se
+                  {t('auth.signup_link')}
                 </button>
               </p>
             )}
