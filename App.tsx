@@ -838,9 +838,16 @@ function AppContent() {
 
   const handleAddClassSession = async (newSession: Omit<ClassSession, 'id' | 'created_at'>) => {
     if (!session) return;
-    const { data, error } = await supabase.from('class_sessions').insert({ ...newSession, professor_id: session.user.id }).select().single();
-    if (error) console.error('Error adding class session:', error);
-    else {
+    const payload = {
+      ...newSession,
+      professor_id: session.user.id,
+      status: newSession.status || 'pending',
+    };
+    const { data, error } = await supabase.from('class_sessions').insert(payload).select().single();
+    if (error) {
+      console.error('Error adding class session:', error);
+      throw error;
+    } else {
       setClassSessions(prev => [...prev, data]);
       if (user) handleNotifyAdmin(`Criou aula: ${newSession.title}`, user);
     }

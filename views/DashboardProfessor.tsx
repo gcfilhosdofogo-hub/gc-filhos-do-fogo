@@ -645,14 +645,19 @@ id,
       time: newClassData.time,
       instructor: user.nickname || user.name,
       location: newClassData.location,
-      level: 'Todos os Níveis', // Default level, can be made dynamic
+      level: 'Todos os Níveis',
       professor_id: user.id,
+      status: 'pending' as const,
       planning: newClassData.planning,
     };
-    await onAddClassSession(newSession);
-    setNewClassData({ title: '', date: '', time: '', location: '', planning: '' });
-    // setProfView('dashboard'); // Removed to keep user context
-    onNotifyAdmin(`Agendou nova aula: ${newClassData.title} `, user);
+    try {
+      await onAddClassSession(newSession);
+      setNewClassData({ title: '', date: '', time: '', location: '', planning: '' });
+      onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
+      alert(`Aula "${newClassData.title}" agendada com sucesso!`);
+    } catch (err: any) {
+      alert('Erro ao criar aula: ' + (err?.message || 'Tente novamente.'));
+    }
   };
 
   // --- Lesson Plan handlers (use lesson_plans table, NOT class_sessions) ---

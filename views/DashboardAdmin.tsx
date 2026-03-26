@@ -1953,18 +1953,25 @@ export const DashboardAdmin: React.FC<Props> = ({
             return;
         }
         const newSessionPayload: Omit<ClassSession, 'id' | 'created_at'> = {
+            title: newClassData.title,
             date: newClassData.date,
             time: newClassData.time,
             instructor: user.nickname || user.name,
             location: newClassData.location,
-            level: 'Todos os Níveis', // Default level
+            level: 'Todos os Níveis',
             professor_id: user.id,
+            status: 'pending',
             planning: newClassData.planning,
         };
-        await onAddClassSession(newSessionPayload);
-        setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
-        // setProfView('dashboard'); // Removed for consistency
-        onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
+        try {
+            await onAddClassSession(newSessionPayload);
+            const savedTitle = newClassData.title;
+            setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
+            onNotifyAdmin(`Agendou nova aula: ${savedTitle}`, user);
+            alert(`Aula "${savedTitle}" criada com sucesso!`);
+        } catch (err: any) {
+            alert('Erro ao criar aula: ' + (err?.message || 'Tente novamente.'));
+        }
     };
 
     // --- Lesson Plan handlers (use lesson_plans table, NOT class_sessions) ---
