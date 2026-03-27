@@ -1798,19 +1798,19 @@ id,
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* THEORY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Teórica</h3>
+              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.theory')}</h3>
               <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.theory.written} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.theory.numeric} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, numeric: e.target.value } })} />
             </div>
             {/* MOVEMENT */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Movimentação</h3>
+              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.movement')}</h3>
               <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.movement.written} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.movement.numeric} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, numeric: e.target.value } })} />
             </div>
             {/* MUSICALITY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Musicalidade</h3>
+              <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.musicality')}</h3>
               <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.musicality.written} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.musicality.numeric} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, numeric: e.target.value } })} />
             </div>
@@ -1818,7 +1818,7 @@ id,
 
           <div className="flex justify-end gap-3">
             <Button onClick={handleSaveEvaluation} disabled={savingGrades} className="px-8 bg-yellow-600 hover:bg-yellow-500">
-              {savingGrades ? 'Salvando...' : 'Salvar Avaliação'}
+              {savingGrades ? t('common.saving') : t('grades.save')}
             </Button>
           </div>
         </div>
@@ -1833,17 +1833,17 @@ id,
                 <ArrowLeft size={16} /> Voltar
               </button>
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="text-blue-500" /> Trabalhos e Tarefas
+                <BookOpen className="text-blue-500" /> {t('assignments.title')}
               </h2>
             </div>
           </div>
 
           <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-            <h3 className="text-lg font-bold text-white mb-4">Passar Novo Trabalho</h3>
+            <h3 className="text-lg font-bold text-white mb-4">{t('assignments.new')}</h3>
             <form onSubmit={handleAddAssignment} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-stone-400 mb-1">Título do Trabalho</label>
+                  <label className="block text-sm text-stone-400 mb-1">{t('assignments.field.title')}</label>
                   <input
                     type="text"
                     required
@@ -1921,7 +1921,7 @@ id,
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* List Assignments Logic Simplified */}
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-              <h3 className="text-lg font-bold text-white mb-4">Meus Trabalhos Ativos</h3>
+              <h3 className="text-lg font-bold text-white mb-4">{t('assignments.my_active')}</h3>
               <div className="space-y-4">
                 {profAssignments.map(assign => (
                   <div key={assign.id} className={`bg-stone-900 p-4 rounded-lg border-l-4 ${assign.status === 'completed' ? 'border-green-500' : 'border-blue-500'}`}>
@@ -2085,12 +2085,12 @@ id,
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
             <ArrowLeft size={16} className="mr-2" />
-            Voltar ao Painel
+            {t('common.back_panel')}
           </Button>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-stone-900 p-6 rounded-xl border border-stone-700 shadow-xl">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <PlusCircle className="text-emerald-500" /> Fazer Novo Pedido
+                <PlusCircle className="text-emerald-500" /> {t('uniform.new_order')}
               </h3>
               <form onSubmit={handleOrderUniform} className="space-y-4">
                 <div>
@@ -2149,7 +2149,7 @@ id,
 
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingBag className="text-emerald-400" /> Meus Pedidos
+                <ShoppingBag className="text-emerald-400" /> {t('uniform.my_orders')}
               </h3>
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {myOrders.length > 0 ? (

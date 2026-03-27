@@ -2797,7 +2797,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                             <h3 className="text-lg sm:text-2xl font-bold text-white">{totalStudentsCount}</h3>
-                            <p className="text-stone-400 text-xs sm:text-sm">Total Alunos</p>
+                            <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.students')}</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('finance')}
@@ -2809,7 +2809,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                             <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {totalRevenue.toFixed(2).replace('.', ',')}</h3>
-                            <p className="text-stone-400 text-xs sm:text-sm">Receita Conf.</p>
+                            <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.revenue')}</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('finance')}
@@ -2821,7 +2821,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                             <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</h3>
-                            <p className="text-stone-400 text-xs sm:text-sm">Pendente</p>
+                            <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.pending')}</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('events')}
@@ -2833,7 +2833,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                             <h3 className="text-lg sm:text-2xl font-bold text-white">{events.length}</h3>
-                            <p className="text-stone-400 text-xs sm:text-sm">Eventos Ativos</p>
+                            <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.events')}</p>
                         </button>
                         <button
                             onClick={() => setActiveTab('music')}
@@ -2845,7 +2845,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 </div>
                             </div>
                             <h3 className="text-lg sm:text-2xl font-bold text-white">{musicList.length}</h3>
-                            <p className="text-stone-400 text-xs sm:text-sm">Músicas no Acervo</p>
+                            <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.music')}</p>
                         </button>
                     </div>
 
@@ -4833,9 +4833,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                         {/* THEORY */}
                                         <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Teórica</h3>
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.theory')}</h3>
                                             <div>
-                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">{t('grades.written')}</label>
                                                 <textarea
                                                     className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
                                                     placeholder="Pontos positivos e observações..."
@@ -4858,9 +4858,9 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                         {/* MOVEMENT */}
                                         <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Movimentação</h3>
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.movement')}</h3>
                                             <div>
-                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">{t('grades.written')}</label>
                                                 <textarea
                                                     className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
                                                     placeholder="Pontos positivos e observações..."
@@ -4883,9 +4883,9 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                         {/* MUSICALITY */}
                                         <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
-                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">Musicalidade</h3>
+                                            <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.musicality')}</h3>
                                             <div>
-                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Avaliação Escrita</label>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">{t('grades.written')}</label>
                                                 <textarea
                                                     className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
                                                     placeholder="Pontos positivos e observações..."
@@ -4909,10 +4909,10 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                     <div className="flex justify-end gap-3">
                                         <Button variant="outline" onClick={() => setEvalData({ theory: { written: '', numeric: '' }, movement: { written: '', numeric: '' }, musicality: { written: '', numeric: '' } })}>
-                                            Limpar Campos
+                                            {t('grades.clear')}
                                         </Button>
                                         <Button onClick={handleSaveEvaluation} disabled={savingGrades} className="px-8 bg-yellow-600 hover:bg-yellow-500">
-                                            {savingGrades ? 'Salvando...' : 'Salvar Avaliação'}
+                                            {savingGrades ? t('common.saving') : t('grades.save')}
                                         </Button>
                                     </div>
                                 </div>

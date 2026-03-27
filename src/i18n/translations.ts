@@ -81,6 +81,9 @@ const translations = {
     'common.year': 'Ano',
     'common.no_data': 'Nenhum dado encontrado.',
     'common.back_panel': 'Voltar ao Painel',
+    'common.saving': 'Salvando...',
+    'common.sent_on': 'Enviado em',
+    'common.expires_on': 'Expira em',
 
     // ── Status labels ────────────────────────────────────────
     'status.pending': 'Pendente',
@@ -214,6 +217,7 @@ const translations = {
     'assignments.submit': 'Enviar Trabalho',
     'assignments.submitted': 'Enviado',
     'assignments.no_assignments': 'Nenhum trabalho encontrado.',
+    'assignments.my_active': 'Meus Trabalhos Ativos',
     'assignments.field.title': 'Título',
     'assignments.field.description': 'Descrição',
     'assignments.field.due_date': 'Data Limite',
@@ -241,6 +245,8 @@ const translations = {
     'uniform.pants_roda': 'Calça de Roda',
     'uniform.pants_train': 'Calça de Treino',
     'uniform.no_orders': 'Nenhum pedido realizado ainda.',
+    'uniform.new_order': 'Fazer Novo Pedido',
+    'uniform.my_orders': 'Meus Pedidos',
 
     // ── Grades ───────────────────────────────────────────────
     'grades.title': 'Notas',
@@ -250,6 +256,9 @@ const translations = {
     'grades.average': 'Média',
     'grades.evaluate': 'Avaliar',
     'grades.no_grades': 'Nenhuma nota registrada.',
+    'grades.save': 'Salvar Avaliação',
+    'grades.written': 'Avaliação Escrita',
+    'grades.clear': 'Limpar Campos',
 
     // ── Users / Students ─────────────────────────────────────
     'users.title': 'Usuários',
@@ -282,6 +291,25 @@ const translations = {
     'training.no_videos': 'Nenhum vídeo enviado.',
     'training.expires': 'Expira em',
     'training.view': 'Ver Vídeo',
+    'training.save_link': 'Salvar Link de Treino',
+    'training.my_videos': 'Meus Vídeos Enviados',
+    'training.watch': 'Ver Vídeo',
+    'training.empty': 'Nenhum vídeo de treino em casa enviado ainda.',
+
+    // ── School Report ────────────────────────────────────────
+    'report.title': 'Boletim Escolar',
+    'report.upload': 'Enviar Boletim',
+    'report.my_reports': 'Meus Boletins Enviados',
+    'report.empty': 'Nenhum boletim enviado ainda.',
+    'report.select': 'Selecionar Arquivo',
+    'report.view': 'Ver Boletim',
+
+    // ── Admin Stats ──────────────────────────────────────────
+    'admin.stat.students': 'Total Alunos',
+    'admin.stat.revenue': 'Receita Conf.',
+    'admin.stat.pending': 'Pendente',
+    'admin.stat.events': 'Eventos Ativos',
+    'admin.stat.music': 'Músicas no Acervo',
 
     // ── Profile ──────────────────────────────────────────────
     'profile.title': 'Meu Perfil',
@@ -590,6 +618,7 @@ const translations = {
     'assignments.submit': 'Entregar Trabajo',
     'assignments.submitted': 'Entregado',
     'assignments.no_assignments': 'No se encontraron trabajos.',
+    'assignments.my_active': 'Mis Trabajos Activos',
     'assignments.field.title': 'Título',
     'assignments.field.description': 'Descripción',
     'assignments.field.due_date': 'Fecha Límite',
@@ -617,6 +646,8 @@ const translations = {
     'uniform.pants_roda': 'Pantalón de Roda',
     'uniform.pants_train': 'Pantalón de Entrenamiento',
     'uniform.no_orders': 'No hay pedidos realizados.',
+    'uniform.new_order': 'Hacer Nuevo Pedido',
+    'uniform.my_orders': 'Mis Pedidos',
 
     // ── Grades ───────────────────────────────────────────────
     'grades.title': 'Notas',
@@ -626,6 +657,9 @@ const translations = {
     'grades.average': 'Promedio',
     'grades.evaluate': 'Evaluar',
     'grades.no_grades': 'No hay notas registradas.',
+    'grades.save': 'Guardar Evaluación',
+    'grades.written': 'Evaluación Escrita',
+    'grades.clear': 'Limpiar Campos',
 
     // ── Users / Students ─────────────────────────────────────
     'users.title': 'Usuarios',
@@ -658,6 +692,25 @@ const translations = {
     'training.no_videos': 'No hay videos enviados.',
     'training.expires': 'Vence el',
     'training.view': 'Ver Video',
+    'training.save_link': 'Guardar Link de Entrenamiento',
+    'training.my_videos': 'Mis Videos Enviados',
+    'training.watch': 'Ver Video',
+    'training.empty': 'No hay videos de entrenamiento enviados aún.',
+
+    // ── School Report ────────────────────────────────────────
+    'report.title': 'Boletín Escolar',
+    'report.upload': 'Enviar Boletín',
+    'report.my_reports': 'Mis Boletines Enviados',
+    'report.empty': 'No hay boletines enviados aún.',
+    'report.select': 'Seleccionar Archivo',
+    'report.view': 'Ver Boletín',
+
+    // ── Admin Stats ──────────────────────────────────────────
+    'admin.stat.students': 'Total Alumnos',
+    'admin.stat.revenue': 'Ingresos Conf.',
+    'admin.stat.pending': 'Pendiente',
+    'admin.stat.events': 'Eventos Activos',
+    'admin.stat.music': 'Músicas en el Acervo',
 
     // ── Profile ──────────────────────────────────────────────
     'profile.title': 'Mi Perfil',

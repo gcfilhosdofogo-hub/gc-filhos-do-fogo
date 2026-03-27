@@ -1925,12 +1925,12 @@ export const DashboardAluno: React.FC<Props> = ({
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in shadow-2xl">
               <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
                 <ArrowLeft size={16} className="mr-2" />
-                Voltar ao Painel
+                {t('common.back_panel')}
               </Button>
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Video size={24} className="text-purple-500" /> Treino em Casa</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Video size={24} className="text-purple-500" /> {t('training.title')}</h2>
 
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
-                <h3 className="text-lg font-bold text-white mb-3">Enviar Vídeo de Treino</h3>
+                <h3 className="text-lg font-bold text-white mb-3">{t('training.upload')}</h3>
 
                 <div className="flex gap-2 mb-4">
                   <button
@@ -1962,7 +1962,7 @@ export const DashboardAluno: React.FC<Props> = ({
                       <p className="text-[10px] text-stone-500 mt-2">Dica: Lembre-se de deixar o link do Google Drive como "Qualquer pessoa com o link".</p>
                     </div>
                     <Button fullWidth type="submit" disabled={uploading || !videoLink}>
-                      {uploading ? 'Salvando...' : 'Salvar Link de Treino'}
+                      {uploading ? t('common.saving') : t('training.save_link')}
                     </Button>
                   </form>
                 ) : (
@@ -1988,27 +1988,27 @@ export const DashboardAluno: React.FC<Props> = ({
                 )}
               </div>
 
-              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Clock size={20} className="text-stone-400" /> Meus Vídeos Enviados</h3>
+              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Clock size={20} className="text-stone-400" /> {t('training.my_videos')}</h3>
               <div className="space-y-3">
                 {myHomeTrainings.length > 0 ? (
                   myHomeTrainings.map(training => (
                     <div key={training.id} className="bg-stone-900 p-4 rounded-lg border-l-4 border-purple-500 flex justify-between items-center">
                       <div>
                         <p className="font-bold text-white">{training.video_name}</p>
-                        <p className="text-stone-400 text-sm">Enviado em: {training.date}</p>
-                        <p className="text-stone-500 text-xs">Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-stone-400 text-sm">{t('common.sent_on')}: {training.date}</p>
+                        <p className="text-stone-500 text-xs">{t('common.expires_on')}: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
                       </div>
                       <Button
                         variant="secondary"
                         className="text-xs h-auto px-3 py-1.5"
                         onClick={() => handleViewVideo(training.video_url, training.video_name)}
                       >
-                        <PlayCircle size={16} className="mr-1" /> Ver Vídeo
+                        <PlayCircle size={16} className="mr-1" /> {t('training.watch')}
                       </Button>
                     </div>
                   ))
                 ) : (
-                  <p className="text-stone-500 italic text-center py-4">Nenhum vídeo de treino em casa enviado ainda.</p>
+                  <p className="text-stone-500 italic text-center py-4">{t('training.empty')}</p>
                 )}
               </div>
             </div>
@@ -2019,12 +2019,12 @@ export const DashboardAluno: React.FC<Props> = ({
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
               <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
                 <ArrowLeft size={16} className="mr-2" />
-                Voltar ao Painel
+                {t('common.back_panel')}
               </Button>
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><GraduationCap size={24} className="text-orange-500" /> Boletim Escolar</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><GraduationCap size={24} className="text-orange-500" /> {t('report.title')}</h2>
 
               <div className="bg-stone-900 p-4 rounded-lg mb-6 border-l-4 border-orange-500">
-                <h3 className="text-lg font-bold text-white mb-3">Enviar Boletim</h3>
+                <h3 className="text-lg font-bold text-white mb-3">{t('report.upload')}</h3>
                 <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50 hover:bg-stone-900 transition-colors">
                   {uploadingReport ? (
                     <div className="text-center">
@@ -2046,7 +2046,7 @@ export const DashboardAluno: React.FC<Props> = ({
                 </div>
               </div>
 
-              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><FileText size={20} className="text-stone-400" /> Meus Boletins Enviados</h3>
+              <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><FileText size={20} className="text-stone-400" /> {t('report.my_reports')}</h3>
               <div className="space-y-3">
                 {mySchoolReports.length > 0 ? (
                   mySchoolReports.map(report => (

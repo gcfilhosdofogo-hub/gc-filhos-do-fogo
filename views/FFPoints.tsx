@@ -582,13 +582,13 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                                         onClick={() => handleCompletion(c, 'approved')}
                                                         className="flex items-center gap-1 bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm"
                                                     >
-                                                        <CheckCircle size={14} /> Aprovar
+                                                        <CheckCircle size={14} /> {t('ffp.manage.approve')}
                                                     </button>
                                                     <button
                                                         onClick={() => handleCompletion(c, 'rejected')}
                                                         className="flex items-center gap-1 bg-red-800 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm"
                                                     >
-                                                        <XCircle size={14} /> Recusar
+                                                        <XCircle size={14} /> {t('ffp.manage.reject')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -621,13 +621,13 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                                         onClick={() => handleRedemption(r, 'approved')}
                                                         className="flex items-center gap-1 bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm"
                                                     >
-                                                        <CheckCircle size={14} /> Entregar
+                                                        <CheckCircle size={14} /> {t('ffp.manage.deliver')}
                                                     </button>
                                                     <button
                                                         onClick={() => handleRedemption(r, 'rejected')}
                                                         className="flex items-center gap-1 bg-red-800 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm"
                                                     >
-                                                        <XCircle size={14} /> Recusar
+                                                        <XCircle size={14} /> {t('ffp.manage.reject')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -670,21 +670,21 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-white font-bold text-lg flex items-center gap-2">
                                 <Zap className="text-yellow-400" size={20} />
-                                Gerenciar Tarefas
+                                {t('ffp.manage.tasks')}
                             </h2>
                             <button
                                 onClick={() => { setShowRewardForm(false); openTaskForm(); }}
                                 className="flex items-center gap-1 bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm"
                             >
-                                <Plus size={14} /> Nova Tarefa
+                                <Plus size={14} /> {t('ffp.manage.new_task')}
                             </button>
                         </div>
 
                         {showTaskForm && (
                             <form onSubmit={saveTask} className="bg-stone-900 border border-orange-700/50 rounded-xl p-4 mb-4 space-y-3">
-                                <h3 className="text-white font-medium">{editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
+                                <h3 className="text-white font-medium">{editingTask ? t('common.edit') : t('ffp.manage.new_task')}</h3>
                                 <div>
-                                    <label className="text-xs text-stone-400 block mb-1">Título</label>
+                                    <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.task.title')}</label>
                                     <input
                                         type="text" required value={taskForm.title}
                                         onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))}
@@ -692,7 +692,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-stone-400 block mb-1">Descrição</label>
+                                    <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.task.desc')}</label>
                                     <textarea
                                         value={taskForm.description}
                                         onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))}
@@ -701,7 +701,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs text-stone-400 block mb-1">Público-alvo (Quem pode ver?)</label>
+                                    <label className="text-xs text-stone-400 block mb-1">{t('common.category')}</label>
                                     <select
                                         value={taskForm.target_role}
                                         onChange={e => setTaskForm(f => ({ ...f, target_role: e.target.value as any }))}
@@ -713,7 +713,7 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-stone-400 block mb-1">FFPoints ao completar</label>
+                                    <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.task.points')}</label>
                                     <input
                                         type="number" required min="1" value={taskForm.points}
                                         onChange={e => setTaskForm(f => ({ ...f, points: e.target.value }))}
@@ -721,8 +721,8 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                     />
                                 </div>
                                 <div className="flex gap-2 justify-end">
-                                    <button type="button" onClick={() => setShowTaskForm(false)} className="text-stone-400 px-3 py-1.5 hover:text-white text-sm">Cancelar</button>
-                                    <Button type="submit">{editingTask ? 'Salvar' : 'Criar Tarefa'}</Button>
+                                    <button type="button" onClick={() => setShowTaskForm(false)} className="text-stone-400 px-3 py-1.5 hover:text-white text-sm">{t('common.cancel')}</button>
+                                    <Button type="submit">{editingTask ? t('common.save') : t('ffp.manage.new_task')}</Button>
                                 </div>
                             </form>
                         )}
@@ -769,28 +769,28 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-white font-bold text-lg flex items-center gap-2">
                                 <Gift className="text-orange-400" size={20} />
-                                Gerenciar Recompensas
+                                {t('ffp.manage.rewards')}
                             </h2>
                             <button
                                 onClick={() => { setShowTaskForm(false); openRewardForm(); }}
                                 className="flex items-center gap-1 bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm"
                             >
-                                <Plus size={14} /> Nova Recompensa
+                                <Plus size={14} /> {t('ffp.manage.new_reward')}
                             </button>
                         </div>
 
                         {showRewardForm && (
                             <form onSubmit={saveReward} className="bg-stone-900 border border-orange-700/50 rounded-xl p-4 mb-4 space-y-3">
-                                <h3 className="text-white font-medium">{editingReward ? 'Editar Recompensa' : 'Nova Recompensa'}</h3>
+                                <h3 className="text-white font-medium">{editingReward ? t('common.edit') : t('ffp.manage.new_reward')}</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs text-stone-400 block mb-1">Título</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.reward.title')}</label>
                                         <input type="text" required value={rewardForm.title}
                                             onChange={e => setRewardForm(f => ({ ...f, title: e.target.value }))}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm" />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-stone-400 block mb-1">Categoria</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.reward.category')}</label>
                                         <select value={rewardForm.category}
                                             onChange={e => setRewardForm(f => ({ ...f, category: e.target.value }))}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm">
@@ -798,28 +798,28 @@ export const FFPoints: React.FC<Props> = ({ user, allUsersProfiles }) => {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-xs text-stone-400 block mb-1">Custo (FFPoints)</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.reward.cost')}</label>
                                         <input type="number" required min="1" value={rewardForm.points_cost}
                                             onChange={e => setRewardForm(f => ({ ...f, points_cost: e.target.value }))}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm" />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-stone-400 block mb-1">Estoque (-1 = ilimitado)</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.reward.stock')}</label>
                                         <input type="number" min="-1" value={rewardForm.stock}
                                             onChange={e => setRewardForm(f => ({ ...f, stock: e.target.value }))}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm" />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-stone-400 block mb-1">Descrição</label>
+                                    <label className="text-xs text-stone-400 block mb-1">{t('ffp.manage.reward.desc')}</label>
                                     <textarea value={rewardForm.description}
                                         onChange={e => setRewardForm(f => ({ ...f, description: e.target.value }))}
                                         className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white text-sm"
                                         rows={2} />
                                 </div>
                                 <div className="flex gap-2 justify-end">
-                                    <button type="button" onClick={() => setShowRewardForm(false)} className="text-stone-400 px-3 py-1.5 hover:text-white text-sm">Cancelar</button>
-                                    <Button type="submit">{editingReward ? 'Salvar' : 'Criar Recompensa'}</Button>
+                                    <button type="button" onClick={() => setShowRewardForm(false)} className="text-stone-400 px-3 py-1.5 hover:text-white text-sm">{t('common.cancel')}</button>
+                                    <Button type="submit">{editingReward ? t('common.save') : t('ffp.manage.new_reward')}</Button>
                                 </div>
                             </form>
                         )}
