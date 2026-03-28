@@ -198,10 +198,11 @@ export const DashboardProfessor: React.FC<Props> = ({
     return {
       count: pending.length,
       isOverdue: pending.length >= 1,
-      message: pending.length >= 3 ? "Atenção: Evite o bloqueio do seu acesso efetuando o pagamento!" : "Atraso no pagamento das mensalidades pode levar ao bloqueio do aplicativo!",
+      message: pending.length >= 3 ? t('prof.dashboard.overdue_msg_1') : t('prof.dashboard.overdue_msg_2'),
       color: pending.length >= 3 ? 'red' : pending.length === 2 ? 'orange' : 'yellow'
     };
-  }, [myMonthlyPayments]);
+  }, [myMonthlyPayments, t]);
+
   const convertToStandardImage = async (file: File): Promise<File> => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     let processingFile = file;
@@ -1141,9 +1142,9 @@ id,
           <div className="text-center sm:text-left">
             <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-2">
               <Shield className="text-purple-500 shrink-0" size={22} /> {/* Changed icon color for professor */}
-              Painel do Professor
+              {t('prof.dashboard.title')}
             </h1>
-            <p className="text-purple-200 mt-1 text-sm">Olá, {user.nickname || user.name}!</p>
+            <p className="text-purple-200 mt-1 text-sm">{t('prof.dashboard.hello')} {user.nickname || user.name}!</p>
           </div>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-purple-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -1160,7 +1161,7 @@ id,
           </div>
           <div>
             <h4 className="font-black text-sm uppercase tracking-tighter">
-              {overdueStatus.count === 1 ? 'Uma mensalidade pendente' : `${overdueStatus.count} mensalidades pendentes`}
+              {overdueStatus.count === 1 ? t('prof.dashboard.overdue_one') : `${overdueStatus.count} ${t('prof.dashboard.overdue_many')}`}
             </h4>
             <p className="text-xs font-medium leading-tight mt-0.5">{overdueStatus.message}</p>
           </div>
@@ -1171,7 +1172,7 @@ id,
       <div className="flex flex-wrap gap-2 justify-start sm:justify-end bg-stone-800 p-3 sm:p-4 rounded-xl border border-stone-700">
         {profView === 'dashboard' && (
           <Button onClick={() => setProfView('new_class')} className="text-xs sm:text-sm">
-            <PlusCircle size={16} /> Aula
+            <PlusCircle size={16} /> {t('prof.view.dashboard')}
           </Button>
         )}
         <Button onClick={() => setProfView('planning')} className="bg-purple-700 hover:bg-purple-600 text-white border-purple-600 text-xs sm:text-sm">
@@ -1205,7 +1206,7 @@ id,
           {beltColors.pontaColor && (
             <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
           )}
-          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Graduação Atual</p>
+          <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">{t('prof.belt.current')}</p>
           <p className="text-2xl font-bold text-white flex items-center justify-center gap-2">
             <Award className="text-orange-500" size={24} />
             {user.belt || 'Cordel Cinza'}
@@ -1214,7 +1215,7 @@ id,
 
         <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
           <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
-            <GraduationCap size={16} /> Próxima Avaliação
+            <GraduationCap size={16} /> {t('prof.belt.next_eval')}
           </p>
           <div className="flex flex-col items-center gap-2">
             {(() => {
@@ -1231,12 +1232,12 @@ id,
                 <>
                   {remainingValue > 0 ? (
                     <>
-                      <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
+                      <p className="text-sm text-stone-400">{t('prof.belt.remaining')}</p>
                       <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
                       <div className="flex gap-2 text-xs">
-                        <span className="text-green-400">{paidInstallments.length} pagas</span>
+                        <span className="text-green-400">{paidInstallments.length} {t('prof.belt.paid')}</span>
                         <span className="text-stone-600">|</span>
-                        <span className="text-orange-400">{pendingInstallments.length} pendentes</span>
+                        <span className="text-orange-400">{pendingInstallments.length} {t('prof.belt.pending')}</span>
                       </div>
                       <div className="w-full bg-stone-700 rounded-full h-2 mt-2">
                         <div
@@ -1249,7 +1250,7 @@ id,
                     <>
                       <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                       {totalPaid > 0 && (
-                        <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
+                        <span className="text-xs text-green-400">{t('prof.belt.settled')}</span>
                       )}
                     </>
                   )}
@@ -1259,7 +1260,7 @@ id,
 
             {user.nextEvaluationDate && (
               <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full mt-2">
-                Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
+                {t('prof.belt.date')} <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
               </span>
             )}
           </div>
@@ -1270,7 +1271,7 @@ id,
       {profView === 'planning' && (
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
-            <ArrowLeft size={16} /> Voltar ao Painel
+            <ArrowLeft size={16} /> {t('prof.planning.back')}
           </button>
 
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -1279,8 +1280,8 @@ id,
                 <BookOpen size={24} />
               </div>
               <div>
-                <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase leading-none mb-1">Planejamento</h2>
-                <p className="text-stone-400 text-xs sm:text-sm">{lessonPlans.length} plano(s)</p>
+                <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight uppercase leading-none mb-1">{t('prof.planning.title')}</h2>
+                <p className="text-stone-400 text-xs sm:text-sm">{lessonPlans.length} {t('prof.planning.plans')}</p>
               </div>
             </div>
             <Button
@@ -1291,41 +1292,41 @@ id,
               }}
               className="bg-purple-600 hover:bg-purple-500 shrink-0 text-sm"
             >
-              <PlusCircle size={16} /> Novo Plano
+              <PlusCircle size={16} /> {t('prof.planning.new')}
             </Button>
           </div>
 
           {/* Form: Nova Aula */}
           {showNewPlanForm && (
             <form onSubmit={handleAddPlan} className="mb-6 bg-stone-900/80 border border-purple-500/30 rounded-2xl p-5 space-y-4 animate-fade-in">
-              <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">Novo Planejamento</h3>
+              <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest">{t('prof.planning.new_title')}</h3>
               <div>
-                <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
+                <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">{t('prof.planning.title_label')}</label>
                 <input
                   type="text"
                   required
                   value={newPlanTitle}
                   onChange={e => setNewPlanTitle(e.target.value)}
-                  placeholder="Ex: Aula 1, Aula de Ginga..."
+                  placeholder={t('prof.planning.title_placeholder')}
                   className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
+                <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">{t('prof.planning.content_label')}</label>
                 <textarea
                   value={newPlanContent}
                   onChange={e => setNewPlanContent(e.target.value)}
                   rows={4}
-                  placeholder="Descreva o conteúdo (ex: Aquecimento 10min, Ginga, Jogo de dentro, Roda final...)"
+                  placeholder={t('prof.planning.content_placeholder')}
                   className="w-full bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-white text-sm focus:border-purple-500 outline-none transition-colors resize-y"
                 />
               </div>
               <div className="flex gap-3">
                 <Button type="submit" disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500">
-                  <Save size={14} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
+                  <Save size={14} className="mr-1" /> {savingPlan ? t('prof.planning.saving') : t('prof.planning.save')}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => setShowNewPlanForm(false)} className="text-stone-400">
-                  <X size={14} className="mr-1" /> Cancelar
+                  <X size={14} className="mr-1" /> {t('prof.planning.cancel')}
                 </Button>
               </div>
             </form>
@@ -1336,8 +1337,8 @@ id,
             {lessonPlans.length === 0 ? (
               <div className="text-center py-16 bg-stone-900/30 rounded-2xl border-2 border-dashed border-stone-700">
                 <BookOpen size={48} className="mx-auto mb-3 text-stone-700" />
-                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhum planejamento cadastrado ainda.</p>
-                <p className="text-stone-600 text-xs mt-2">Clique em "Novo Plano" para começar.</p>
+                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">{t('prof.planning.empty_1')}</p>
+                <p className="text-stone-600 text-xs mt-2">{t('prof.planning.empty_2')}</p>
               </div>
             ) : (
               [...lessonPlans]
@@ -1360,14 +1361,14 @@ id,
                                 setEditPlanContent(plan.content);
                               }}
                               className="text-stone-500 hover:text-purple-400 transition-colors p-1"
-                              title="Editar"
+                              title={t('prof.planning.edit')}
                             >
                               <Edit2 size={14} />
                             </button>
                             <button
                               onClick={() => handleDeletePlan(plan.id)}
                               className="text-stone-500 hover:text-red-400 transition-colors p-1"
-                              title="Excluir"
+                              title={t('prof.planning.delete')}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1382,14 +1383,14 @@ id,
                         {plan.content ? (
                           <p className="text-stone-300 text-sm leading-relaxed whitespace-pre-wrap">{plan.content}</p>
                         ) : (
-                          <p className="text-stone-600 text-sm italic">Sem conteúdo. Clique em editar para adicionar.</p>
+                          <p className="text-stone-600 text-sm italic">{t('prof.planning.no_content')}</p>
                         )}
                       </div>
                     ) : (
                       /* Edit Mode */
                       <div className="px-5 py-4 space-y-3 bg-stone-900/40">
                         <div>
-                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Título</label>
+                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">{t('prof.planning.title_label')}</label>
                           <input
                             type="text"
                             value={editPlanTitle}
@@ -1398,7 +1399,7 @@ id,
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">Planejamento / Conteúdo</label>
+                          <label className="block text-xs text-stone-400 mb-1 font-bold uppercase tracking-wide">{t('prof.planning.content_label')}</label>
                           <textarea
                             value={editPlanContent}
                             onChange={e => setEditPlanContent(e.target.value)}
@@ -1408,10 +1409,10 @@ id,
                         </div>
                         <div className="flex gap-2">
                           <Button onClick={() => handleSavePlanEdit(plan)} disabled={savingPlan} className="bg-purple-600 hover:bg-purple-500 h-8 text-xs">
-                            <Save size={12} className="mr-1" /> {savingPlan ? 'Salvando...' : 'Salvar'}
+                            <Save size={12} className="mr-1" /> {savingPlan ? t('prof.planning.saving') : t('prof.planning.save')}
                           </Button>
                           <Button variant="ghost" onClick={() => setEditingPlanId(null)} className="text-stone-400 h-8 text-xs">
-                            <X size={12} className="mr-1" /> Cancelar
+                            <X size={12} className="mr-1" /> {t('prof.planning.cancel')}
                           </Button>
                         </div>
                       </div>
@@ -1436,13 +1437,13 @@ id,
 
           <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
             <PlusCircle className="text-purple-500" />
-            Agendar Nova Aula
+            {t('prof.class.new_title')}
           </h3>
 
           <form onSubmit={handleSaveNewClass} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Título / Tema</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('prof.class.theme')}</label>
                 <input
                   type="text"
                   value={newClassData.title}
@@ -1453,7 +1454,7 @@ id,
                 />
               </div>
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Data</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('prof.class.date')}</label>
                 <input
                   type="date"
                   value={newClassData.date}
@@ -1466,7 +1467,7 @@ id,
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Horário</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('prof.class.time')}</label>
                 <input
                   type="time"
                   value={newClassData.time}
@@ -1476,7 +1477,7 @@ id,
                 />
               </div>
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Local</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('prof.class.location')}</label>
                 <input
                   type="text"
                   value={newClassData.location}
@@ -1489,7 +1490,7 @@ id,
             </div>
 
             <div>
-              <label className="block text-sm text-stone-400 mb-1">Planejamento de Aula</label>
+              <label className="block text-sm text-stone-400 mb-1">{t('prof.class.planning')}</label>
               <textarea
                 value={newClassData.planning}
                 onChange={e => setNewClassData({ ...newClassData, planning: e.target.value })}
@@ -1500,10 +1501,10 @@ id,
 
             <div className="flex gap-3 pt-4 border-t border-stone-700 mt-4">
               <Button variant="outline" onClick={() => setProfView('dashboard')} type="button" className="flex-1">
-                <ArrowLeft size={18} /> Voltar ao Painel
+                <ArrowLeft size={18} /> {t('prof.planning.back')}
               </Button>
               <Button fullWidth type="submit" className="flex-[2] bg-purple-600 hover:bg-purple-500">
-                <Save size={18} /> Confirmar Agendamento
+                <Save size={18} /> {t('prof.class.confirm')}
               </Button>
             </div>
           </form>
@@ -1516,15 +1517,15 @@ id,
           <div className="bg-stone-900 p-6 border-b border-stone-700 flex justify-between items-center sticky top-0 z-10">
             <div>
               <button onClick={() => setProfView('dashboard')} className="flex items-center gap-2 text-stone-400 hover:text-white text-sm mb-2 transition-colors">
-                <ArrowLeft size={16} /> Voltar ao Painel
+                <ArrowLeft size={16} /> {t('prof.planning.back')}
               </button>
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <CalendarCheck className="text-purple-500" /> Chamada - {selectedClassInfo?.title}
+                <CalendarCheck className="text-purple-500" /> {t('prof.attendance.title')} - {selectedClassInfo?.title}
               </h2>
             </div>
             <Button onClick={handleSaveAttendance} disabled={showSuccess}>
               {showSuccess ? <Check size={18} /> : <Save size={18} />}
-              {showSuccess ? 'Salvo!' : 'Salvar Chamada'}
+              {showSuccess ? t('prof.attendance.saved') : t('prof.attendance.save')}
             </Button>
           </div>
           <div className="p-6 grid gap-3">
@@ -1542,10 +1543,10 @@ id,
                   </div>
                   <div className="flex items-center gap-4 pl-14 md:pl-0">
                     <div onClick={() => setAttendanceData(prev => ({ ...prev, [student.id]: prev[student.id] === 'present' ? 'absent' : 'present' }))} className={`px-4 py-1 rounded-full text-xs font-bold uppercase cursor-pointer ${isPresent ? 'bg-green-500 text-stone-900' : 'bg-stone-700 text-stone-400'}`}>
-                      {isPresent ? 'Presente' : 'Ausente'}
+                      {isPresent ? t('prof.attendance.present') : t('prof.attendance.absent')}
                     </div>
                     {!isPresent && (
-                      <input type="text" placeholder="Motivo da falta" className="flex-1 md:w-64 bg-stone-900 border border-stone-600 rounded px-3 py-1.5 text-sm text-white outline-none" value={justifications[student.id] || ''} onChange={(e) => setJustifications(prev => ({ ...prev, [student.id]: e.target.value }))} onClick={(e) => e.stopPropagation()} />
+                      <input type="text" placeholder={t('prof.attendance.reason')} className="flex-1 md:w-64 bg-stone-900 border border-stone-600 rounded px-3 py-1.5 text-sm text-white outline-none" value={justifications[student.id] || ''} onChange={(e) => setJustifications(prev => ({ ...prev, [student.id]: e.target.value }))} onClick={(e) => e.stopPropagation()} />
                     )}
                   </div>
                 </div>
@@ -1562,25 +1563,25 @@ id,
 
           <div className="relative z-10">
             <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
-              <ArrowLeft size={16} /> Voltar ao Painel
+              <ArrowLeft size={16} /> {t('prof.planning.back')}
             </button>
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div>
                 <h2 className="text-3xl font-black text-white tracking-tighter uppercase flex items-center gap-3">
                   <Users className="text-indigo-500" size={32} />
-                  Meus Alunos
+                  {t('prof.action.students')}
                 </h2>
-                <p className="text-stone-400 text-sm">{myStudents.length} alunos vinculados ao seu perfil</p>
+                <p className="text-stone-400 text-sm">{myStudents.length} {t('prof.students.subtitle')}</p>
               </div>
               <div className="flex items-center gap-3 bg-stone-900 border border-stone-700 px-4 py-2 rounded-2xl">
                 <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
                   <Video size={20} />
                 </div>
                 <div>
-                  <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest">Total de Envios</p>
+                  <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest">{t('prof.students.total_uploads')}</p>
                   <p className="text-lg font-black text-white leading-none">
-                    {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length} Vídeos
+                    {homeTrainings.filter(ht => myStudents.some(s => s.id === ht.user_id)).length} {t('prof.students.videos')}
                   </p>
                 </div>
               </div>
@@ -1674,7 +1675,7 @@ id,
                                 className="h-10 px-4 rounded-xl shadow-lg shadow-indigo-500/20"
                                 onClick={() => handleOpenEvaluation(student.id)}
                               >
-                                <Award size={16} className="mr-2" /> Avaliar
+                                <Award size={16} className="mr-2" /> {t('prof.view.evaluate')}
                               </Button>
                             </div>
                           </div>
@@ -1682,23 +1683,23 @@ id,
                           <div className="mt-4 grid grid-cols-2 gap-3">
                             {/* Belt Visual */}
                             <div className="bg-stone-950/40 p-3 rounded-2xl border border-stone-800/50">
-                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">Graduação</p>
+                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">{t('prof.students.belt')}</p>
                               <div className="flex items-center gap-2">
                                 <div className="w-full h-2 rounded-full overflow-hidden flex border border-stone-800">
                                   <div className="h-full flex-1" style={{ background: beltColors.main }}></div>
                                   {beltColors.ponta && <div className="h-full w-4" style={{ backgroundColor: beltColors.ponta }}></div>}
                                 </div>
-                                <span className="text-[10px] font-bold text-stone-300 truncate">{student.belt || 'Sem Cordel'}</span>
+                                <span className="text-[10px] font-bold text-stone-300 truncate">{student.belt || t('prof.students.no_belt')}</span>
                               </div>
                             </div>
 
                             {/* Next Eval Visual */}
                             <div className="bg-stone-950/40 p-3 rounded-2xl border border-stone-800/50">
-                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">Próxima Avaliação</p>
+                              <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-1.5">{t('prof.belt.next_eval')}</p>
                               <div className="flex items-center gap-2 text-orange-400">
                                 <Calendar size={12} />
                                 <span className="text-xs font-bold">
-                                  {student.nextEvaluationDate ? new Date(student.nextEvaluationDate).toLocaleDateString() : 'A definir'}
+                                  {student.nextEvaluationDate ? student.nextEvaluationDate.split('-').reverse().join('/') : t('prof.students.no_date')}
                                 </span>
                               </div>
                             </div>
@@ -1709,12 +1710,12 @@ id,
                       <div className="mt-6 flex items-center justify-between border-t border-stone-800/50 pt-5 gap-4">
                         <div className="flex items-center gap-4">
                           <div className="text-center">
-                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">Média</p>
+                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">{t('prof.students.average')}</p>
                             <p className="text-lg font-black text-green-500 leading-none">{avgGrade}</p>
                           </div>
                           <div className="w-px h-8 bg-stone-800"></div>
                           <div className="text-center">
-                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">Vídeos</p>
+                            <p className="text-[9px] text-stone-600 uppercase font-black tracking-widest mb-0.5">{t('prof.students.videos')}</p>
                             <p className="text-lg font-black text-purple-500 leading-none">{studentVideos.length}</p>
                           </div>
                         </div>
@@ -1733,7 +1734,7 @@ id,
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-3">
                           <h4 className="text-[10px] uppercase font-black text-stone-500 flex items-center gap-2">
-                            <Video size={12} className="text-indigo-500" /> Últimos Vídeos
+                            <Video size={12} className="text-indigo-500" /> {t('prof.students.last_videos')}
                           </h4>
                           <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
                             {studentVideos.length > 0 ? studentVideos.slice(0, 3).map((v: any) => (
@@ -1746,24 +1747,24 @@ id,
                                   <PlayCircle size={14} />
                                 </button>
                               </div>
-                            )) : <p className="text-[10px] text-stone-600 italic">Nenhum vídeo</p>}
+                            )) : <p className="text-[10px] text-stone-600 italic">{t('prof.students.no_video')}</p>}
                           </div>
                         </div>
                         <div className="space-y-3">
                           <h4 className="text-[10px] uppercase font-black text-stone-500 flex items-center gap-2">
-                            <Award size={12} className="text-green-500" /> Últimas Notas
+                            <Award size={12} className="text-green-500" /> {t('prof.students.last_grades')}
                           </h4>
                           <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
                             {studentGradesList.length > 0 ? studentGradesList.slice(0, 3).map(g => (
                               <div key={g.id} className="flex items-center justify-between bg-stone-900/50 p-2 rounded-lg border border-stone-800">
                                 <span className="text-[10px] text-stone-400 truncate w-20">
-                                  {g.category === 'theory' ? 'Teo' : g.category === 'movement' ? 'Mov' : 'Mus'}
+                                  {g.category === 'theory' ? t('prof.eval.theo_short') : g.category === 'movement' ? t('prof.eval.mov_short') : t('prof.eval.mus_short')}
                                 </span>
                                 <span className="text-[10px] font-bold text-white bg-stone-800 px-1.5 py-0.5 rounded border border-stone-700">
                                   {Number(g.numeric).toFixed(1)}
                                 </span>
                               </div>
-                            )) : <p className="text-[10px] text-stone-600 italic">Nenhuma nota</p>}
+                            )) : <p className="text-[10px] text-stone-600 italic">{t('prof.students.no_grade')}</p>}
                           </div>
                         </div>
                       </div>
@@ -1775,7 +1776,7 @@ id,
               {myStudents.length === 0 && (
                 <div className="col-span-full text-center py-20 text-stone-500 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center animate-pulse">
                   <Users size={64} className="mb-4 opacity-20" />
-                  <p className="text-lg font-bold uppercase tracking-widest opacity-50">Nenhum aluno encontrado vinculado a você.</p>
+                  <p className="text-lg font-bold uppercase tracking-widest opacity-50">{t('prof.students.empty_msg')}</p>
                 </div>
               )}
             </div>
@@ -1788,10 +1789,10 @@ id,
         <div className="max-w-4xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Award className="text-yellow-500" /> Avaliar {myStudents.find(s => s.id === selectedStudentForGrades)?.nickname || 'Aluno'}
+              <Award className="text-yellow-500" /> {t('prof.view.evaluate')} {myStudents.find(s => s.id === selectedStudentForGrades)?.nickname || 'Aluno'}
             </h2>
             <button onClick={() => setProfView('all_students')} className="text-stone-400 hover:text-white flex items-center gap-1 transition-colors">
-              <ArrowLeft size={18} /> Voltar
+              <ArrowLeft size={18} /> {t('prof.planning.back')}
             </button>
           </div>
 
@@ -1799,19 +1800,19 @@ id,
             {/* THEORY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.theory')}</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.theory.written} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder={t('prof.eval.obs')} value={evalData.theory.written} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.theory.numeric} onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, numeric: e.target.value } })} />
             </div>
             {/* MOVEMENT */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.movement')}</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.movement.written} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, written: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder={t('prof.eval.obs')} value={evalData.movement.written} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.movement.numeric} onChange={e => setEvalData({ ...evalData, movement: { ...evalData.movement, numeric: e.target.value } })} />
             </div>
             {/* MUSICALITY */}
             <div className="bg-stone-900 p-5 rounded-xl border border-stone-700 space-y-4">
               <h3 className="text-lg font-bold text-white border-b border-stone-800 pb-2">{t('grades.musicality')}</h3>
-              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder="Observações..." value={evalData.musicality.written} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, written: e.target.value } })} />
+              <textarea className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none" placeholder={t('prof.eval.obs')} value={evalData.musicality.written} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, written: e.target.value } })} />
               <input type="number" min="0" max="10" step="0.1" className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none" placeholder="0.0" value={evalData.musicality.numeric} onChange={e => setEvalData({ ...evalData, musicality: { ...evalData.musicality, numeric: e.target.value } })} />
             </div>
           </div>
@@ -1830,7 +1831,7 @@ id,
           <div className="flex items-center justify-between bg-stone-800 p-6 rounded-xl border border-stone-700">
             <div>
               <button onClick={() => setProfView('dashboard')} className="flex items-center gap-2 text-stone-400 hover:text-white text-sm mb-2 transition-colors">
-                <ArrowLeft size={16} /> Voltar
+                <ArrowLeft size={16} /> {t('prof.planning.back')}
               </button>
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                 <BookOpen className="text-blue-500" /> {t('assignments.title')}
@@ -1854,7 +1855,7 @@ id,
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-stone-400 mb-1">Data de Entrega</label>
+                  <label className="block text-sm text-stone-400 mb-1">{t('prof.assign.due_date')}</label>
                   <input
                     type="date"
                     required
@@ -1866,7 +1867,7 @@ id,
               </div>
 
               <div className="bg-stone-900 p-4 rounded-lg border border-stone-700">
-                <label className="block text-sm text-stone-300 font-bold mb-3">Público Alvo</label>
+                <label className="block text-sm text-stone-300 font-bold mb-3">{t('prof.assign.audience')}</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input
@@ -1876,9 +1877,9 @@ id,
                       onChange={() => setSelectedAssignmentTarget('mine')}
                       className="w-4 h-4 accent-blue-500"
                     />
-                    <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>Meus Alunos</span>
+                    <span className={`text-sm ${selectedAssignmentTarget === 'mine' ? 'text-blue-400 font-bold' : 'text-stone-400'}`}>{t('prof.assign.mine')}</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-not-allowed group opacity-50" title="Apenas administradores podem passar trabalhos para todo o grupo">
+                  <label className="flex items-center gap-2 cursor-not-allowed group opacity-50" title={t('prof.assign.blocked_hint')}>
                     <input
                       type="radio"
                       name="assign_target"
@@ -1886,33 +1887,33 @@ id,
                       checked={selectedAssignmentTarget === 'all'}
                       className="w-4 h-4 accent-orange-500"
                     />
-                    <span className="text-sm text-stone-500">Todos do Grupo (Bloqueado)</span>
+                    <span className="text-sm text-stone-500">{t('prof.assign.all_blocked')}</span>
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Descrição / Instruções</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('prof.assign.desc')}</label>
                 <textarea
                   value={newAssignment.description}
                   onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
                   className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white h-24 outline-none focus:border-blue-500"
-                  placeholder="Detalhes sobre o que o aluno deve fazer..."
+                  placeholder={t('prof.assign.desc_ph')}
                 />
               </div>
 
               <div className="flex flex-col sm:flex-row items-end justify-between gap-4 pt-2">
                 <div className="w-full sm:max-w-xs">
-                  <label className="text-[10px] text-stone-500 uppercase font-black mb-1 block">Anexar Material (Opcional)</label>
+                  <label className="text-[10px] text-stone-500 uppercase font-black mb-1 block">{t('prof.assign.attach')}</label>
                   <input
                     type="file"
                     onChange={(e) => setNewAssignment({ ...newAssignment, file: e.target.files?.[0] || null })}
                     className="w-full bg-stone-900 border border-stone-600 rounded px-2 py-1.5 text-white text-xs file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-[10px] file:font-black file:bg-stone-700 file:text-stone-300 hover:file:bg-stone-600 cursor-pointer"
                   />
-                  {newAssignment.file && <p className="text-[10px] text-green-500 mt-1 font-bold italic">✓ Selecionado: {newAssignment.file.name}</p>}
+                  {newAssignment.file && <p className="text-[10px] text-green-500 mt-1 font-bold italic">{t('prof.assign.selected')} {newAssignment.file.name}</p>}
                 </div>
                 <Button type="submit" className="w-full sm:w-auto h-10 px-8">
-                  <PlusCircle size={18} className="mr-2" /> Criar Trabalho
+                  <PlusCircle size={18} className="mr-2" /> {t('prof.assign.create')}
                 </Button>
               </div>
             </form>
@@ -1929,11 +1930,11 @@ id,
                       <div>
                         <h4 className="font-bold text-white">{assign.title}</h4>
                         <p className="text-[10px] text-stone-500 uppercase font-black tracking-widest">
-                          Aluno: {allUsersProfiles.find(u => u.id === assign.student_id)?.nickname || allUsersProfiles.find(u => u.id === assign.student_id)?.name || 'Todos'}
+                          {t('prof.assign.student')} {allUsersProfiles.find(u => u.id === assign.student_id)?.nickname || allUsersProfiles.find(u => u.id === assign.student_id)?.name || t('prof.assign.all')}
                         </p>
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase tracking-tighter ${assign.status === 'completed' ? 'bg-green-900/30 text-green-400 border border-green-500/30' : 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30'}`}>
-                        {assign.status === 'completed' ? 'Concluído' : 'Pendente'}
+                        {assign.status === 'completed' ? t('prof.assign.completed') : t('prof.assign.pending')}
                       </span>
                     </div>
                     <p className="text-sm text-stone-400 mb-3">{assign.description}</p>
@@ -1943,7 +1944,7 @@ id,
                           onClick={() => handleViewAssignmentSource(assign.attachment_url!)}
                           className="text-[10px] bg-stone-800 text-stone-300 px-2 py-1 rounded flex items-center gap-1 hover:bg-stone-700 transition-colors"
                         >
-                          <Paperclip size={10} /> Material
+                          <Paperclip size={10} /> {t('prof.assign.material')}
                         </button>
                       )}
                       {assign.submission_url && (
@@ -1951,14 +1952,14 @@ id,
                           onClick={() => handleViewAssignment(assign.submission_url!, assign.submission_name || 'Trabalho')}
                           className="text-[10px] bg-green-900/20 text-green-400 px-2 py-1 rounded flex items-center gap-1 hover:bg-green-900/40 transition-colors border border-green-500/20"
                         >
-                          <CheckCircle size={10} /> Ver Resposta
+                          <CheckCircle size={10} /> {t('prof.assign.view_answer')}
                         </button>
                       )}
                     </div>
-                    <span className="text-[9px] text-stone-600 block mt-2 pt-2 border-t border-stone-800">Vence: {assign.due_date}</span>
+                    <span className="text-[9px] text-stone-600 block mt-2 pt-2 border-t border-stone-800">{t('prof.assign.due')} {assign.due_date}</span>
                   </div>
                 ))}
-                {profAssignments.length === 0 && <p className="text-stone-500 text-sm">Nenhum trabalho criado.</p>}
+                {profAssignments.length === 0 && <p className="text-stone-500 text-sm">{t('prof.assign.none')}</p>}
               </div>
             </div>
           </div>
@@ -1969,7 +1970,7 @@ id,
       {/* --- PROF VIEW: MUSIC --- */}
       {profView === 'music_manager' && (
         <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors relative z-20"><ArrowLeft size={16} /> Voltar ao Painel</button>
+          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors relative z-20"><ArrowLeft size={16} /> {t('prof.planning.back')}</button>
 
           {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
@@ -1980,8 +1981,8 @@ id,
                 <Music size={32} />
               </div>
               <div>
-                <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Acervo Musical</h2>
-                <p className="text-stone-400 text-sm">Gerencie o repertório da aula</p>
+                <h2 className="text-3xl font-black text-white tracking-tighter uppercase">{t('prof.music.title')}</h2>
+                <p className="text-stone-400 text-sm">{t('prof.music.subtitle')}</p>
               </div>
             </div>
 
@@ -1990,24 +1991,24 @@ id,
                 <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700/50 sticky top-6">
                   <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                     <PlusCircle size={20} className="text-yellow-500" />
-                    Nova Música
+                    {t('prof.music.new')}
                   </h3>
                   <form onSubmit={handleSubmitMusic} className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Título da Obra</label>
+                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.title_label')}</label>
                       <input type="text" placeholder="Ex: Capoeira é Luta" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
-                      <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
+                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.category')}</label>
+                      <input type="text" placeholder={t('prof.music.cat_ph')} value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Letra da Música</label>
+                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.lyrics')}</label>
                       <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
                     </div>
 
                     <Button fullWidth type="submit" className="h-14 font-black uppercase tracking-tighter text-lg shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20">
-                      Lançar no Acervo
+                      {t('prof.music.submit')}
                     </Button>
                   </form>
                 </div>
@@ -2017,10 +2018,10 @@ id,
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     <Activity size={20} className="text-yellow-500" />
-                    Músicas Registradas
+                    {t('prof.music.registered')}
                   </h3>
                   <span className="text-[10px] font-black bg-stone-900 border border-stone-700 px-3 py-1 rounded-full text-stone-400">
-                    {musicList.length} ITENS
+                    {musicList.length} {t('prof.music.items')}
                   </span>
                 </div>
 
@@ -2056,7 +2057,7 @@ id,
                               className="p-1.5 text-stone-600 hover:text-red-500 transition-colors"
                               title="Remover"
                               onClick={() => {
-                                if (window.confirm('Tem certeza que deseja remover esta música do acervo?')) {
+                                if (window.confirm(t('prof.music.delete_confirm'))) {
                                   onDeleteMusic(m.id);
                                 }
                               }}
@@ -2070,7 +2071,7 @@ id,
                   ) : (
                     <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
                       <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma música no acervo</p>
+                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">{t('prof.music.empty')}</p>
                     </div>
                   )}
                 </div>
@@ -2090,31 +2091,31 @@ id,
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-stone-900 p-6 rounded-xl border border-stone-700 shadow-xl">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <PlusCircle className="text-emerald-500" /> {t('uniform.new_order')}
+                <PlusCircle className="text-emerald-500" /> {t('prof.uniform.new_order')}
               </h3>
               <form onSubmit={handleOrderUniform} className="space-y-4">
                 <div>
-                  <label htmlFor="item" className="block text-sm text-stone-400 mb-1">Item</label>
+                  <label htmlFor="item" className="block text-sm text-stone-400 mb-1">{t('prof.uniform.field_item')}</label>
                   <select
                     id="item"
                     value={orderForm.item}
                     onChange={e => setOrderForm({ ...orderForm, item: e.target.value })}
                     className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
                   >
-                    <option value="combo">Combo (Blusa + Calça)</option>
-                    <option value="shirt">Blusa Oficial</option>
-                    <option value="pants_roda">Calça de Roda</option>
-                    <option value="pants_train">Calça de Treino</option>
+                    <option value="combo">{t('prof.uniform.item_combo')}</option>
+                    <option value="shirt">{t('prof.uniform.item_shirt')}</option>
+                    <option value="pants_roda">{t('prof.uniform.item_pants_roda')}</option>
+                    <option value="pants_train">{t('prof.uniform.item_pants_train')}</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
                     <div>
-                      <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho Blusa</label>
+                      <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">{t('prof.uniform.shirt_size')}</label>
                       <input
                         id="shirtSize"
                         type="text"
-                        placeholder="Ex: P, M, G..."
+                        placeholder={t('prof.uniform.shirt_ph')}
                         value={orderForm.shirtSize}
                         onChange={(e) => setOrderForm({ ...orderForm, shirtSize: e.target.value })}
                         className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
@@ -2124,11 +2125,11 @@ id,
                   )}
                   {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
                     <div>
-                      <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho Calça</label>
+                      <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">{t('prof.uniform.pants_size')}</label>
                       <input
                         id="pantsSize"
                         type="text"
-                        placeholder="Ex: 38, 40..."
+                        placeholder={t('prof.uniform.pants_ph')}
                         value={orderForm.pantsSize}
                         onChange={(e) => setOrderForm({ ...orderForm, pantsSize: e.target.value })}
                         className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
@@ -2138,18 +2139,18 @@ id,
                   )}
                 </div>
                 <div className="flex justify-between items-center bg-stone-800 p-4 rounded-xl border border-stone-700 mt-2">
-                  <span className="text-stone-400 text-sm font-bold">Total a pagar:</span>
+                  <span className="text-stone-400 text-sm font-bold">{t('prof.uniform.total_pay')}</span>
                   <span className="text-xl font-black text-white">R$ {getCurrentPrice().toFixed(2).replace('.', ',')}</span>
                 </div>
                 <Button fullWidth type="submit" className="h-12 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
-                  <ShoppingBag size={18} className="mr-2" /> Finalizar Pedido
+                  <ShoppingBag size={18} className="mr-2" /> {t('prof.uniform.submit')}
                 </Button>
               </form>
             </div>
 
             <div className="space-y-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <ShoppingBag className="text-emerald-400" /> {t('uniform.my_orders')}
+                <ShoppingBag className="text-emerald-400" /> {t('prof.uniform.my_orders')}
               </h3>
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                 {myOrders.length > 0 ? (
@@ -2161,9 +2162,9 @@ id,
                           <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
-                          {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
-                          {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                          {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
+                          {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_ready')}</span>}
+                          {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                         </div>
                       </div>
 
@@ -2180,7 +2181,7 @@ id,
                               }}
                               disabled={uploadingUniformProof}
                             >
-                              {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar/Enviar Comprovante</>}
+                              {uploadingUniformProof && selectedOrderToProof?.id === order.id ? t('common.loading') : <><FileUp size={12} className="mr-1" /> {t('prof.uniform.pay_send')}</>}
                             </Button>
                             <input
                               type="file"
@@ -2195,7 +2196,7 @@ id,
                         )}
                         {order.status === 'pending' && order.proof_url && (
                           <span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic">
-                            <Clock size={12} /> Comprovante em análise
+                            <Clock size={12} /> {t('prof.uniform.analysis')}
                           </span>
                         )}
                         {order.proof_url && (
@@ -2203,14 +2204,14 @@ id,
                             onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
                             className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium bg-blue-400/5 px-2 py-1 rounded border border-blue-400/20"
                           >
-                            <Eye size={12} /> Ver Comprovante
+                            <Eye size={12} /> {t('prof.uniform.view_proof')}
                           </button>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">Nenhum pedido registrado.</p>
+                  <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">{t('prof.uniform.no_orders')}</p>
                 )}
               </div>
             </div>
@@ -2223,7 +2224,7 @@ id,
         <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 animate-fade-in">
           <Button variant="ghost" className="mb-6 text-stone-400 p-0 hover:text-white" onClick={() => setProfView('dashboard')}>
             <ArrowLeft size={16} className="mr-2" />
-            Voltar ao Painel
+            {t('common.back_panel')}
           </Button>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -2232,7 +2233,7 @@ id,
               <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                   <Wallet className="text-orange-500" />
-                  Minhas Mensalidades
+                  {t('prof.finance.title')}
                 </h3>
 
                 <div className="mb-6 space-y-3">
@@ -2243,9 +2244,9 @@ id,
                     className={`h-12 border-2 transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-orange-500/30 text-orange-400 hover:border-orange-500 hover:bg-orange-500/5"}`}
                   >
                     {pixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
-                    {pixCopied ? 'Chave Copiada!' : 'Copiar PIX Mensalidade'}
+                    {pixCopied ? t('prof.finance.copied') : t('prof.finance.copy_pix')}
                   </Button>
-                  <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">Chave: soufilhodofogo@gmail.com</p>
+                  <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">{t('prof.finance.key')}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -2254,11 +2255,11 @@ id,
                       <div key={payment.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md`}>
                         <div>
                           <p className="font-bold text-white text-sm uppercase tracking-tight">{payment.month}</p>
-                          <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • Venc: {payment.due_date?.split('-').reverse().join('/')}</p>
+                          <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • {t('prof.finance.due')} {payment.due_date?.split('-').reverse().join('/')}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           {payment.status === 'paid' ? (
-                            <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">Pago</span>
+                            <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">{t('prof.finance.status_paid')}</span>
                           ) : (
                             <>
                               <Button
@@ -2271,7 +2272,7 @@ id,
                                 }}
                                 disabled={uploadingPaymentProof}
                               >
-                                {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                                {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? t('common.loading') : <><FileUp size={12} className="mr-1" /> {t('prof.finance.send_proof')}</>}
                               </Button>
                               <input
                                 type="file"
@@ -2288,7 +2289,7 @@ id,
                             <button
                               onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
                               className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-400/5 transition-all"
-                              title="Ver Comprovante"
+                              title={t('prof.uniform.view_proof')}
                             >
                               <Eye size={18} />
                             </button>
@@ -2297,7 +2298,7 @@ id,
                       </div>
                     ))
                   ) : (
-                    <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">Nenhuma mensalidade registrada.</p>
+                    <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">{t('prof.finance.none')}</p>
                   )}
                 </div>
               </div>
@@ -2308,7 +2309,7 @@ id,
               <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                   <DollarSign className="text-yellow-500" />
-                  Eventos e Avaliações
+                  {t('prof.finance.events_evals')}
                 </h3>
 
                 <Button
@@ -2318,20 +2319,20 @@ id,
                   className={`h-12 border-2 transition-all mb-6 ${costPixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-yellow-500/30 text-yellow-400 hover:border-yellow-500 hover:bg-yellow-500/5"}`}
                 >
                   {costPixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
-                  {costPixCopied ? 'Chave Copiada!' : 'PIX Eventos/Avaliação'}
+                  {costPixCopied ? t('prof.finance.copied') : t('prof.finance.copy_pix_events')}
                 </Button>
 
                 <div className="space-y-6">
                   {/* Avaliações Section */}
                   <div>
-                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Avaliações de Cordel</h4>
+                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">{t('prof.finance.eval_title')}</h4>
                     <div className="space-y-3">
                       {myEvaluations.length > 0 ? (
                         myEvaluations.map(payment => (
                           <div key={payment.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                             <div>
                               <p className="text-sm font-bold text-white">{payment.month}</p>
-                              <p className="text-[10px] text-stone-500 font-mono">VALOR: R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
+                              <p className="text-[10px] text-stone-500 font-mono">{t('prof.finance.value')} {payment.amount?.toFixed(2).replace('.', ',')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {payment.status === 'paid' ? (
@@ -2341,28 +2342,28 @@ id,
                                   onClick={() => { setSelectedPaymentToProof(payment); fileInputRef.current?.click(); }}
                                   className="text-[10px] font-black uppercase text-yellow-500 hover:text-yellow-400 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20"
                                 >
-                                  {payment.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                  {payment.proof_url ? t('prof.finance.change_proof') : t('prof.finance.pay_now')}
                                 </button>
                               )}
                             </div>
                           </div>
                         ))
                       ) : (
-                        <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma avaliação registrada.</p>
+                        <p className="text-stone-500 text-[10px] italic ml-1">{t('prof.finance.eval_none')}</p>
                       )}
                     </div>
                   </div>
 
                   {/* EventRegistrations Section */}
                   <div>
-                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Eventos Inscritos</h4>
+                    <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">{t('prof.finance.events_title')}</h4>
                     <div className="space-y-3">
                       {myEventRegistrations.length > 0 ? (
                         myEventRegistrations.map(reg => (
                           <div key={reg.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                             <div>
                               <p className="text-sm font-bold text-white truncate max-w-[150px]">{reg.event_title}</p>
-                              <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? 'Inscrição Confirmada' : 'Aguardando Pagamento'}</p>
+                              <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? t('prof.finance.event_confirmed') : t('prof.finance.event_waiting')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {reg.status === 'paid' ? (
@@ -2376,7 +2377,7 @@ id,
                                   }}
                                   className="text-[10px] font-black uppercase text-orange-500 hover:text-orange-400 bg-orange-500/5 px-2 py-1 rounded border border-orange-500/20"
                                 >
-                                  {reg.proof_url ? 'Novo Comprovante' : 'Enviar PIX'}
+                                  {reg.proof_url ? t('prof.finance.new_proof') : t('prof.finance.send_pix')}
                                 </button>
                               )}
                               <input type="file" ref={eventFileInputRef} className="hidden" onChange={handleFileChangeForEventProof} />
@@ -2384,7 +2385,7 @@ id,
                           </div>
                         ))
                       ) : (
-                        <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma inscrição em eventos.</p>
+                        <p className="text-stone-500 text-[10px] italic ml-1">{t('prof.finance.events_none')}</p>
                       )}
                     </div>
                   </div>
@@ -2397,7 +2398,7 @@ id,
           <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl mt-6">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Shirt className="text-emerald-500" />
-              Meus Pedidos de Uniforme
+              {t('prof.uniform.my_orders')}
             </h3>
             <div className="space-y-3">
               {myOrders.length > 0 ? (
@@ -2409,9 +2410,9 @@ id,
                         <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
-                        {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
-                        {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                        {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
+                        {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_ready')}</span>}
+                        {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                       </div>
                     </div>
                     {order.status === 'pending' && !order.proof_url && (
@@ -2425,7 +2426,7 @@ id,
                           }}
                           disabled={uploadingUniformProof}
                         >
-                          {uploadingUniformProof && selectedOrderToProof?.id === order.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Pagar/Enviar Comprovante</>}
+                          {uploadingUniformProof && selectedOrderToProof?.id === order.id ? t('common.loading') : <><FileUp size={12} className="mr-1" /> {t('prof.uniform.pay_send')}</>}
                         </Button>
                         <input
                           type="file"
@@ -2440,7 +2441,7 @@ id,
                     )}
                     {order.status === 'pending' && order.proof_url && (
                       <span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic">
-                        <Clock size={12} /> Comprovante em análise
+                        <Clock size={12} /> {t('prof.uniform.analysis')}
                       </span>
                     )}
                     {order.proof_url && (
@@ -2448,13 +2449,13 @@ id,
                         onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
                         className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 font-medium bg-blue-400/5 px-2 py-1 rounded border border-blue-400/20 self-start"
                       >
-                        <Eye size={12} /> Ver Comprovante
+                        <Eye size={12} /> {t('prof.uniform.view_proof')}
                       </button>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">Nenhum pedido registrado.</p>
+                <p className="text-stone-500 text-sm italic py-8 text-center bg-stone-900/50 rounded-xl border border-dashed border-stone-800">{t('prof.uniform.no_orders')}</p>
               )}
             </div>
           </div>
@@ -2467,7 +2468,7 @@ id,
           <div className="space-y-6">
 
             <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 relative mb-6">
-              <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> Registrar Aula</h3>
+              <h3 className="xl font-bold text-white mb-4 flex items-center gap-2"><Camera className="text-purple-500" /> {t('prof.main.register_class')}</h3>
               <div className="border-2 border-dashed border-stone-600 rounded-lg p-6 flex flex-col items-center justify-center bg-stone-900/50">
                 {classPhoto ? (
                   <div className="relative w-full h-32 rounded overflow-hidden">
@@ -2487,7 +2488,7 @@ id,
                     }}
                   >
                     <Camera size={32} className="text-stone-500 mb-2" />
-                    <span className="text-purple-400 font-bold">Enviar Foto</span>
+                    <span className="text-purple-400 font-bold">{t('prof.main.send_photo')}</span>
                     <input
                       id="class-photo-input"
                       type="file"
@@ -2536,7 +2537,7 @@ id,
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                <h3 className="text-xl font-bold text-white mb-4">Minhas Aulas (Pendentes)</h3>
+                <h3 className="text-xl font-bold text-white mb-4">{t('prof.dash.my_classes_pending')}</h3>
                 <div className="space-y-4">
                   {myClasses.filter(cls => cls.status !== 'completed').map(cls => {
                     const now = new Date();
@@ -2552,7 +2553,7 @@ id,
                         </div>
                         {isWithinClassWindow ? (
                           <Button fullWidth onClick={() => handleOpenAttendance(cls.id)}>
-                            <CalendarCheck size={16} className="mr-2" /> Realizar Chamada
+                            <CalendarCheck size={16} className="mr-2" /> {t('prof.dash.take_attendance')}
                           </Button>
                         ) : (
                           <div className="text-xs text-stone-500 text-center py-2 bg-stone-800 rounded">
@@ -2598,25 +2599,25 @@ id,
                       );
                     })
                   ) : (
-                    <p className="text-stone-500 italic text-sm">Nenhum evento programado.</p>
+                    <p className="text-stone-500 italic text-sm">{t('prof.dash.no_events')}</p>
                   )}
                 </div>
               </div>
 
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
-                <h3 className="text-xl font-bold text-white mb-4">Acompanhamento</h3>
+                <h3 className="text-xl font-bold text-white mb-4">{t('prof.dash.tracking')}</h3>
 
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className="bg-stone-900 p-2 rounded text-center">
-                    <p className="text-[10px] text-stone-400 uppercase">Semanal</p>
+                    <p className="text-[10px] text-stone-400 uppercase">{t('prof.dash.weekly')}</p>
                     <p className="text-lg font-bold text-green-400">{gradeStats.weekly.toFixed(1)}</p>
                   </div>
                   <div className="bg-stone-900 p-2 rounded text-center">
-                    <p className="text-[10px] text-stone-400 uppercase">Mensal</p>
+                    <p className="text-[10px] text-stone-400 uppercase">{t('prof.dash.monthly')}</p>
                     <p className="text-lg font-bold text-blue-400">{gradeStats.monthly.toFixed(1)}</p>
                   </div>
                   <div className="bg-stone-900 p-2 rounded text-center">
-                    <p className="text-[10px] text-stone-400 uppercase">Anual</p>
+                    <p className="text-[10px] text-stone-400 uppercase">{t('prof.dash.annual')}</p>
                     <p className="text-lg font-bold text-purple-400">{gradeStats.annual.toFixed(1)}</p>
                   </div>
                 </div>
@@ -2624,7 +2625,7 @@ id,
                 {/* Attendance History */}
                 <div className="mt-6 border-t border-stone-700 pt-6">
                   <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                    <CalendarCheck size={16} className="text-stone-400" /> Histórico de Chamadas
+                    <CalendarCheck size={16} className="text-stone-400" /> {t('prof.dash.attendance_history')}
                   </h4>
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {myClasses.filter(cls => cls.status === 'completed' || (new Date(cls.date + 'T' + cls.time) < new Date() && cls.status !== 'cancelled')).length > 0 ? (
@@ -2653,9 +2654,9 @@ id,
                                     {!isCompleted && <span className="text-orange-400 text-[10px] font-black uppercase tracking-wider animate-pulse">(Pendente)</span>}
                                     {isCompleted && sessionAttendance.length > 0 && (
                                       <div className="flex items-center gap-2">
-                                        <span className="text-green-500 font-bold text-[10px]">{presentCount} Presentes</span>
-                                        <span className="text-red-500 font-bold text-[10px]">{absentCount} Faltas</span>
-                                        {justifiedCount > 0 && <span className="text-blue-400 font-bold text-[10px]">{justifiedCount} Justif.</span>}
+                                        <span className="text-green-500 font-bold text-[10px]">{presentCount} {t('prof.dash.presents')}</span>
+                                        <span className="text-red-500 font-bold text-[10px]">{absentCount} {t('prof.dash.absences')}</span>
+                                        {justifiedCount > 0 && <span className="text-blue-400 font-bold text-[10px]">{justifiedCount} {t('prof.dash.justified_short')}</span>}
                                       </div>
                                     )}
                                   </div>
@@ -2674,7 +2675,7 @@ id,
 
                               {isExpanded && isCompleted && (
                                 <div className="ml-3 pl-3 border-l-2 border-stone-800 space-y-1.5 py-3 animate-fade-in">
-                                  <p className="text-[10px] text-stone-500 font-black uppercase mb-2 tracking-widest">Lista de Alunos</p>
+                                  <p className="text-[10px] text-stone-500 font-black uppercase mb-2 tracking-widest">{t('prof.dash.student_list')}</p>
                                   {sessionAttendance.length > 0 ? (
                                     sessionAttendance.sort((a, b) => a.student_name.localeCompare(b.student_name)).map(record => (
                                       <div key={record.id} className={`bg-stone-900/30 p-2.5 rounded-lg flex flex-col gap-1 border border-stone-800/50 hover:border-stone-700 transition-colors`}>
@@ -2687,7 +2688,7 @@ id,
                                             record.status === 'justified' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                                               'bg-red-500/10 text-red-500 border border-red-500/20'
                                             }`}>
-                                            {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificado' : 'Ausente'}
+                                            {record.status === 'present' ? t('prof.dash.present') : record.status === 'justified' ? t('prof.dash.justified') : t('prof.dash.absent')}
                                           </span>
                                         </div>
                                         {record.status === 'justified' && record.justification && (
@@ -2701,7 +2702,7 @@ id,
                                       </div>
                                     ))
                                   ) : (
-                                    <p className="text-[10px] text-stone-600 italic p-4 bg-stone-900/20 rounded-lg">Dados da chamada não carregados ou indisponíveis.</p>
+                                    <p className="text-[10px] text-stone-600 italic p-4 bg-stone-900/20 rounded-lg">{t('prof.dash.no_attendance_data')}</p>
                                   )}
                                 </div>
                               )}
@@ -2709,14 +2710,14 @@ id,
                           );
                         })
                     ) : (
-                      <p className="text-stone-500 text-[10px] italic">Nenhuma chamada realizada.</p>
+                      <p className="text-stone-500 text-[10px] italic">{t('prof.dash.no_attendance_taken')}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Evaluation History */}
                 <div className="mt-4 border-t border-stone-700 pt-4">
-                  <h4 className="text-sm font-bold text-white mb-3">Histórico de Avaliações</h4>
+                  <h4 className="text-sm font-bold text-white mb-3">{t('prof.dash.eval_history')}</h4>
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {studentGrades.filter(g => myStudents.some(s => s.id === g.student_id)).length > 0 ? (
                       studentGrades.filter(g => myStudents.some(s => s.id === g.student_id))
@@ -2731,25 +2732,25 @@ id,
                           </div>
                         ))
                     ) : (
-                      <p className="text-stone-500 text-[10px] italic">Sem avaliações recentes.</p>
+                      <p className="text-stone-500 text-[10px] italic">{t('prof.dash.no_evals')}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="mt-6 space-y-3">
-                  <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest">Atalhos dos Alunos</h4>
+                  <h4 className="text-xs font-bold text-stone-500 uppercase tracking-widest">{t('prof.dash.student_shortcuts')}</h4>
                   {myStudents.slice(0, 3).map(s => (
                     <div key={s.id} className="flex items-center gap-3 p-2 bg-stone-900 rounded">
                       <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-xs text-white font-bold">
                         {s.name.charAt(0)}
                       </div>
                       <div className="flex-1"><p className="text-white text-sm font-bold">{s.nickname || s.name}</p></div>
-                      <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => { setSelectedStudentForGrades(s.id); setProfView('grades'); }}>Avaliar</Button>
+                      <Button variant="secondary" className="text-xs h-7 px-2" onClick={() => { setSelectedStudentForGrades(s.id); setProfView('grades'); }}>{t('prof.view.evaluate')}</Button>
                     </div>
                   ))}
                 </div>
 
-                <button onClick={() => setProfView('all_students')} className="w-full text-center text-stone-500 text-[10px] mt-4 hover:text-white transition-colors">Ver todos os alunos</button>
+                <button onClick={() => setProfView('all_students')} className="w-full text-center text-stone-500 text-[10px] mt-4 hover:text-white transition-colors">{t('prof.dash.view_all_students')}</button>
               </div>
             </div>
           </div>
@@ -2761,12 +2762,12 @@ id,
         showAssignToStudentModal && selectedAssignmentToAssign && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
             <div className="bg-stone-900 border border-stone-700 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6">
-              <h3 className="text-xl font-bold text-white mb-2">Atribuir a Aluno</h3>
-              <p className="text-stone-400 text-sm mb-6">Trabalho: <span className="text-blue-400 font-semibold">{selectedAssignmentToAssign.title}</span></p>
+              <h3 className="text-xl font-bold text-white mb-2">{t('prof.dash.assign_title')}</h3>
+              <p className="text-stone-400 text-sm mb-6">{t('prof.dash.assign_job')} <span className="text-blue-400 font-semibold">{selectedAssignmentToAssign.title}</span></p>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-stone-400 mb-2">Selecione o Aluno</label>
+                  <label className="block text-sm text-stone-400 mb-2">{t('prof.dash.assign_select')}</label>
                   <div className="max-h-60 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                     {allUsersProfiles.filter(u => u.role === 'aluno').map(student => (
                       <label key={student.id} className="flex items-center gap-3 p-3 rounded-lg bg-stone-800 border border-stone-700 hover:border-blue-500/50 cursor-pointer transition-colors group">
@@ -2796,7 +2797,7 @@ id,
                       setSelectedStudentForAssignment('');
                     }}
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     className="flex-1 bg-blue-600 hover:bg-blue-500"
@@ -2810,10 +2811,10 @@ id,
                       setShowAssignToStudentModal(false);
                       setSelectedAssignmentToAssign(null);
                       setSelectedStudentForAssignment('');
-                      alert(`Trabalho atribuído com sucesso!`);
+                      alert(t('prof.dash.assign_success'));
                     }}
                   >
-                    Confirmar Transferência
+                    {t('prof.dash.assign_confirm')}
                   </Button>
                 </div>
               </div>
@@ -2826,7 +2827,7 @@ id,
       {profView === 'ffpoints' && (
         <div>
           <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-all hover:-translate-x-1">
-            <ArrowLeft size={16} /> Voltar ao Painel
+            <ArrowLeft size={16} /> {t('common.back_panel')}
           </button>
           <FFPoints user={user} allUsersProfiles={allUsersProfiles} />
         </div>

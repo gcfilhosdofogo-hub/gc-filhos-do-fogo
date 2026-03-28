@@ -34,9 +34,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onNavigate }) =>
             <button
               onClick={toggleLanguage}
               title={t('nav.lang_tooltip')}
-              className="bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-3 py-1.5 rounded-md text-xs font-bold transition-colors border border-stone-700 hover:border-orange-500 tracking-widest"
+              className="flex items-center gap-2 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-3 py-1.5 rounded-md text-xs font-bold transition-colors border border-stone-700 hover:border-orange-500 tracking-widest"
             >
-              {t('nav.lang_label')}
+              {language === 'pt' ? '🇧🇷 PT-BR' : '🇦🇷 ES-AR'}
             </button>
 
             {user ? (
@@ -68,9 +68,9 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onNavigate }) =>
             {/* Language toggle mobile */}
             <button
               onClick={toggleLanguage}
-              className="bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-bold transition-colors border border-stone-700 tracking-widest"
+              className="flex items-center gap-1.5 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-bold transition-colors border border-stone-700 tracking-widest"
             >
-              {t('nav.lang_label')}
+              {language === 'pt' ? '🇧🇷 PT-BR' : '🇦🇷 ES-AR'}
             </button>
             <button
               onClick={toggleMenu}

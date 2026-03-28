@@ -49,7 +49,7 @@ const convertToStandardImage = async (file: File): Promise<File> => {
 
   // 1. Convert HEIC/HEIF if necessary
   if (extension === 'heic' || extension === 'heif') {
-    if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo HEIC muito grande. Máx 20MB.");
+    if (file.size > 20 * 1024 * 1024) throw alert("File too large / Arquivo muito grande");
     try {
       const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
       const convertedBlob = Array.isArray(blob) ? blob[0] : blob;
@@ -401,7 +401,7 @@ export const DashboardAluno: React.FC<Props> = ({
       count: pending.length,
       isOverdue: pending.length >= 1,
       isCritical: pending.length >= 3,
-      message: pending.length >= 3 ? "Atenção: Evite o bloqueio do seu acesso efetuando o pagamento!" : "Atraso no pagamento das mensalidades pode levar ao bloqueio do aplicativo!",
+      message: pending.length >= 3 ? t('aluno.finance.overdue_warning') : t('aluno.finance.overdue_msg'),
       color: pending.length >= 3 ? 'red' : pending.length === 2 ? 'orange' : 'yellow'
     };
   }, [myMonthlyPayments]);
@@ -473,11 +473,11 @@ export const DashboardAluno: React.FC<Props> = ({
       if (dbError) throw dbError;
 
       onUpdateProfile({ photo_url: publicUrl }); // Update local state
-      alert("Foto de perfil atualizada!");
+      alert(t('aluno.profile.photo_updated'));
 
     } catch (error: any) {
       console.error('Error uploading profile photo:', error);
-      alert('Erro ao atualizar foto de perfil: ' + error.message);
+      alert(t('aluno.profile.photo_error') + error.message);
     } finally {
       setUploadingPhoto(false);
     }
@@ -491,7 +491,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     // Simple validation for Google Drive / Video links
     if (!videoLink.includes('drive.google.com') && !videoLink.includes('youtube.com') && !videoLink.includes('youtu.be') && !videoLink.includes('http')) {
-      return alert('Por favor, insira um link válido (ex: Google Drive, YouTube, etc).');
+      return alert(t('aluno.training.error_link'));
     }
 
     setUploading(true);
@@ -512,10 +512,10 @@ export const DashboardAluno: React.FC<Props> = ({
       setVideoLink('');
       setShowPendingVideoPopup(false);
       onNotifyAdmin('Enviou Link de Treino em Casa (Google Drive)', user);
-      alert("Link de treino enviado com sucesso!");
+      alert(t('aluno.training.success_link'));
     } catch (err: any) {
       console.error('Error adding video link:', err);
-      alert('Erro ao salvar o link: ' + err.message);
+      alert(t('aluno.training.error_link') + ": " + err.message);
       setUploading(false);
     }
   };
@@ -554,10 +554,10 @@ export const DashboardAluno: React.FC<Props> = ({
       setUploading(false);
       setShowPendingVideoPopup(false);
       onNotifyAdmin('Enviou vídeo de Treino em Casa', user);
-      alert("Vídeo enviado com sucesso! Ele ficará disponível por 72 horas.");
+      alert(t('aluno.training.success_file'));
     } catch (error: any) {
       console.error('Error uploading video:', error);
-      alert("Erro ao enviar vídeo (" + (error.status || error.name) + "): " + error.message);
+      alert(t('common.error') + ": " + error.message);
       setUploading(false);
     }
   };
@@ -616,17 +616,17 @@ export const DashboardAluno: React.FC<Props> = ({
         date: now.toISOString().split('T')[0], // Use ISO format for DB
         file_name: file.name,
         file_url: fileUrl,
-        period: 'Bimestre Atual', // Can be made dynamic if needed
+        period: t('aluno.report.period_current'), // Can be made dynamic if needed
         status: 'pending'
       };
 
       await onAddSchoolReport(newReport); // Call prop to add to Supabase
       setUploadingReport(false);
       onNotifyAdmin('Enviou Boletim Escolar', user); // Added notification
-      alert("Boletim enviado com sucesso para a coordenação!");
+      alert(t('aluno.report.success'));
     } catch (error: any) {
       console.error('Error uploading report:', error);
-      alert("Erro ao enviar boletim: " + error.message);
+      alert(t('common.error') + ": " + error.message);
       setUploadingReport(false);
     }
   };
@@ -680,35 +680,25 @@ export const DashboardAluno: React.FC<Props> = ({
     let price = 0;
     let itemName = '';
     let details = '';
+    let itemLabel = '';
 
-    if (orderForm.item === 'shirt') {
-      price = UNIFORM_PRICES.shirt;
-      itemName = 'Blusa Oficial';
-      if (!orderForm.shirtSize) return alert('Digite o tamanho da blusa');
-      details = `Tamanho: ${orderForm.shirtSize}`;
-    } else if (orderForm.item === 'pants_roda') {
-      price = UNIFORM_PRICES.pants_roda;
-      itemName = 'Calça de Roda';
-      if (!orderForm.pantsSize) return alert('Digite o tamanho da calça');
-      details = `Tamanho: ${orderForm.pantsSize}`;
-    } else if (orderForm.item === 'pants_train') {
-      price = UNIFORM_PRICES.pants_train;
-      itemName = 'Calça de Treino';
-      if (!orderForm.pantsSize) return alert('Digite o tamanho da calça');
-      details = `Tamanho: ${orderForm.pantsSize}`;
-    } else if (orderForm.item === 'combo') {
-      price = UNIFORM_PRICES.combo;
-      itemName = 'Combo (Blusa + Calça)';
-      if (!orderForm.shirtSize || !orderForm.pantsSize) return alert('Digite os tamanhos');
-      details = `Blusa: ${orderForm.shirtSize}, Calça: ${orderForm.pantsSize}`;
+    switch (orderForm.item) {
+      case 'shirt': itemLabel = t('aluno.uniform.shirt_official'); price = UNIFORM_PRICES.shirt; break;
+      case 'pants_roda': itemLabel = t('aluno.uniform.pants_roda'); price = UNIFORM_PRICES.pants_roda; break;
+      case 'pants_train': itemLabel = t('aluno.uniform.pants_train'); price = UNIFORM_PRICES.pants_train; break;
+      case 'combo': itemLabel = t('aluno.uniform.combo'); price = UNIFORM_PRICES.combo; break;
     }
+
+    if (orderForm.item === 'shirt' && !orderForm.shirtSize) { alert(t('aluno.uniform.error_size_shirt')); return; }
+    if (orderForm.item.startsWith('pants') && !orderForm.pantsSize) { alert(t('aluno.uniform.error_size_pants')); return; }
+    if (orderForm.item === 'combo' && (!orderForm.shirtSize || !orderForm.pantsSize)) { alert(t('aluno.uniform.error_sizes')); return; }
 
     const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
       user_id: user.id,
       user_name: user.nickname || user.name,
       user_role: user.role,
       date: new Date().toLocaleDateString('pt-BR'),
-      item: itemName,
+      item: itemLabel,
       shirt_size: orderForm.item.includes('pants') ? undefined : orderForm.shirtSize,
       pants_size: orderForm.item === 'shirt' ? undefined : orderForm.pantsSize,
       total: price,
@@ -717,7 +707,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     onAddOrder(newOrder);
 
-    alert(`Solicitação enviada ao Admin! Valor Total: R$ ${price},00. O status ficará como Pendente até a confirmação do pagamento.`);
+    alert(t('aluno.uniform.success', { price }));
     setOrderForm({ item: 'combo', shirtSize: '', pantsSize: '' });
   };
 
@@ -744,7 +734,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     const amount = parseFloat(eventRegistrationAmount);
     if (isNaN(amount) || amount < 0) {
-      alert('Por favor, insira um valor válido para o pagamento.');
+      alert(t('error.invalid_amount'));
       return;
     }
 
@@ -759,7 +749,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
     await onAddEventRegistration(newRegistration);
     onNotifyAdmin(`Registrou-se no evento: ${selectedEventToRegister.title}`, user);
-    alert(`Inscrição no evento "${selectedEventToRegister.title}" realizada com sucesso!`);
+    alert(t('aluno.event.success', { title: selectedEventToRegister.title }));
     setShowEventRegisterModal(false);
     setSelectedEventToRegister(null);
     setEventRegistrationAmount('');
@@ -996,19 +986,19 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-red-900/30 p-4 rounded-full mb-4 animate-pulse">
                 <Video size={48} className="text-red-500" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Treino Pendente!</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">{t('aluno.training.popup_title')}</h3>
               <p className="text-stone-300 mb-6">
-                Hoje não é dia de aula presencial com seu professor. Para garantir sua presença e evolução, o envio do vídeo de treino é <strong>obrigatório</strong>.
+                {t('aluno.training.popup_msg')}
               </p>
               <div className="flex flex-col w-full gap-3">
                 <Button fullWidth onClick={handleGoToUpload}>
-                  Enviar Vídeo Agora
+                  {t('aluno.training.send_now')}
                 </Button>
                 <button
                   onClick={() => setShowPendingVideoPopup(false)}
                   className="text-stone-500 hover:text-white text-sm py-2 transition-colors"
                 >
-                  Vou enviar mais tarde
+                  {t('aluno.training.later')}
                 </button>
               </div>
             </div>
@@ -1023,11 +1013,11 @@ export const DashboardAluno: React.FC<Props> = ({
             <button onClick={() => setShowEventRegisterModal(false)} className="absolute top-4 right-4 text-stone-400 hover:text-white"><X size={20} /></button>
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Ticket className="text-purple-500" />
-              Inscrever-se em Evento
+              {t('events.register')}
             </h3>
             <form onSubmit={handleRegisterForEvent} className="space-y-4">
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Evento</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('events.field.title')}</label>
                 <input
                   type="text"
                   value={selectedEventToRegister.title}
@@ -1036,7 +1026,7 @@ export const DashboardAluno: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Data</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('common.date')}</label>
                 <input
                   type="text"
                   value={selectedEventToRegister.date}
@@ -1045,7 +1035,7 @@ export const DashboardAluno: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className="block text-sm text-stone-400 mb-1">Valor</label>
+                <label className="block text-sm text-stone-400 mb-1">{t('common.value')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-stone-400">R$</span>
                   <input
@@ -1060,13 +1050,13 @@ export const DashboardAluno: React.FC<Props> = ({
                   />
                 </div>
                 {selectedEventToRegister.price === 0 && (
-                  <p className="text-xs text-stone-500 mt-1">Este evento é gratuito.</p>
+                  <p className="text-xs text-stone-500 mt-1">{t('events.free_msg') || 'Este evento é gratuito.'}</p>
                 )}
               </div>
               <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                <button type="button" onClick={() => setShowEventRegisterModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                <button type="button" onClick={() => setShowEventRegisterModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">{t('common.cancel')}</button>
                 <Button type="submit">
-                  <Ticket size={18} /> Confirmar Inscrição
+                  <Ticket size={18} /> {t('common.confirm')}
                 </Button>
               </div>
             </form>
@@ -1313,7 +1303,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Activity className="text-cyan-500" />
-                  Resumo de Atividades
+                  {t('aluno.overview.title')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Pending Assignments */}
@@ -1325,12 +1315,12 @@ export const DashboardAluno: React.FC<Props> = ({
                       <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-500">
                         <BookOpen size={20} />
                       </div>
-                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Trabalhos</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">{t('assignments.title')}</span>
                     </div>
                     <p className="text-2xl font-black text-white">
                       {myAssignments.filter(a => a.status === 'pending').length}
                     </p>
-                    <p className="text-[10px] text-stone-500 mt-1">Pendentes de entrega</p>
+                    <p className="text-[10px] text-stone-500 mt-1">{t('aluno.overview.assignments_pending')}</p>
                   </div>
 
                   {/* Home Training Status */}
@@ -1342,16 +1332,16 @@ export const DashboardAluno: React.FC<Props> = ({
                       <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
                         <Video size={20} />
                       </div>
-                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Treinos</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">{t('training.title')}</span>
                     </div>
                     <p className="text-sm font-bold text-white">
                       {myHomeTrainings.length > 0 ? (
-                        <span className="text-green-400 flex items-center gap-1"><Check size={14} /> Em dia</span>
+                        <span className="text-green-400 flex items-center gap-1"><Check size={14} /> {t('status.ready')}</span>
                       ) : (
-                        <span className="text-yellow-400 flex items-center gap-1"><AlertCircle size={14} /> Pendente</span>
+                        <span className="text-yellow-400 flex items-center gap-1"><AlertCircle size={14} /> {t('status.pending')}</span>
                       )}
                     </p>
-                    <p className="text-[10px] text-stone-500 mt-1">Treino em casa hoje</p>
+                    <p className="text-[10px] text-stone-500 mt-1">{t('aluno.overview.training_today')}</p>
                   </div>
 
                   {/* Next Evaluate status */}
@@ -1363,12 +1353,12 @@ export const DashboardAluno: React.FC<Props> = ({
                       <div className="p-2 bg-orange-500/10 rounded-lg text-orange-500">
                         <Award size={20} />
                       </div>
-                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Avaliação</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">{t('grades.evaluate')}</span>
                     </div>
                     <p className="text-sm font-bold text-white">
-                      {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString('pt-BR') : 'A definir'}
+                      {user.nextEvaluationDate ? new Date(user.nextEvaluationDate).toLocaleDateString('pt-BR') : t('aluno.overview.to_be_defined')}
                     </p>
-                    <p className="text-[10px] text-stone-500 mt-1">Data prevista</p>
+                    <p className="text-[10px] text-stone-500 mt-1">{t('aluno.overview.eval_date')}</p>
                   </div>
                 </div>
               </div>
@@ -1378,7 +1368,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border-2 border-orange-600/50 shadow-[0_0_15px_rgba(234,88,12,0.1)]">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Calendar className="text-orange-500" />
-                  Suas Próximas Aulas
+                  {t('aluno.overview.classes')}
                 </h3>
                 <div className="space-y-3">
                   {myClasses.length > 0 ? (
@@ -1391,13 +1381,13 @@ export const DashboardAluno: React.FC<Props> = ({
                         </div>
                         <div className="mt-3 sm:mt-0">
                           <span className="bg-red-900/40 text-red-400 border border-red-900/50 px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
-                            <AlertCircle size={12} /> Obrigatório
+                            <AlertCircle size={12} /> {t('common.required')}
                           </span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-stone-500 italic">Nenhuma aula específica do seu professor agendada.</p>
+                    <p className="text-stone-500 italic">{t('aluno.overview.classes_empty')}</p>
                   )}
                 </div>
               </div>
@@ -1406,10 +1396,10 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                 <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                   <Calendar className="text-stone-500" />
-                  Próximas Aulas do Grupo
+                  {t('aluno.overview.classes_group')}
                 </h3>
                 <p className="text-xs text-stone-400 mb-4 bg-stone-900/50 p-2 rounded border border-stone-600 inline-block">
-                  * Aulas com outros professores. Participação opcional, mas recomendada.
+                  {t('aluno.overview.classes_group_desc')}
                 </p>
                 <div className="space-y-3">
                   {groupClasses.length > 0 ? (
@@ -1427,7 +1417,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           </div>
                           <div className="mt-2 sm:mt-0">
                             <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">
-                              Opcional
+                              {t('common.optional')}
                             </span>
                           </div>
                         </div>
@@ -1501,7 +1491,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
                     <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <Wallet className="text-orange-500" />
-                      Minhas Mensalidades
+                      {t('aluno.finance.title')}
                     </h3>
 
                     <div className="mb-6 space-y-3">
@@ -1512,9 +1502,9 @@ export const DashboardAluno: React.FC<Props> = ({
                         className={`h-12 border-2 transition-all ${pixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-orange-500/30 text-orange-400 hover:border-orange-500 hover:bg-orange-500/5"}`}
                       >
                         {pixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
-                        {pixCopied ? 'Chave Copiada!' : 'Copiar PIX Mensalidade'}
+                        {pixCopied ? t('aluno.finance.pix_copied') : t('aluno.finance.copy_pix')}
                       </Button>
-                      <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">Chave: soufilhodofogo@gmail.com</p>
+                      <p className="text-[10px] text-stone-500 text-center font-bold tracking-widest uppercase">{t('aluno.finance.key')}</p>
                     </div>
 
                     <div className="space-y-3">
@@ -1523,11 +1513,11 @@ export const DashboardAluno: React.FC<Props> = ({
                           <div key={payment.id} className={`bg-stone-900 p-4 rounded-xl border-l-4 ${payment.status === 'paid' ? 'border-green-500' : 'border-yellow-500'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-md`}>
                             <div>
                               <p className="font-bold text-white text-sm uppercase tracking-tight">{payment.month}</p>
-                              <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • Venc: {payment.due_date?.split('-').reverse().join('/')}</p>
+                              <p className="text-stone-500 text-xs font-mono">R$ {payment.amount?.toFixed(2).replace('.', ',')} • {t('aluno.finance.due_date')} {payment.due_date?.split('-').reverse().join('/')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               {payment.status === 'paid' ? (
-                                <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">Pago</span>
+                                <span className="bg-green-500/10 text-green-400 text-[10px] font-black px-2 py-1 rounded border border-green-500/20 uppercase">{t('aluno.finance.paid')}</span>
                               ) : (
                                 <>
                                   <Button
@@ -1540,7 +1530,7 @@ export const DashboardAluno: React.FC<Props> = ({
                                     }}
                                     disabled={uploadingPaymentProof}
                                   >
-                                    {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? 'Enviando...' : <><FileUp size={12} className="mr-1" /> Enviar Comprovante</>}
+                                    {uploadingPaymentProof && selectedPaymentToProof?.id === payment.id ? t('aluno.finance.sending') : <><FileUp size={12} className="mr-1" /> {t('aluno.finance.send_proof')}</>}
                                   </Button>
                                   <input
                                     type="file"
@@ -1555,9 +1545,9 @@ export const DashboardAluno: React.FC<Props> = ({
                               )}
                               {payment.proof_url && (
                                 <button
-                                  onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante', 'payment_proofs')}
+                                  onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || t('aluno.finance.view_proof'), 'payment_proofs')}
                                   className="text-blue-400 hover:text-blue-300 text-xs p-1 rounded hover:bg-blue-400/5 transition-all"
-                                  title="Ver Comprovante"
+                                  title={t('aluno.finance.view_proof')}
                                 >
                                   <Eye size={18} />
                                 </button>
@@ -1566,7 +1556,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           </div>
                         ))
                       ) : (
-                        <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">Nenhuma mensalidade registrada.</p>
+                        <p className="text-stone-500 text-sm italic text-center py-6 bg-stone-800/50 rounded-xl border border-dashed border-stone-700">{t('aluno.finance.empty')}</p>
                       )}
                     </div>
                   </div>
@@ -1577,7 +1567,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700 shadow-xl">
                     <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                       <DollarSign className="text-yellow-500" />
-                      Outros Pagamentos
+                      {t('aluno.finance.other_payments')}
                     </h3>
 
                     <Button
@@ -1587,20 +1577,20 @@ export const DashboardAluno: React.FC<Props> = ({
                       className={`h-12 border-2 transition-all mb-6 ${costPixCopied ? "border-green-500 text-green-500 bg-green-500/5" : "border-yellow-500/30 text-yellow-400 hover:border-yellow-500 hover:bg-yellow-500/5"}`}
                     >
                       {costPixCopied ? <Check size={18} className="mr-2" /> : <Copy size={18} className="mr-2" />}
-                      {costPixCopied ? 'Chave Copiada!' : 'PIX Eventos/Avaliação'}
+                      {costPixCopied ? t('aluno.finance.pix_copied') : t('aluno.finance.copy_pix_other')}
                     </Button>
 
                     <div className="space-y-6">
                       {/* Avaliações Section */}
                       <div>
-                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Avaliações</h4>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">{t('aluno.finance.evaluations')}</h4>
                         <div className="space-y-3">
                           {myEvaluations.length > 0 ? (
                             myEvaluations.map(payment => (
                               <div key={payment.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                                 <div>
                                   <p className="text-sm font-bold text-white">{payment.month}</p>
-                                  <p className="text-[10px] text-stone-500 font-mono">VALOR: R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono">{t('aluno.finance.value')} R$ {payment.amount?.toFixed(2).replace('.', ',')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {payment.status === 'paid' ? (
@@ -1610,14 +1600,14 @@ export const DashboardAluno: React.FC<Props> = ({
                                       onClick={() => { setSelectedPaymentToProof(payment); fileInputRef.current?.click(); }}
                                       className="text-[10px] font-black uppercase text-yellow-500 hover:text-yellow-400 bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/20"
                                     >
-                                      {payment.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                      {payment.proof_url ? t('aluno.finance.change_proof') : t('aluno.finance.pay_now')}
                                     </button>
                                   )}
                                   {payment.proof_url && (
                                     <button
-                                      onClick={() => handleViewPaymentProof(payment.proof_url!, payment.month || 'Comprovante', 'payment_proofs')}
+                                      onClick={() => handleViewPaymentProof(payment.proof_url!, payment.month || t('aluno.finance.view_proof'), 'payment_proofs')}
                                       className="text-blue-400 hover:text-blue-300 transition-all"
-                                      title="Ver Comprovante"
+                                      title={t('aluno.finance.view_proof')}
                                     >
                                       <Eye size={18} />
                                     </button>
@@ -1626,21 +1616,21 @@ export const DashboardAluno: React.FC<Props> = ({
                               </div>
                             ))
                           ) : (
-                            <p className="text-stone-500 text-[10px] italic ml-1">Nenhuma avaliação pendente.</p>
+                            <p className="text-stone-500 text-[10px] italic ml-1">{t('aluno.finance.evaluations_empty')}</p>
                           )}
                         </div>
                       </div>
 
                       {/* EventRegistrations Section */}
                       <div>
-                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Eventos</h4>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">{t('aluno.finance.events')}</h4>
                         <div className="space-y-3">
                           {myEventRegistrations.length > 0 ? (
                             myEventRegistrations.map(reg => (
                               <div key={reg.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                                 <div>
                                   <p className="text-sm font-bold text-white truncate max-w-[150px]">{reg.event_title}</p>
-                                  <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? 'Pago' : 'Pendente'}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono uppercase">{reg.status === 'paid' ? t('aluno.finance.paid') : t('aluno.finance.pending')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {reg.status === 'paid' ? (
@@ -1678,7 +1668,7 @@ export const DashboardAluno: React.FC<Props> = ({
 
                       {/* Uniform Orders Selection */}
                       <div>
-                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">Uniformes Adquiridos</h4>
+                        <h4 className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-3 ml-1">{t('aluno.uniform.title')}</h4>
                         <div className="space-y-3">
                           <Button
                             fullWidth
@@ -1687,14 +1677,14 @@ export const DashboardAluno: React.FC<Props> = ({
                             onClick={() => setActiveMainTab('uniform')}
                             className="mb-2 border-dashed border-stone-700 text-stone-400 hover:text-white hover:border-stone-500 transition-all text-[10px] h-8"
                           >
-                            <PlusCircle size={14} className="mr-1" /> Novo Pedido de Uniforme
+                            <PlusCircle size={14} className="mr-1" /> {t('aluno.uniform.new_order')}
                           </Button>
                           {uniformOrders.filter(o => o.user_id === user.id).length > 0 ? (
                             uniformOrders.filter(o => o.user_id === user.id).map(order => (
                               <div key={order.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                                 <div>
                                   <p className="text-sm font-bold text-white">{order.item}</p>
-                                  <p className="text-[10px] text-stone-500 font-mono uppercase">Status: {order.status === 'pending' ? 'Pendente' : 'Confirmado'}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono uppercase">{t('aluno.uniform.status')} {order.status === 'pending' ? t('aluno.finance.pending') : t('aluno.uniform.confirmed')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {order.status !== 'pending' ? (
@@ -1704,14 +1694,14 @@ export const DashboardAluno: React.FC<Props> = ({
                                       onClick={() => { setSelectedOrderToProof(order); uniformFileInputRef.current?.click(); }}
                                       className="text-[10px] font-black uppercase text-emerald-500 hover:text-emerald-400 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20"
                                     >
-                                      {order.proof_url ? 'Alterar Comprovante' : 'Pagar Agora'}
+                                      {order.proof_url ? t('aluno.finance.change_proof') : t('aluno.finance.pay_now')}
                                     </button>
                                   )}
                                   {order.proof_url && (
                                     <button
                                       onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'payment_proofs')}
                                       className="text-blue-400 hover:text-blue-300 transition-all"
-                                      title="Ver Comprovante"
+                                      title={t('aluno.finance.view_proof')}
                                     >
                                       <Eye size={18} />
                                     </button>
@@ -1720,7 +1710,7 @@ export const DashboardAluno: React.FC<Props> = ({
                               </div>
                             ))
                           ) : (
-                            <p className="text-stone-500 text-[10px] italic ml-1">Nenhum pedido registrado.</p>
+                            <p className="text-stone-500 text-[10px] italic ml-1">{t('aluno.uniform.empty')}</p>
                           )}
                           <input type="file" ref={uniformFileInputRef} accept="image/*, application/pdf, .heic, .heif" className="hidden" onChange={handleFileChangeForUniformProof} />
                         </div>
@@ -1738,7 +1728,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <Award className="text-blue-500" />
-                  Minhas Notas
+                  {t('aluno.grades.title')}
                 </h3>
                 <div className="space-y-3">
                   {(studentGrades || []).length > 0 ? (
@@ -1746,7 +1736,7 @@ export const DashboardAluno: React.FC<Props> = ({
                       <div key={g.id} className="flex items-center justify-between bg-stone-900 p-3 rounded border-l-2 border-blue-500">
                         <div className="flex items-center gap-3">
                           <span className="text-stone-300 text-sm">
-                            {g.category === 'theory' ? 'Teórica' : g.category === 'movement' ? 'Movimentação' : 'Musicalidade'}
+                            {g.category === 'theory' ? t('aluno.grades.theory') : g.category === 'movement' ? t('aluno.grades.movement') : t('aluno.grades.musicality')}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -1760,7 +1750,7 @@ export const DashboardAluno: React.FC<Props> = ({
                       </div>
                     ))
                   ) : (
-                    <p className="text-stone-500 italic">Nenhuma nota registrada.</p>
+                    <p className="text-stone-500 italic">{t('aluno.grades.empty')}</p>
                   )}
                 </div>
                 <p className="text-xs text-stone-500 mt-3">
@@ -1775,7 +1765,7 @@ export const DashboardAluno: React.FC<Props> = ({
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                   <FileText className="text-cyan-500" />
-                  Trabalhos do Professor
+                  {t('aluno.assignments.title')}
                 </h3>
                 <div className="space-y-3">
                   {myAssignments && myAssignments.length > 0 ? (
@@ -1785,16 +1775,16 @@ export const DashboardAluno: React.FC<Props> = ({
                           <div className="flex-1">
                             <h4 className="font-bold text-white text-sm mb-1">{assignment.title}</h4>
                             <p className="text-stone-400 text-xs mb-2">{assignment.description}</p>
-                            <p className="text-stone-500 text-xs">Vencimento: {assignment.due_date.split('-').reverse().join('/')}</p>
+                            <p className="text-stone-500 text-xs">{t('aluno.assignments.due_date')} {assignment.due_date.split('-').reverse().join('/')}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {assignment.status === 'completed' ? (
                               <span className="text-green-400 text-xs flex items-center gap-1 whitespace-nowrap">
-                                <Check size={12} /> Entregue
+                                <Check size={12} /> {t('aluno.assignments.delivered')}
                               </span>
                             ) : (
                               <span className="text-yellow-400 text-xs flex items-center gap-1 whitespace-nowrap">
-                                <Clock size={12} /> Pendente
+                                <Clock size={12} /> {t('aluno.finance.pending')}
                               </span>
                             )}
                           </div>
@@ -1806,7 +1796,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             className="text-[10px] h-auto px-2 py-1 mt-2 w-full border-cyan-500/30 text-cyan-400"
                             onClick={() => window.open(assignment.attachment_url, '_blank')}
                           >
-                            <Eye size={12} className="mr-1" /> Material do Professor
+                            <Eye size={12} className="mr-1" /> {t('aluno.assignments.prof_material')}
                           </Button>
                         )}
 
@@ -1817,7 +1807,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             className="text-[10px] h-auto px-2 py-1 mt-2 w-full border-green-500/30 text-green-400"
                             onClick={() => handleViewAssignment(assignment.submission_url!, assignment.submission_name || 'Trabalho')}
                           >
-                            <CheckCircle size={12} className="mr-1" /> Ver Minha Resposta
+                            <CheckCircle size={12} className="mr-1" /> {t('aluno.assignments.my_answer')}
                           </Button>
                         )}
                         {/* Submission Button */}
@@ -1834,9 +1824,9 @@ export const DashboardAluno: React.FC<Props> = ({
                               disabled={uploadingAssignment}
                             >
                               {uploadingAssignment && selectedAssignmentToSubmit?.id === assignment.id ? (
-                                'Enviando...'
+                                t('aluno.finance.sending')
                               ) : (
-                                <><UploadCloud size={14} className="mr-1" /> Enviar Resposta</>
+                                <><UploadCloud size={14} className="mr-1" /> {t('aluno.assignments.send_answer')}</>
                               )}
                             </Button>
                             <input
@@ -1874,8 +1864,8 @@ export const DashboardAluno: React.FC<Props> = ({
                     <Music size={32} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Acervo Musical</h2>
-                    <p className="text-stone-400 text-sm">Pratique e aprenda as músicas do grupo</p>
+                    <h2 className="text-3xl font-black text-white tracking-tighter uppercase">{t('aluno.music.title')}</h2>
+                    <p className="text-stone-400 text-sm">{t('aluno.music.subtitle')}</p>
                   </div>
                 </div>
 
@@ -1912,7 +1902,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   ) : (
                     <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
                       <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma música no acervo</p>
+                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">{t('aluno.music.empty')}</p>
                     </div>
                   )}
                 </div>
@@ -1937,20 +1927,20 @@ export const DashboardAluno: React.FC<Props> = ({
                     onClick={() => setTrainingType('link')}
                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${trainingType === 'link' ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400'}`}
                   >
-                    Link (Google Drive/YT)
+                    {t('aluno.training.link')}
                   </button>
                   <button
                     onClick={() => setTrainingType('file')}
                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${trainingType === 'file' ? 'bg-orange-600 text-white' : 'bg-stone-700 text-stone-400'}`}
                   >
-                    Upload Direto
+                    {t('aluno.training.upload')}
                   </button>
                 </div>
 
                 {trainingType === 'link' ? (
                   <form onSubmit={handleAddTrainingLink} className="space-y-3">
                     <div className="bg-stone-900/50 p-4 rounded-lg border border-stone-700">
-                      <label className="block text-xs text-stone-400 mb-2">Cole o link do Google Drive ou YouTube abaixo:</label>
+                      <label className="block text-xs text-stone-400 mb-2">{t('aluno.training.paste_link')}</label>
                       <input
                         type="url"
                         value={videoLink}
@@ -1959,7 +1949,7 @@ export const DashboardAluno: React.FC<Props> = ({
                         className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-sm text-white focus:outline-none focus:border-orange-500"
                         required
                       />
-                      <p className="text-[10px] text-stone-500 mt-2">Dica: Lembre-se de deixar o link do Google Drive como "Qualquer pessoa com o link".</p>
+                      <p className="text-[10px] text-stone-500 mt-2">{t('aluno.training.link_hint')}</p>
                     </div>
                     <Button fullWidth type="submit" disabled={uploading || !videoLink}>
                       {uploading ? t('common.saving') : t('training.save_link')}
@@ -1970,18 +1960,18 @@ export const DashboardAluno: React.FC<Props> = ({
                     {uploading ? (
                       <div className="text-center">
                         <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
-                        <p className="text-white">Enviando vídeo...</p>
+                        <p className="text-white">{t('aluno.training.sending')}</p>
                       </div>
                     ) : (
                       <>
                         <Video size={32} className="text-stone-500 mb-2" />
                         <label className="cursor-pointer">
                           <span className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-block shadow-lg">
-                            Selecionar Vídeo
+                            {t('aluno.training.select_video')}
                           </span>
                           <input type="file" accept="video/*" className="hidden" onChange={handleUploadVideo} disabled={uploading} />
                         </label>
-                        <p className="text-xs text-stone-500 mt-2">MP4, MOV, etc. Máx 50MB.</p>
+                        <p className="text-xs text-stone-500 mt-2">{t('aluno.training.video_hint')}</p>
                       </>
                     )}
                   </div>
@@ -2029,7 +2019,7 @@ export const DashboardAluno: React.FC<Props> = ({
                   {uploadingReport ? (
                     <div className="text-center">
                       <UploadCloud size={32} className="text-orange-500 animate-bounce mx-auto mb-2" />
-                      <p className="text-white">Enviando boletim...</p>
+                      <p className="text-white">{t('aluno.report.sending')}</p>
                     </div>
                   ) : (
                     <>
@@ -2040,7 +2030,7 @@ export const DashboardAluno: React.FC<Props> = ({
                         </span>
                         <input type="file" accept=".pdf,.doc,.docx,.jpg,.png,.heic,.heif" className="hidden" onChange={handleUploadReport} disabled={uploadingReport} />
                       </label>
-                      <p className="text-xs text-stone-500 mt-2">PDF, DOC, Imagem. Máx 10MB.</p>
+                      <p className="text-xs text-stone-500 mt-2">{t('aluno.report.file_hint')}</p>
                     </>
                   )}
                 </div>

@@ -86,6 +86,7 @@ const ActivityFeed: React.FC<{
     allUsersProfiles: User[];
     onClearNotifications: () => void;
 }> = ({ notifications, allUsersProfiles, onClearNotifications }) => {
+    const { t } = useLanguage();
     const [activityTab, setActivityTab] = useState<'feed' | 'last_seen'>('feed');
     const [nowTimer, setNowTimer] = useState(Date.now()); // Força o re-render 
 
@@ -133,19 +134,19 @@ const ActivityFeed: React.FC<{
     }, [notifications]);
 
     const formatLastSeenMs = useCallback((timeMs: number) => {
-        if (timeMs === 0) return 'Nunca acessou';
+        if (timeMs === 0) return t('admin.activity.never_accessed');
         const d = new Date(timeMs);
         const diffMs = nowTimer - d.getTime();
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
-        if (diffMins < 2) return 'Agora mesmo';
-        if (diffMins < 60) return `Há ${diffMins} minuto${diffMins !== 1 ? 's' : ''}`;
-        if (diffHours < 24) return `Há ${diffHours} hora${diffHours !== 1 ? 's' : ''}`;
-        if (diffDays === 1) return 'Ontem';
-        if (diffDays < 7) return `Há ${diffDays} dias`;
+        if (diffMins < 2) return t('admin.activity.just_now');
+        if (diffMins < 60) return `${t('admin.activity.ago')} ${diffMins} ${t('admin.activity.mins')}`;
+        if (diffHours < 24) return `${t('admin.activity.ago')} ${diffHours} ${t('admin.activity.hours')}`;
+        if (diffDays === 1) return t('admin.activity.yesterday');
+        if (diffDays < 7) return `${t('admin.activity.ago')} ${diffDays} ${t('admin.activity.days')}`;
         return d.toLocaleDateString('pt-BR');
-    }, [nowTimer]);
+    }, [nowTimer, t]);
 
     const isOnlineMs = useCallback((timeMs: number) => {
         if (timeMs === 0) return false;
@@ -191,11 +192,11 @@ const ActivityFeed: React.FC<{
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <Activity className="text-yellow-500" />
-                    Atividades Recentes
+                    {t('admin.activity.recent')}
                 </h3>
                 {cleanNotifications.length > 0 && (
                     <button onClick={onClearNotifications} className="text-[10px] uppercase font-bold text-stone-500 hover:text-red-500 transition-colors">
-                        Limpar
+                        {t('admin.activity.clear')}
                     </button>
                 )}
             </div>
@@ -206,7 +207,7 @@ const ActivityFeed: React.FC<{
                     onClick={() => setActivityTab('feed')}
                     className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${activityTab === 'feed' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'text-stone-500 hover:text-stone-300'}`}
                 >
-                    Feed
+                    {t('admin.activity.feed')}
                     {cleanNotifications.length > 0 && (
                         <span className="ml-1.5 bg-yellow-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full">
                             {cleanNotifications.length > 99 ? '99+' : cleanNotifications.length}
@@ -217,7 +218,7 @@ const ActivityFeed: React.FC<{
                     onClick={() => setActivityTab('last_seen')}
                     className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${activityTab === 'last_seen' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-stone-500 hover:text-stone-300'}`}
                 >
-                    Último Acesso
+                    {t('admin.activity.last_seen')}
                 </button>
             </div>
 
@@ -243,7 +244,7 @@ const ActivityFeed: React.FC<{
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 text-stone-600">
                             <Activity size={32} className="mb-2 opacity-30" />
-                            <p className="text-sm italic">Nenhuma atividade recente encontrada.</p>
+                            <p className="text-sm italic">{t('admin.activity.no_recent')}</p>
                         </div>
                     )}
                 </div>
@@ -280,7 +281,7 @@ const ActivityFeed: React.FC<{
                         );
                     })}
                     {activeUsers.length === 0 && (
-                        <p className="text-stone-600 text-sm italic text-center py-8">Nenhum usuário encontrado.</p>
+                        <p className="text-stone-600 text-sm italic text-center py-8">{t('admin.activity.no_user')}</p>
                     )}
                 </div>
             )}
@@ -337,7 +338,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 }) => {
 
     const { session } = useSession();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [activeTab, setActiveTab] = useState<Tab>('overview');
     const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
     const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('all');
@@ -577,6 +578,24 @@ export const DashboardAdmin: React.FC<Props> = ({
         }
     };
 
+    const formatDateESAR = (isoString: string | null | undefined): string => {
+        if (!isoString) return '-';
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(isoString)) return isoString;
+
+        try {
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return isoString;
+
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return isoString;
+        }
+    };
+
 
 
     // --- PROFESSOR MODE STATE (Admin acting as Professor) ---
@@ -783,17 +802,37 @@ export const DashboardAdmin: React.FC<Props> = ({
         if (foundUser && foundUser.status !== 'blocked') {
             onToggleBlockUser(userId, foundUser.status || 'active');
         }
-        alert(`O acesso do usuário ${foundUser?.nickname || foundUser?.name || userId} foi bloqueado temporariamente.`);
+        alert(t('admin.users.alert.blocked', { name: foundUser?.nickname || foundUser?.name || userId }));
         handleLiberateUser(userId); // Also clear it from the popup
     };
 
     // --- CUSTOM ADMIN DISPLAY NAME ---
     const getAdminDisplayName = () => {
-        if (user.nickname === 'Aquiles') return 'Administração Filhos do Fogo Argentina';
-        if (user.nickname === 'Wolverine') return 'Administração Filhos do Fogo Brasil';
-        if (user.nickname === 'Anjo de Fogo') return 'Administração Filhos do Fogo Geral';
+        if (user.nickname === 'Aquiles') return t('admin.dash.admin_ar');
+        if (user.nickname === 'Wolverine') return t('admin.dash.admin_br');
+        if (user.nickname === 'Anjo de Fogo') return t('admin.dash.admin_gen');
         return user.nickname || user.first_name || user.name || 'Admin';
     };
+
+    const filteredPayments = useMemo(() => {
+        let filtered = monthlyPayments || [];
+
+        // Apply Status Filter
+        if (paymentFilter !== 'all') {
+            filtered = filtered.filter(p => p.status === paymentFilter);
+        }
+
+        // Apply Search Filter
+        if (userSearch) {
+            filtered = filtered.filter(p => {
+                const student = allUsersProfiles.find(u => u.id === p.student_id);
+                return student?.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    student?.nickname?.toLowerCase().includes(userSearch.toLowerCase());
+            });
+        }
+
+        return filtered;
+    }, [monthlyPayments, paymentFilter, userSearch, allUsersProfiles]);
 
     // --- ADMIN HANDLERS ---
     const totalMonthlyPayments = useMemo(() => {
@@ -965,7 +1004,16 @@ export const DashboardAdmin: React.FC<Props> = ({
     }, [monthlyPayments, uniformOrders, eventRegistrations, events, managedUsers]);
 
     const handleDownloadFinancialReport = () => {
-        const headers = ["Data", "Descrição", "Aluno", "Professor", "Graduação", "Tipo", "Valor", "Status"];
+        const headers = [
+            t('admin.finance.report_header.date'),
+            t('admin.finance.report_header.desc'),
+            t('admin.finance.report_header.student'),
+            t('admin.finance.report_header.prof'),
+            t('admin.finance.report_header.belt'),
+            t('admin.finance.report_header.type'),
+            t('admin.finance.report_header.value'),
+            t('admin.finance.report_header.status')
+        ];
         const csvContent = [
             headers.join(";"),
             ...financialMovements.map(m => [
@@ -990,14 +1038,23 @@ export const DashboardAdmin: React.FC<Props> = ({
         const mm = String(now.getMonth() + 1).padStart(2, '0');
         const yyyy = now.getFullYear();
 
-        link.setAttribute("download", `relatorio_financeiro_${dd}-${mm}-${yyyy}.csv`);
+        link.setAttribute("download", `${t('admin.finance.report_filename')}_${dd}-${mm}-${yyyy}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const handleDownloadPedagogicalReport = () => {
-        const headers = ["Professor", "Aluno", "Presença", "Teórica", "Movimentação", "Musicalidade", "Última Avaliação", "Custo Graduação (R$)"];
+        const headers = [
+            t('admin.finance.report_header.prof'),
+            t('admin.finance.report_header.student'),
+            t('admin.pedagogy.table.attendance'),
+            t('admin.pedagogy.table.theory'),
+            t('admin.pedagogy.table.movement'),
+            t('admin.pedagogy.table.musicality'),
+            t('admin.pedagogy.table.head.last_eval'),
+            `${t('admin.pedagogy.table.grad_cost')} (${language === 'pt' ? 'R$' : '$'})`
+        ];
         const rows: string[] = [];
 
         professorsData.forEach(prof => {
@@ -1026,7 +1083,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         const mm = String(now.getMonth() + 1).padStart(2, '0');
         const yyyy = now.getFullYear();
 
-        link.setAttribute("download", `relatorio_pedagogico_${dd}-${mm}-${yyyy}.csv`);
+        link.setAttribute("download", `${t('admin.pedagogy.report_filename')}_${dd}-${mm}-${yyyy}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1124,7 +1181,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleGenerateMonthlyPayments = async () => {
-        if (!confirm('Deseja gerar as mensalidades deste mês para todos os alunos ativos?\n\nIsso criará registros pendentes de R$ 50,00 para quem ainda não tem mensalidade gerada para o mês atual.\nVencimento: Dia 10.')) return;
+        if (!confirm(t('admin.finance.gen_confirm'))) return;
 
         const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const currentMonthIndex = new Date().getMonth();
@@ -1192,7 +1249,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     createdCount++;
                 }
             }
-            alert(`Processo concluído!\nForam geradas ${createdCount} novas mensalidades para ${targetMonth}.`);
+            alert(t('admin.finance.gen_success', { count: createdCount, month: targetMonth }));
         } catch (error) {
             console.error(error);
             alert('Erro ao gerar mensalidades. Verifique o console.');
@@ -1209,12 +1266,12 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // Delete handlers for Finance tab
     const handleDeletePayment = async (paymentId: string) => {
-        if (!confirm('Tem certeza que deseja excluir este pagamento? Esta ação não pode ser desfeita.')) return;
+        if (!confirm(t('common.delete_confirm'))) return;
         try {
             const { error } = await supabase.from('monthly_payments').delete().eq('id', paymentId);
             if (error) throw error;
             onNotifyAdmin(`Excluiu pagamento ID: ${paymentId}`, user);
-            alert('Pagamento excluído com sucesso!');
+            alert(t('common.success_delete'));
         } catch (err: any) {
             console.error('Error deleting payment:', err);
             alert('Erro ao excluir pagamento: ' + err.message);
@@ -1257,12 +1314,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleDeleteUniformOrder = async (orderId: string) => {
-        if (!confirm('Tem certeza que deseja excluir este pedido de uniforme? Esta ação não pode ser desfeita.')) return;
+        if (!confirm(t('common.delete_confirm'))) return;
         try {
             const { error } = await supabase.from('uniform_orders').delete().eq('id', orderId);
             if (error) throw error;
             onNotifyAdmin(`Excluiu pedido de uniforme ID: ${orderId}`, user);
-            alert('Pedido de uniforme excluído com sucesso!');
+            alert(t('common.success_delete'));
         } catch (err: any) {
             console.error('Error deleting uniform order:', err);
             alert('Erro ao excluir pedido de uniforme: ' + err.message);
@@ -1270,12 +1327,12 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleDeleteEventRegistration = async (registrationId: string) => {
-        if (!confirm('Tem certeza que deseja excluir este registro de evento? Esta ação não pode ser desfeita.')) return;
+        if (!confirm(t('common.delete_confirm'))) return;
         try {
             const { error } = await supabase.from('event_registrations').delete().eq('id', registrationId);
             if (error) throw error;
             onNotifyAdmin(`Excluiu registro de evento ID: ${registrationId}`, user);
-            alert('Registro de evento excluído com sucesso!');
+            alert(t('common.success_delete'));
         } catch (err: any) {
             console.error('Error deleting event registration:', err);
             alert('Erro ao excluir registro de evento: ' + err.message);
@@ -1442,7 +1499,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     const handleWhatsApp = (phone?: string) => {
         if (!phone) {
-            alert('Telefone não cadastrado.');
+            alert(t('admin.users.phone_not_found'));
             return;
         }
         window.open(`https://wa.me/${phone}`, '_blank');
@@ -2540,7 +2597,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             <div className="bg-gradient-to-r from-red-900 to-stone-900 p-4 sm:p-8 rounded-2xl border border-red-900/50 shadow-2xl relative overflow-hidden">
                 <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4">
 
-                    <div className="relative group cursor-pointer shrink-0" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title="Clique para alterar a foto">
+                    <div className="relative group cursor-pointer shrink-0" onClick={() => !uploadingPhoto && photoInputRef.current?.click()} title={t('admin.dash.photo_change')}>
                         <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-stone-700 flex items-center justify-center border-4 border-white/10 overflow-hidden shadow-lg relative">
                             {user.photo_url ? (
                                 <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
@@ -2566,9 +2623,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="text-center sm:text-left">
                         <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-2">
                             <Shield className="text-red-500 shrink-0" size={22} />
-                            Painel do Admin
+                            {t('admin.dash.title')}
                         </h1>
-                        <p className="text-red-200 mt-1 text-sm">Olá, {user.nickname || user.first_name || user.name}!</p>
+                        <p className="text-red-200 mt-1 text-sm">{t('admin.dash.welcome')} {user.nickname || user.first_name || user.name}!</p>
                     </div>
                 </div>
                 <div className="absolute right-0 top-0 w-64 h-64 bg-red-600 rounded-full filter blur-[100px] opacity-20 transform translate-x-1/2 -translate-y-1/2"></div>
@@ -2583,10 +2640,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <AlertCircle size={64} />
                             </div>
                             <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter">
-                                Aviso de Inadimplência
+                                {t('admin.dash.overdue_title')}
                             </h3>
                             <p className="text-stone-300 mb-8 leading-relaxed">
-                                Os seguintes usuários possuem <span className="text-orange-400 font-bold">3 ou mais mensalidades atrasadas</span>. Verifique a situação financeira:
+                                {t('admin.dash.overdue_msg')}
                             </p>
 
                             <div className="w-full max-h-48 overflow-y-auto mb-8 space-y-2 bg-stone-900/50 p-4 rounded-xl border border-stone-700 custom-scrollbar">
@@ -2594,20 +2651,21 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <div key={u.id} className="flex justify-between items-center bg-stone-900 p-3 rounded-lg border border-stone-800 group">
                                         <div className="text-left">
                                             <div className="text-white font-bold">{u.name}</div>
-                                            <div className="text-[10px] text-red-500 font-black uppercase tracking-widest">{u.months} Meses em Aberto</div>
+                                            <div className="text-[10px] text-red-500 font-black uppercase tracking-widest">{u.months} {t('admin.dash.overdue_months')}</div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => handleLiberateUser(u.id)}
                                                 className="px-2 py-1 bg-blue-900/30 text-blue-400 text-[10px] font-bold rounded hover:bg-blue-900/50 transition-colors"
+                                                title={t('admin.dash.overdue_liberate')}
                                             >
-                                                Liberar
+                                                {t('admin.dash.overdue_liberate')}
                                             </button>
                                             <button
                                                 onClick={() => handleBlockUser(u.id)}
                                                 className="px-2 py-1 bg-red-900/30 text-red-400 text-[10px] font-bold rounded hover:bg-red-900/50 transition-colors"
                                             >
-                                                Bloquear
+                                                {t('admin.dash.overdue_block_btn')}
                                             </button>
                                         </div>
                                     </div>
@@ -2615,7 +2673,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             </div>
 
                             <Button fullWidth onClick={() => setOverdueSummary([])} className="bg-orange-600 hover:bg-orange-500 font-black h-14 text-lg">
-                                Entendido
+                                {t('admin.dash.overdue_understood')}
                             </Button>
                         </div>
                     </div>
@@ -2629,7 +2687,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     {beltColors.pontaColor && (
                         <div className="absolute left-0 bottom-0 w-2 h-3 rounded-b" style={{ background: beltColors.pontaColor }}></div>
                     )}
-                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Graduação Atual</p>
+                    <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">{t('admin.dash.belt_current')}</p>
                     <p className="text-2xl font-bold text-white flex items-center justify-center gap-2">
                         <Award className="text-orange-500" size={24} />
                         {user.belt || 'Cordel Cinza'}
@@ -2651,17 +2709,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                     return (
                         <div className="w-full max-w-sm bg-green-900/20 rounded-lg p-6 border border-green-900/50 flex flex-col items-center text-center">
                             <p className="text-xs text-green-400 uppercase tracking-wider font-bold mb-2 flex items-center gap-1">
-                                <GraduationCap size={16} /> Próxima Avaliação
+                                <GraduationCap size={16} /> {t('admin.dash.next_eval')}
                             </p>
                             <div className="flex flex-col items-center gap-2">
                                 {remainingValue > 0 ? (
                                     <>
-                                        <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
+                                        <p className="text-sm text-stone-400">{t('admin.dash.remaining_value')}</p>
                                         <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
                                         <div className="flex gap-2 text-xs">
-                                            <span className="text-green-400">{paidInstallments.length} pagas</span>
+                                            <span className="text-green-400">{paidInstallments.length} {t('admin.dash.paid_installments')}</span>
                                             <span className="text-stone-600">|</span>
-                                            <span className="text-orange-400">{pendingInstallments.length} pendentes</span>
+                                            <span className="text-orange-400">{pendingInstallments.length} {t('admin.dash.pending_installments')}</span>
                                         </div>
                                         {/* Progress bar */}
                                         <div className="w-full bg-stone-700 rounded-full h-2 mt-2">
@@ -2675,13 +2733,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <>
                                         <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
                                         {totalPaid > 0 && (
-                                            <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
+                                            <span className="text-xs text-green-400">✓ {t('admin.dash.paid_off')}</span>
                                         )}
                                     </>
                                 )}
                                 {user.nextEvaluationDate && (
                                     <span className="text-sm text-stone-400 bg-stone-900/50 px-3 py-1 rounded-full mt-2">
-                                        Data: <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
+                                        {t('admin.dash.date')} <span className="text-green-400">{user.nextEvaluationDate.split('-').reverse().join('/')}</span>
                                     </span>
                                 )}
                             </div>
@@ -2696,7 +2754,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     onClick={() => setActiveTab('overview')}
                     className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${activeTab === 'overview' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
-                    {t('admin.tab.overview')}
+                    {t('admin.tabs.overview')}
                 </button>
                 <button
                     onClick={() => setActiveTab('events')}
@@ -2866,7 +2924,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                 <CalendarPlus className="text-orange-500" />
-                                Gerenciar Eventos
+                                {t('admin.events.manage_events')}
                             </h3>
                             <button
                                 onClick={() => {
@@ -2877,22 +2935,22 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 className="text-sm bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
                             >
                                 {showEventForm && !editingId ? <X size={16} /> : <Plus size={16} />}
-                                {showEventForm && !editingId ? 'Fechar' : 'Novo Evento'}
+                                {showEventForm && !editingId ? t('common.close') : t('admin.events.new')}
                             </button>
                         </div>
 
                         {showEventForm && (
                             <form onSubmit={handleSaveEvent} className="bg-stone-900 p-4 rounded-lg mb-6 border border-stone-700 border-l-4 border-l-orange-500">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="text-white font-bold">{editingId ? 'Editar Evento' : 'Criar Novo Evento'}</h4>
+                                    <h4 className="text-white font-bold">{editingId ? t('admin.events.edit_title') : t('admin.events.create_title')}</h4>
                                     {editingId && (
-                                        <button type="button" onClick={handleCancelEdit} className="text-xs text-stone-400 hover:text-white">Cancelar Edição</button>
+                                        <button type="button" onClick={handleCancelEdit} className="text-xs text-stone-400 hover:text-white">{t('admin.events.cancel_edit')}</button>
                                     )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     <div>
-                                        <label className="block text-sm text-stone-400 mb-1">Título</label>
+                                        <label className="block text-sm text-stone-400 mb-1">{t('admin.events.field_title')}</label>
                                         <input
                                             type="text"
                                             value={eventFormData.title}
@@ -2902,7 +2960,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-stone-400 mb-1">Data</label>
+                                        <label className="block text-sm text-stone-400 mb-1">{t('admin.events.field_date')}</label>
                                         <input
                                             type="date"
                                             value={eventFormData.date}
@@ -2912,7 +2970,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-stone-400 mb-1">Horário (Opcional)</label>
+                                        <label className="block text-sm text-stone-400 mb-1">{t('admin.events.field_time')}</label>
                                         <input
                                             type="time"
                                             value={eventFormData.event_time}
@@ -2921,20 +2979,20 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-stone-400 block mb-1">Valor do Evento (R$)</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('admin.events.field_price')}</label>
                                         <input
                                             type="number"
                                             value={eventFormData.price}
                                             onChange={e => setEventFormData({ ...eventFormData, price: e.target.value })}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
-                                            placeholder="Ex: 50.00"
+                                            placeholder={t('admin.events.field_price_ph')}
                                             min="0"
                                             step="0.01"
                                         />
-                                        <p className="text-[10px] text-stone-500 mt-1">* Se for gratuito, deixe em branco ou 0.</p>
+                                        <p className="text-[10px] text-stone-500 mt-1">{t('admin.events.field_price_hint')}</p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="text-xs text-stone-400 block mb-1">Descrição</label>
+                                        <label className="text-xs text-stone-400 block mb-1">{t('admin.events.field_desc')}</label>
                                         <textarea
                                             value={eventFormData.description}
                                             onChange={e => setEventFormData({ ...eventFormData, description: e.target.value })}
@@ -2944,8 +3002,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-2">
-                                    <button type="button" onClick={handleCancelEdit} className="text-stone-400 px-4 py-2 hover:text-white">Cancelar</button>
-                                    <Button type="submit">{editingId ? 'Atualizar Evento' : 'Salvar Evento'}</Button>
+                                    <button type="button" onClick={handleCancelEdit} className="text-stone-400 px-4 py-2 hover:text-white">{t('common.cancel')}</button>
+                                    <Button type="submit">{editingId ? t('admin.events.update') : t('admin.events.save')}</Button>
                                 </div>
                             </form>
                         )}
@@ -2980,7 +3038,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </div>
                                         </div>
                                         <p className="text-orange-400 text-sm mb-1">
-                                            {event.date.split('-').reverse().join('/')} {displayTime && <span className="text-stone-400 ml-2">às {displayTime}</span>}
+                                            {event.date.split('-').reverse().join('/')} {displayTime && <span className="text-stone-400 ml-2">{t('admin.events.at')} {displayTime}</span>}
                                         </p>
                                         {event.price ? (
                                             <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 mb-2 inline-block">
@@ -2988,7 +3046,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </span>
                                         ) : (
                                             <span className="text-stone-500 text-xs font-bold bg-stone-800 px-2 py-0.5 rounded mb-2 inline-block">
-                                                Gratuito
+                                                {t('admin.events.free')}
                                             </span>
                                         )}
                                         <p className="text-stone-400 text-xs mt-2">{displayDesc}</p>
@@ -3000,7 +3058,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 className="flex items-center gap-2 text-stone-400 hover:text-white text-sm font-medium"
                                             >
                                                 <Users size={16} />
-                                                Participantes ({eventRegistrations.filter(reg => reg.event_id === event.id).length})
+                                                {t('admin.events.participants')} ({eventRegistrations.filter(reg => reg.event_id === event.id).length})
                                                 {expandedEventParticipants === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                             </button>
                                             {expandedEventParticipants === event.id && (
@@ -3013,12 +3071,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     reg.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
                                                                         'bg-red-900/30 text-red-400'
                                                                     }`}>
-                                                                    {reg.status === 'paid' ? 'Pago' : reg.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                                                                    {reg.status === 'paid' ? t('admin.status.paid') : reg.status === 'pending' ? t('admin.status.pending') : t('admin.status.cancelled')}
                                                                 </span>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <p className="text-stone-500 text-xs italic">Nenhum participante registrado ainda.</p>
+                                                        <p className="text-stone-500 text-xs italic">{t('admin.events.no_participants')}</p>
                                                     )}
                                                 </div>
                                             )}
@@ -3027,7 +3085,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 );
                             })}
                             {events.length === 0 && (
-                                <div className="text-stone-500 text-sm col-span-full text-center py-4">Nenhum evento ativo.</div>
+                                <div className="text-stone-500 text-sm col-span-full text-center py-4">{t('admin.events.active_none')}</div>
                             )}
                         </div>
                     </div>
@@ -3045,14 +3103,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
                                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                         <Settings className="text-orange-500" />
-                                        Configurar Valores de Graduação
+                                        {t('admin.finance.belt_config_title')}
                                     </h3>
                                     <button onClick={() => setShowBeltConfig(false)} className="text-stone-400 hover:text-white"><X size={24} /></button>
                                 </div>
 
                                 <div className="overflow-y-auto flex-1 pr-2 space-y-2">
                                     <p className="text-sm text-stone-400 mb-4 bg-stone-900/50 p-3 rounded">
-                                        Defina o valor base para cada cordel. Este valor servirá de referência para os custos de troca de cordel.
+                                        {t('admin.finance.belt_config_desc')}
                                     </p>
                                     <div className="grid gap-2">
                                         {ALL_BELTS.map((belt) => (
@@ -3075,7 +3133,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                 <div className="mt-6 pt-4 border-t border-stone-700 flex justify-end">
                                     <Button onClick={() => setShowBeltConfig(false)}>
-                                        <Save size={18} /> Salvar Alterações
+                                        <Save size={18} /> {t('admin.finance.belt_save')}
                                     </Button>
                                 </div>
                             </div>
@@ -3091,17 +3149,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
                                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                         <Edit2 className="text-blue-500" />
-                                        Editar Pagamento
+                                        {t('admin.finance.edit_payment')}
                                     </h3>
                                     <button onClick={() => setShowEditPaymentModal(false)} className="text-stone-400 hover:text-white"><X size={24} /></button>
                                 </div>
                                 <div className="mb-4 bg-stone-900/50 p-4 rounded-lg border border-stone-700/50">
-                                    <p className="text-xs text-stone-500 uppercase font-bold mb-1">Aluno</p>
+                                    <p className="text-xs text-stone-500 uppercase font-bold mb-1">{t('admin.finance.student')}</p>
                                     <p className="text-white font-bold">{editingPayment.student_name}</p>
                                 </div>
                                 <form onSubmit={handleUpdatePayment} className="space-y-4">
                                     <div>
-                                        <label htmlFor="editMonth" className="block text-sm text-stone-400 mb-1">Mês de Referência</label>
+                                        <label htmlFor="editMonth" className="block text-sm text-stone-400 mb-1">{t('admin.finance.ref_month')}</label>
                                         <input
                                             type="text"
                                             id="editMonth"
@@ -3112,7 +3170,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="editDueDate" className="block text-sm text-stone-400 mb-1">Data de Vencimento</label>
+                                        <label htmlFor="editDueDate" className="block text-sm text-stone-400 mb-1">{t('admin.finance.due_date')}</label>
                                         <input
                                             type="date"
                                             id="editDueDate"
@@ -3123,7 +3181,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="editAmount" className="block text-sm text-stone-400 mb-1">Valor (R$)</label>
+                                        <label htmlFor="editAmount" className="block text-sm text-stone-400 mb-1">{t('admin.finance.amount')}</label>
                                         <input
                                             type="number"
                                             id="editAmount"
@@ -3136,7 +3194,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="editStatus" className="block text-sm text-stone-400 mb-1">Status</label>
+                                        <label htmlFor="editStatus" className="block text-sm text-stone-400 mb-1">{t('admin.finance.payment_status')}</label>
                                         <select
                                             id="editStatus"
                                             value={editPaymentForm.status}
@@ -3144,15 +3202,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                             required
                                         >
-                                            <option value="pending">Pendente</option>
-                                            <option value="paid">Pago</option>
-                                            <option value="overdue">Atrasado</option>
+                                            <option value="pending">{t('status.pending')}</option>
+                                            <option value="paid">{t('status.paid')}</option>
+                                            <option value="overdue">{t('status.overdue')}</option>
                                         </select>
                                     </div>
                                     <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                                        <button type="button" onClick={() => setShowEditPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                                        <button type="button" onClick={() => setShowEditPaymentModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">{t('common.cancel')}</button>
                                         <Button type="submit">
-                                            <Save size={18} /> Salvar Alterações
+                                            <Save size={18} /> {t('admin.finance.belt_save')}
                                         </Button>
                                     </div>
                                 </form>
@@ -3165,21 +3223,21 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
                             <Shirt className="text-orange-500" />
-                            Pedidos de Uniforme
-                            {pendingUniformOrders.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingUniformOrders.length} pendentes</span>}
+                            {t('admin.finance.uniform_orders')}
+                            {pendingUniformOrders.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingUniformOrders.length} {t('admin.finance.pending_orders')}</span>}
                         </h2>
 
                         <div className="overflow-x-auto w-full">
                             <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Solicitante</th>
-                                        <th className="p-4">Data</th>
-                                        <th className="p-4">Item</th>
-                                        <th className="p-4">Detalhes</th>
-                                        <th className="p-4">Valor</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4 text-right">Ações</th>
+                                        <th className="p-4">{t('admin.finance.table.user')}</th>
+                                        <th className="p-4">{t('admin.finance.table.date')}</th>
+                                        <th className="p-4">{t('admin.finance.table.item')}</th>
+                                        <th className="p-4">{t('admin.finance.table.details')}</th>
+                                        <th className="p-4">{t('admin.finance.table.value')}</th>
+                                        <th className="p-4">{t('admin.finance.table.status')}</th>
+                                        <th className="p-4 text-right">{t('admin.finance.table.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-stone-700 text-sm">
@@ -3192,14 +3250,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <td className="p-4 text-stone-300">{order.date}</td>
                                             <td className="p-4 text-white font-medium">{order.item}</td>
                                             <td className="p-4 text-stone-400 text-xs">
-                                                {order.shirt_size && <div>Blusa: {order.shirt_size}</div>}
-                                                {order.pants_size && <div>Calça: {order.pants_size}</div>}
+                                                {order.shirt_size && <div>{t('admin.finance.shirt')}: {order.shirt_size}</div>}
+                                                {order.pants_size && <div>{t('admin.finance.pants')}: {order.pants_size}</div>}
                                             </td>
                                             <td className="p-4 text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</td>
                                             <td className="p-4">
-                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente Pagamento</span>}
-                                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">Pago / Preparar</span>}
-                                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Entregue</span>}
+                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('admin.finance.status.pending_pay')}</span>}
+                                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('admin.finance.status.ready_prep')}</span>}
+                                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('admin.finance.status.delivered')}</span>}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end gap-2">
@@ -3208,27 +3266,27 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             className="text-xs px-2 py-1 h-auto"
                                                             variant="secondary"
                                                             onClick={() => onUpdateOrderStatus(order.id, 'ready')}
-                                                            title="Confirmar Pagamento e Disponibilidade"
+                                                            title={t('admin.finance.btn.confirm_pay')}
                                                         >
-                                                            <DollarSign size={14} className="mr-1" /> Confirmar Pagto
+                                                            <DollarSign size={14} className="mr-1" /> {t('admin.finance.btn.confirm_pay')}
                                                         </Button>
                                                     )}
                                                     {order.status === 'ready' && (
                                                         <Button
                                                             className="text-xs px-2 py-1 h-auto"
                                                             onClick={() => onUpdateOrderStatus(order.id, 'delivered')}
-                                                            title="Marcar como Entregue ao Aluno"
+                                                            title={t('admin.finance.btn.deliver')}
                                                         >
-                                                            <Package size={14} className="mr-1" /> Entregar
+                                                            <Package size={14} className="mr-1" /> {t('admin.finance.btn.deliver')}
                                                         </Button>
                                                     )}
                                                     {order.status === 'delivered' && (
-                                                        <span className="text-stone-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> Finalizado</span>
+                                                        <span className="text-stone-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> {t('admin.finance.status.finished')}</span>
                                                     )}
                                                     <button
                                                         onClick={() => handleDeleteUniformOrder(order.id)}
                                                         className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                        title="Excluir pedido"
+                                                        title={t('admin.finance.delete_order_title')}
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -3238,7 +3296,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     ))}
                                     {uniformOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-stone-500 italic">Nenhum pedido de uniforme registrado.</td>
+                                            <td colSpan={7} className="p-8 text-center text-stone-500 italic">{t('admin.finance.no_uniform_orders')}</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -3251,20 +3309,20 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
                             <Ticket className="text-purple-500" />
-                            Registros de Eventos
-                            {pendingEventRegistrations.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingEventRegistrations.length} pendentes</span>}
+                            {t('admin.finance.event_regs')}
+                            {pendingEventRegistrations.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{pendingEventRegistrations.length} {t('admin.finance.pending_orders')}</span>}
                         </h2>
 
                         <div className="overflow-x-auto w-full">
                             <table className="w-full text-left border-collapse min-w-[750px]">
                                 <thead>
                                     <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                        <th className="p-4">Participante</th>
-                                        <th className="p-4">Evento</th>
-                                        <th className="p-4">Valor Pago</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4">Comprovante</th>
-                                        <th className="p-4 text-right">Ações</th>
+                                        <th className="p-4">{t('admin.finance.table.participant')}</th>
+                                        <th className="p-4">{t('admin.finance.table.event')}</th>
+                                        <th className="p-4">{t('admin.finance.table.paid_amount')}</th>
+                                        <th className="p-4">{t('admin.finance.table.status')}</th>
+                                        <th className="p-4">{t('admin.finance.table.proof')}</th>
+                                        <th className="p-4 text-right">{t('admin.finance.table.action')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-stone-700 text-sm">
@@ -3272,25 +3330,25 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <tr key={reg.id} className={`hover:bg-stone-700/30 ${reg.status === 'pending' ? 'bg-purple-900/10' : ''}`}>
                                             <td className="p-4">
                                                 <div className="font-bold text-white">{reg.user_name}</div>
-                                                <div className="text-xs text-stone-500">Registrado em: {new Date(reg.registered_at).toLocaleDateString('pt-BR')}</div>
+                                                <div className="text-xs text-stone-500">{t('admin.finance.reg_at')}: {new Date(reg.registered_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'es-AR')}</div>
                                             </td>
                                             <td className="p-4 text-white font-medium">{reg.event_title}</td>
                                             <td className="p-4 text-green-400 font-bold">R$ {reg.amount_paid.toFixed(2).replace('.', ',')}</td>
                                             <td className="p-4">
-                                                {reg.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente Pagamento</span>}
-                                                {reg.status === 'paid' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Pago</span>}
-                                                {reg.status === 'cancelled' && <span className="px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs border border-red-900/50">Cancelado</span>}
+                                                {reg.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('admin.finance.status.pending_pay')}</span>}
+                                                {reg.status === 'paid' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('status.paid')}</span>}
+                                                {reg.status === 'cancelled' && <span className="px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs border border-red-900/50">{t('status.cancelled')}</span>}
                                             </td>
                                             <td className="p-4"> {/* NEW: Comprovante Column */}
                                                 {reg.proof_url ? (
                                                     <button
-                                                        onClick={() => handleViewEventRegistrationProof(reg.proof_url!, reg.event_title + ' Comprovante')}
+                                                        onClick={() => handleViewEventRegistrationProof(reg.proof_url!, reg.event_title + ' ' + t('admin.finance.table.proof'))}
                                                         className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                                                     >
-                                                        <Eye size={14} /> Ver Comprovante
+                                                        <Eye size={14} /> {t('admin.finance.view_proof')}
                                                     </button>
                                                 ) : (
-                                                    <span className="text-stone-500 text-xs italic">Nenhum</span>
+                                                    <span className="text-stone-500 text-xs italic">{t('admin.finance.no_proof')}</span>
                                                 )}
                                             </td>
                                             <td className="p-4 text-right">
@@ -3300,19 +3358,19 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             className="text-xs px-2 py-1 h-auto"
                                                             variant="secondary"
                                                             onClick={() => handleUpdateEventRegistration(reg.id, 'paid')}
-                                                            title="Confirmar Pagamento"
+                                                            title={t('admin.finance.btn.confirm_pay')}
                                                         >
-                                                            <DollarSign size={14} className="mr-1" /> Confirmar Pagto
+                                                            <DollarSign size={14} className="mr-1" /> {t('admin.finance.btn.confirm_pay')}
                                                         </Button>
                                                     )}
                                                     {reg.status === 'paid' && (
-                                                        <span className="text-stone-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> Finalizado</span>
+                                                        <span className="text-stone-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> {t('admin.finance.status.finished')}</span>
                                                     )}
                                                     {reg.status !== 'cancelled' && (
                                                         <button
                                                             onClick={() => handleUpdateEventRegistration(reg.id, 'cancelled')}
                                                             className="p-2 bg-stone-900 hover:bg-stone-700 text-stone-400 hover:text-orange-500 rounded transition-colors"
-                                                            title="Cancelar Registro"
+                                                            title={t('admin.finance.btn.cancel_reg_title')}
                                                         >
                                                             <X size={16} />
                                                         </button>
@@ -3320,7 +3378,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     <button
                                                         onClick={() => handleDeleteEventRegistration(reg.id)}
                                                         className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                        title="Excluir registro"
+                                                        title={t('admin.finance.delete_reg_title')}
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -3330,7 +3388,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     ))}
                                     {eventRegistrations.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="p-8 text-center text-stone-500 italic">Nenhum registro de evento.</td> {/* Updated colspan */}
+                                            <td colSpan={6} className="p-8 text-center text-stone-500 italic">{t('admin.finance.no_event_regs')}</td> {/* Updated colspan */}
                                         </tr>
                                     )}
                                 </tbody>
@@ -3346,22 +3404,22 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <DollarSign size={28} />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white tracking-tight">Controle de Mensalidades</h2>
-                                        <p className="text-stone-400 text-sm">Vencimento sugerido: Dia 10 de cada mês</p>
+                                        <h2 className="text-2xl font-bold text-white tracking-tight">{t('admin.finance.control_title')}</h2>
+                                        <p className="text-stone-400 text-sm">{t('admin.finance.suggested_due')}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                                     <div className="bg-stone-900/50 px-4 py-2 rounded-xl border border-stone-700 flex flex-col justify-center min-w-[150px]">
-                                        <span className="text-stone-500 text-[10px] uppercase font-black tracking-wider">A Receber</span>
-                                        <p className="text-lg font-black text-red-500 leading-none">R$ {pendingMonthlyPayments.toFixed(2).replace('.', ',')}</p>
+                                        <span className="text-stone-500 text-[10px] uppercase font-black tracking-wider">{t('admin.finance.to_receive')}</span>
+                                        <p className="text-lg font-black text-red-500 leading-none">R$ {pendingMonthlyPayments.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</p>
                                     </div>
 
                                     <div className="flex items-center gap-2 ml-auto lg:ml-0">
                                         <button
                                             onClick={() => setShowBeltConfig(true)}
                                             className="p-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg border border-stone-600 transition-all shadow-md"
-                                            title="Configurar Valores de Graduação"
+                                            title={t('admin.finance.belt_config_title')}
                                         >
                                             <Settings size={20} />
                                         </button>
@@ -3370,13 +3428,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             variant="secondary"
                                             className="border border-green-900/50 text-green-400 hover:bg-green-900/20 px-4 py-2 text-sm h-11"
                                         >
-                                            <CalendarCheck size={16} /> <span className="hidden sm:inline">Gerar Mês</span>
+                                            <CalendarCheck size={16} /> <span className="hidden sm:inline">{t('admin.finance.btn.gen_month')}</span>
                                         </Button>
                                         <Button
                                             onClick={() => setShowAddPaymentModal(true)}
                                             className="px-4 py-2 text-sm font-bold h-11 shadow-lg shadow-orange-900/20"
                                         >
-                                            <Plus size={18} /> Adicionar Pagamento
+                                            <Plus size={18} /> {t('admin.finance.btn.add_payment')}
                                         </Button>
                                     </div>
                                 </div>
@@ -3396,7 +3454,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             : 'bg-stone-900 text-stone-500 hover:bg-stone-700'
                                             }`}
                                     >
-                                        {status === 'all' ? 'Todos' : status === 'paid' ? 'Pagos' : status === 'pending' ? 'Pendentes' : 'Atrasados'}
+                                        {t(`admin.finance.filter.${status}` as any)}
                                     </button>
                                 ))}
                             </div>
@@ -3406,13 +3464,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <table className="w-full text-left border-collapse min-w-[800px]">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4">Aluno</th>
-                                            <th className="p-4">Mês Ref.</th>
-                                            <th className="p-4">Vencimento</th>
-                                            <th className="p-4">Valor</th>
-                                            <th className="p-4">Status</th>
-                                            <th className="p-4">Comprovante</th>
-                                            <th className="p-4 text-right">Ação</th>
+                                            <th className="p-4">{t('admin.finance.student')}</th>
+                                            <th className="p-4">{t('admin.finance.table.month_ref')}</th>
+                                            <th className="p-4">{t('admin.finance.table.due')}</th>
+                                            <th className="p-4">{t('admin.finance.table.value')}</th>
+                                            <th className="p-4">{t('admin.finance.table.status')}</th>
+                                            <th className="p-4">{t('admin.finance.table.proof_col')}</th>
+                                            <th className="p-4 text-right">{t('admin.finance.table.action')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-stone-700 text-sm">
@@ -3421,28 +3479,28 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <td className="p-4 font-medium text-white">{payment.student_name}</td>
                                                 <td className="p-4 text-stone-300">{payment.month}</td>
                                                 <td className="p-4 text-stone-300">{payment.due_date.split('-').reverse().join('/')}</td>
-                                                <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', ',')}</td>
+                                                <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</td>
                                                 <td className="p-4">
                                                     {payment.status === 'paid' && (
                                                         <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                                            <CheckCircle size={12} /> Pago em {payment.paid_at}
+                                                            <CheckCircle size={12} /> {t('admin.finance.paid_on')} {payment.paid_at}
                                                         </span>
                                                     )}
                                                     {payment.status === 'pending' && (
                                                         <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
-                                                            <Clock size={12} /> Pendente
+                                                            <Clock size={12} /> {t('status.pending')}
                                                         </span>
                                                     )}
                                                     {payment.status === 'overdue' && (
                                                         <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
-                                                            <AlertCircle size={12} /> Atrasado
+                                                            <AlertCircle size={12} /> {t('status.overdue')}
                                                         </span>
                                                     )}
                                                     {/* Upload Proof Button */}
                                                     <div className="mt-2">
                                                         <label className="cursor-pointer inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300">
                                                             <UploadCloud size={12} />
-                                                            {payment.proof_url ? 'Trocar Comprovante' : 'Enviar Comprovante'}
+                                                            {payment.proof_url ? t('admin.finance.change_proof') : t('admin.finance.upload_proof')}
                                                             <input
                                                                 type="file"
                                                                 className="hidden"
@@ -3462,9 +3520,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                                 proof_url: uploadData.path,
                                                                                 proof_name: file.name
                                                                             });
-                                                                            alert('Comprovante enviado!');
+                                                                            alert(t('admin.finance.proof_uploaded'));
                                                                         } catch (err: any) {
-                                                                            alert('Erro upload: ' + err.message);
+                                                                            alert(t('admin.finance.upload_error') + ': ' + err.message);
                                                                         }
                                                                     }
                                                                 }}
@@ -3475,13 +3533,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <td className="p-4">
                                                     {payment.proof_url ? (
                                                         <button
-                                                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || 'Comprovante')}
+                                                            onClick={() => handleViewPaymentProof(payment.proof_url!, payment.proof_name || t('admin.finance.table.proof_col'))}
                                                             className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
                                                         >
-                                                            <FileUp size={14} /> Ver Comprovante
+                                                            <FileUp size={14} /> {t('admin.finance.view_proof')}
                                                         </button>
                                                     ) : (
-                                                        <span className="text-stone-500 text-xs italic">Nenhum</span>
+                                                        <span className="text-stone-500 text-xs italic">{t('admin.finance.no_proof_yet')}</span>
                                                     )}
                                                 </td>
                                                 <td className="p-4 text-right">
@@ -3491,20 +3549,20 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 onClick={() => handleMarkAsPaid(payment.id)}
                                                                 className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
                                                             >
-                                                                Dar Baixa
+                                                                {t('admin.finance.btn.settle')}
                                                             </button>
                                                         )}
                                                         <button
                                                             onClick={() => handleOpenEditPayment(payment)}
                                                             className="p-1.5 rounded bg-stone-700 text-stone-300 hover:bg-stone-600 transition-colors"
-                                                            title="Editar pagamento"
+                                                            title={t('admin.finance.edit_payment')}
                                                         >
                                                             <Edit2 size={14} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeletePayment(payment.id)}
                                                             className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                            title="Excluir pagamento"
+                                                            title={t('admin.finance.delete_payment_title')}
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -3528,7 +3586,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div className="p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-500">
                                     <GraduationCap size={28} />
                                 </div>
-                                <h2 className="text-2xl font-bold text-white tracking-tight">Pagamentos de Avaliações</h2>
+                                <h2 className="text-2xl font-bold text-white tracking-tight">{t('admin.finance.eval_payments')}</h2>
                             </div>
                         </div>
 
@@ -3537,12 +3595,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <table className="w-full text-left border-collapse min-w-[700px]">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4">Aluno</th>
-                                            <th className="p-4">Identificador</th>
-                                            <th className="p-4">Vencimento</th>
-                                            <th className="p-4">Valor</th>
-                                            <th className="p-4">Status</th>
-                                            <th className="p-4 text-right">Ação</th>
+                                            <th className="p-4">{t('admin.finance.student')}</th>
+                                            <th className="p-4">{t('admin.finance.table.id')}</th>
+                                            <th className="p-4">{t('admin.finance.table.due')}</th>
+                                            <th className="p-4">{t('admin.finance.table.value')}</th>
+                                            <th className="p-4">{t('admin.finance.table.status')}</th>
+                                            <th className="p-4 text-right">{t('admin.finance.table.action')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-stone-700 text-sm">
@@ -3567,25 +3625,25 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <td className="p-4 text-stone-300">
                                                             {nextPending.month}
                                                             <div className="text-[10px] text-stone-500">
-                                                                {studentPayments.filter(p => p.status === 'paid').length}/{studentPayments.length} pagas
+                                                                {studentPayments.filter(p => p.status === 'paid').length}/{studentPayments.length} {t('admin.finance.paid_installments')}
                                                             </div>
                                                         </td>
                                                         <td className="p-4 text-stone-300">{nextPending.due_date.split('-').reverse().join('/')}</td>
-                                                        <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {nextPending.amount.toFixed(2).replace('.', ',')}</td>
+                                                        <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {nextPending.amount.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</td>
                                                         <td className="p-4">
                                                             {nextPending.status === 'paid' && (
                                                                 <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
-                                                                    <CheckCircle size={12} /> Pago
+                                                                    <CheckCircle size={12} /> {t('status.paid')}
                                                                 </span>
                                                             )}
                                                             {nextPending.status === 'pending' && (
                                                                 <span className="inline-flex items-center gap-1 text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50">
-                                                                    <Clock size={12} /> Próxima: {nextPending.month.split('-')[0]}
+                                                                    <Clock size={12} /> {t('admin.finance.next_installment')}: {nextPending.month.split('-')[0]}
                                                                 </span>
                                                             )}
                                                             {nextPending.status === 'overdue' && (
                                                                 <span className="inline-flex items-center gap-1 text-red-400 bg-red-900/20 px-2 py-1 rounded text-xs font-bold border border-red-900/50">
-                                                                    <AlertCircle size={12} /> Atrasado
+                                                                    <AlertCircle size={12} /> {t('status.overdue')}
                                                                 </span>
                                                             )}
                                                         </td>
@@ -3596,13 +3654,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         onClick={() => handleMarkAsPaid(nextPending.id)}
                                                                         className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded transition-colors"
                                                                     >
-                                                                        Confirmar
+                                                                        {t('admin.finance.btn.settle')}
                                                                     </button>
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleDeletePayment(nextPending.id)}
                                                                     className="p-1.5 rounded bg-red-900/30 text-red-400 hover:bg-red-900/50 transition-colors"
-                                                                    title="Excluir"
+                                                                    title={t('admin.finance.delete_payment_title')}
                                                                 >
                                                                     <Trash2 size={14} />
                                                                 </button>
@@ -3638,7 +3696,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <div className="flex justify-between items-center mb-6 border-b border-stone-700 pb-4">
                                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                             {editingUser ? <Edit2 size={20} className="text-blue-500" /> : <UserPlus size={20} className="text-green-500" />}
-                                            {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+                                            {editingUser ? t('admin.users.modal.edit') : t('admin.users.modal.new')}
                                         </h3>
                                         <button onClick={() => setShowUserModal(false)} className="text-stone-400 hover:text-white"><X size={24} /></button>
                                     </div>
@@ -3646,7 +3704,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <form onSubmit={handleSaveUser} className="overflow-y-auto flex-1 pr-2 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">Nome Completo</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.full_name')}</label>
                                                 <input
                                                     type="text"
                                                     required
@@ -3656,7 +3714,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">Apelido (Capoeira)</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.nickname')}</label>
                                                 <input
                                                     type="text"
                                                     value={userForm.nickname}
@@ -3668,7 +3726,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">WhatsApp</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.whatsapp')}</label>
                                                 <input
                                                     type="text"
                                                     value={userForm.phone}
@@ -3681,19 +3739,19 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">Função (Role)</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.role')}</label>
                                                 <select
                                                     value={userForm.role}
                                                     onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
                                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                                 >
-                                                    <option value="aluno">Aluno</option>
-                                                    <option value="professor">Professor</option>
-                                                    <option value="admin">Admin</option>
+                                                    <option value="aluno">{t('admin.users.modal.role_student')}</option>
+                                                    <option value="professor">{t('admin.users.modal.role_professor')}</option>
+                                                    <option value="admin">{t('admin.users.modal.role_admin')}</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">Data de Nascimento</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.birthdate')}</label>
                                                 <input
                                                     type="date"
                                                     value={userForm.birthDate}
@@ -3704,7 +3762,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Cordel / Graduação</label>
+                                            <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.belt')}</label>
                                             <select
                                                 value={userForm.belt}
                                                 onChange={(e) => setUserForm({ ...userForm, belt: e.target.value })}
@@ -3719,7 +3777,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         {/* Professor Responsável - shown for everyone except 'Anjo de Fogo' */}
                                         {(editingUser?.nickname !== 'Anjo de Fogo' && userForm.nickname !== 'Anjo de Fogo') && (
                                             <div>
-                                                <label className="block text-sm text-stone-400 mb-1">Professor Responsável</label>
+                                                <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.prof_resp')}</label>
                                                 <select
                                                     id="professor_name"
                                                     name="professor_name"
@@ -3727,7 +3785,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     onChange={(e) => setUserForm({ ...userForm, professorName: e.target.value })}
                                                     className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                                 >
-                                                    <option value="">Selecione um professor</option>
+                                                    <option value="">{t('admin.users.modal.select_prof')}</option>
                                                     {managedUsers.filter(u => (u.role === 'professor' || u.role === 'admin') && u.id !== editingUser?.id).map(prof => (
                                                         <option key={prof.id} value={prof.nickname || prof.first_name || prof.name}>
                                                             {prof.nickname ? `${prof.nickname} (${prof.first_name || prof.name})` : prof.first_name || prof.name}
@@ -3738,28 +3796,28 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         )}
 
                                         <div>
-                                            <label className="block text-sm text-stone-400 mb-1">Status da Conta</label>
+                                            <label className="block text-sm text-stone-400 mb-1">{t('admin.users.modal.status')}</label>
                                             <select
                                                 value={userForm.status}
                                                 onChange={(e) => setUserForm({ ...userForm, status: e.target.value as 'active' | 'blocked' })}
                                                 className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white"
                                             >
-                                                <option value="active">Ativo (Acesso Liberado)</option>
-                                                <option value="blocked">Bloqueado (Acesso Negado)</option>
+                                                <option value="active">{t('admin.users.modal.status_active')}</option>
+                                                <option value="blocked">{t('admin.users.modal.status_blocked')}</option>
                                             </select>
                                         </div>
 
                                         {!editingUser && (
                                             <div className="bg-stone-900 p-3 rounded border border-stone-700 text-sm text-stone-400 flex items-center gap-2">
                                                 <Lock size={16} />
-                                                Senha padrão inicial: <span className="text-white font-mono font-bold">123456</span>
+                                                {t('admin.users.modal.pw_hint')} <span className="text-white font-mono font-bold">123456</span>
                                             </div>
                                         )}
 
                                         <div className="pt-4 flex justify-end gap-2 border-t border-stone-700 mt-4">
-                                            <button type="button" onClick={() => setShowUserModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">Cancelar</button>
+                                            <button type="button" onClick={() => setShowUserModal(false)} className="px-4 py-2 text-stone-400 hover:text-white">{t('common.cancel')}</button>
                                             <Button type="submit">
-                                                <Save size={18} /> {editingUser ? 'Atualizar Usuário' : 'Criar Usuário'}
+                                                <Save size={18} /> {editingUser ? t('admin.users.btn.update') : t('admin.users.btn.create')}
                                             </Button>
                                         </div>
                                     </form>
@@ -3773,9 +3831,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div>
                                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                         <Users className="text-pink-500" />
-                                        Gerenciar Usuários
+                                        {t('admin.users.manage_title')}
                                     </h2>
-                                    <p className="text-stone-400 text-sm">Edite ou remova membros da plataforma.</p>
+                                    <p className="text-stone-400 text-sm">{t('admin.users.manage_subtitle')}</p>
                                 </div>
 
                                 <div className="flex items-center gap-2 w-full md:w-auto">
@@ -3783,7 +3841,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <Search className="absolute left-3 top-2.5 text-stone-500" size={16} />
                                         <input
                                             type="text"
-                                            placeholder="Buscar por nome ou email..."
+                                            placeholder={t('admin.users.search_placeholder')}
                                             value={userSearch}
                                             onChange={(e) => setUserSearch(e.target.value)}
                                             className="w-full bg-stone-900 border border-stone-600 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:border-pink-500 outline-none"
@@ -3800,13 +3858,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <table className="w-full text-left border-collapse min-w-[850px]">
                                     <thead>
                                         <tr className="bg-stone-900 text-stone-500 text-xs uppercase border-b border-stone-700">
-                                            <th className="p-4 rounded-tl-lg">Usuário</th>
-                                            <th className="p-4">Função</th>
-                                            <th className="p-4">Contato</th>
-                                            <th className="p-4">Graduação</th>
-                                            <th className="p-4">Próxima Avaliação</th>
-                                            <th className="p-4">Status</th>
-                                            <th className="p-4 rounded-tr-lg text-right">Ações</th>
+                                            <th className="p-4 rounded-tl-lg">{t('admin.users.table.user')}</th>
+                                            <th className="p-4">{t('admin.users.table.role')}</th>
+                                            <th className="p-4">{t('admin.users.table.contact')}</th>
+                                            <th className="p-4">{t('admin.users.table.belt')}</th>
+                                            <th className="p-4">{t('admin.users.table.next_eval')}</th>
+                                            <th className="p-4">{t('admin.users.table.status')}</th>
+                                            <th className="p-4 rounded-tr-lg text-right">{t('admin.users.table.actions')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-stone-700 text-sm">
@@ -3821,10 +3879,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             <div className="flex items-center gap-2">
                                                                 <p className="font-bold text-white">{u.name}</p>
                                                                 {u.status === 'blocked' && (
-                                                                    <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Bloqueado</span>
+                                                                    <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">{t('admin.users.status.blocked_badge')}</span>
                                                                 )}
                                                                 {u.status === 'archived' && (
-                                                                    <span className="bg-stone-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Arquivado</span>
+                                                                    <span className="bg-stone-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">{t('admin.users.status.archived_badge')}</span>
                                                                 )}
                                                             </div>
                                                             {u.nickname && <p className="text-xs text-cyan-400 font-medium italic">{u.nickname}</p>}
@@ -3852,7 +3910,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     {editingGradCostId === u.id ? (
                                                         <div className="flex flex-col gap-2">
                                                             <div className="flex items-center gap-1">
-                                                                <span className="text-[10px] text-stone-400 w-8">Valor:</span>
+                                                                <span className="text-[10px] text-stone-400 w-8">{t('admin.users.eval.value')}</span>
                                                                 <input
                                                                     type="number"
                                                                     value={editingGradCostValue}
@@ -3864,7 +3922,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 />
                                                             </div>
                                                             <div className="flex items-center gap-1">
-                                                                <span className="text-[10px] text-stone-400 w-8">Data:</span>
+                                                                <span className="text-[10px] text-stone-400 w-8">{t('admin.users.eval.date')}</span>
                                                                 <input
                                                                     type="date"
                                                                     value={editingEvaluationDate}
@@ -3876,14 +3934,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 <button
                                                                     onClick={() => handleUpdateEvaluationInfo(u.id)} // Use generic function
                                                                     className="text-green-500 hover:text-green-400 p-1 rounded bg-stone-800 border border-stone-700 hover:bg-stone-700"
-                                                                    title="Salvar"
+                                                                    title={t('common.save')}
                                                                 >
                                                                     <Save size={14} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => { setEditingGradCostId(null); setEditingGradCostValue(''); setEditingEvaluationDate(''); }}
                                                                     className="text-stone-500 hover:text-red-500 p-1 rounded bg-stone-800 border border-stone-700 hover:bg-stone-700"
-                                                                    title="Cancelar"
+                                                                    title={t('common.cancel')}
                                                                 >
                                                                     <X size={14} />
                                                                 </button>
@@ -3892,7 +3950,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     ) : (
                                                         <div className="flex flex-col gap-1 group">
                                                             <p className="font-bold text-white flex items-center gap-1">
-                                                                R$ {(u.graduationCost ?? 0).toFixed(2).replace('.', ',')}
+                                                                {language === 'pt' ? 'R$' : '$'} {(u.graduationCost ?? 0).toFixed(2).replace('.', language === 'pt' ? ',' : '.')}
                                                                 <button
                                                                     onClick={() => {
                                                                         setEditingGradCostId(u.id);
@@ -3937,9 +3995,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         <div className="flex flex-col items-start mt-1 p-1 bg-stone-800 rounded border border-stone-700 w-full">
                                                                             <div className="flex justify-between w-full">
                                                                                 <span className="text-[10px] text-blue-400 font-bold">
-                                                                                    {paidInstallments}/{maxInstallmentsStr} Pagas
+                                                                                    {paidInstallments}/{maxInstallmentsStr} {t('admin.users.eval.paid_count')}
                                                                                 </span>
-                                                                                {u.nextEvaluationDate && <span className="text-[9px] text-stone-500">{formatDatePTBR(u.nextEvaluationDate)}</span>}
+                                                                                {u.nextEvaluationDate && <span className="text-[9px] text-stone-500">{language === 'pt' ? formatDatePTBR(u.nextEvaluationDate) : formatDateESAR(u.nextEvaluationDate)}</span>}
                                                                             </div>
                                                                             <div className="w-full bg-stone-700 h-1.5 rounded-full mt-1 mb-1">
                                                                                 <div
@@ -3949,11 +4007,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                             </div>
                                                                             {remainingDebt > 0 ? (
                                                                                 <span className="text-[10px] text-stone-300 font-mono">
-                                                                                    Restante: R$ {remainingDebt.toFixed(2).replace('.', ',')}
+                                                                                    {t('admin.users.eval.remaining')} {language === 'pt' ? 'R$' : '$'} {remainingDebt.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}
                                                                                 </span>
                                                                             ) : (
                                                                                 <span className="text-[10px] text-green-400 font-bold flex items-center gap-1">
-                                                                                    <CheckCircle size={10} /> Quitado
+                                                                                    <CheckCircle size={10} /> {t('admin.users.eval.settled')}
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -3963,10 +4021,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             })()}
                                                             {u.nextEvaluationDate ? (
                                                                 <p className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30">
-                                                                    {formatDatePTBR(u.nextEvaluationDate)}
+                                                                    {language === 'pt' ? formatDatePTBR(u.nextEvaluationDate) : formatDateESAR(u.nextEvaluationDate)}
                                                                 </p>
                                                             ) : (
-                                                                <p className="text-[10px] text-stone-500 italic">S/ Data</p>
+                                                                <p className="text-[10px] text-stone-500 italic">{t('admin.users.eval.no_date')}</p>
                                                             )}
                                                             {/* Button to generate the boleto directly from here */}
                                                             <button
@@ -3979,7 +4037,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 }}
                                                                 className="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 font-bold"
                                                             >
-                                                                <Plus size={10} /> Gerar Boleto Total
+                                                                <Plus size={10} /> {t('admin.users.eval.btn.bill_total')}
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -3990,7 +4048,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 }}
                                                                 className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1 font-bold"
                                                             >
-                                                                <DollarSign size={10} /> Parcelar
+                                                                <DollarSign size={10} /> {t('admin.users.eval.btn.installments')}
                                                             </button>
                                                             <button
                                                                 onClick={() => {
@@ -4004,7 +4062,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 }}
                                                                 className="text-[10px] text-green-400 hover:text-green-300 flex items-center gap-1 mt-1 font-bold"
                                                             >
-                                                                <PlusCircle size={10} /> Add Mensalidade
+                                                                <PlusCircle size={10} /> {t('admin.users.eval.btn.add_monthly')}
                                                             </button>
                                                         </div>
                                                     )}
@@ -4014,28 +4072,28 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <button
                                                             onClick={() => onToggleArchiveUser(u.id, u.status)}
                                                             className={`p-2 bg-stone-900 rounded transition-colors ${u.status === 'archived' ? 'text-blue-500 hover:bg-stone-700' : 'text-stone-400 hover:text-blue-500 hover:bg-stone-700'}`}
-                                                            title={u.status === 'archived' ? 'Desarquivar' : 'Arquivar'}
+                                                            title={u.status === 'archived' ? t('admin.users.action.unarchive') : t('admin.users.action.archive')}
                                                         >
                                                             <Archive size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => onToggleBlockUser(u.id, u.status)}
                                                             className={`p-2 bg-stone-900 rounded transition-colors ${u.status === 'blocked' ? 'text-red-500 hover:bg-stone-700' : 'text-stone-400 hover:text-green-500 hover:bg-stone-700'}`}
-                                                            title={u.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                                                            title={u.status === 'blocked' ? t('admin.users.action.unblock') : t('admin.users.action.block')}
                                                         >
                                                             {u.status === 'blocked' ? <Lock size={16} /> : <Shield size={16} />}
                                                         </button>
                                                         <button
                                                             onClick={() => handleOpenUserModal(u)}
                                                             className="p-2 bg-stone-900 hover:bg-stone-700 text-stone-400 hover:text-blue-500 rounded transition-colors"
-                                                            title="Editar"
+                                                            title={t('common.edit')}
                                                         >
                                                             <Edit2 size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteUser(u.id)}
                                                             className="p-2 bg-stone-900 hover:bg-stone-700 text-stone-400 hover:text-red-500 rounded transition-colors"
-                                                            title="Excluir"
+                                                            title={t('common.delete')}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -4045,8 +4103,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         ))}
                                         {filteredManagedUsers.length === 0 && (
                                             <tr>
-                                                <td colSpan={6} className="p-8 text-center text-stone-500 italic"> {/* Updated colspan */}
-                                                    Nenhum usuário encontrado.
+                                                <td colSpan={7} className="p-8 text-center text-stone-500 italic">
+                                                    {t('admin.users.no_users')}
                                                 </td>
                                             </tr>
                                         )}
@@ -4064,29 +4122,29 @@ export const DashboardAdmin: React.FC<Props> = ({
                     <div className="space-y-6 animate-fade-in">
                         {/* DEBUG: REMOVE LATER */}
                         <div className="bg-indigo-900/30 p-2 text-indigo-400 text-xs font-bold rounded text-center border border-indigo-500/30">
-                            Modo Gerenciamento de Banner Ativo
+                            {t('admin.banner.manage_title')}
                         </div>
                         <div className="bg-stone-800 p-6 rounded-xl border border-stone-700">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6">
                                 <UploadCloud className="text-indigo-500" />
-                                Gerenciar Banners de Eventos
+                                {t('admin.banner.manage_title')}
                             </h2>
 
                             <form onSubmit={handleSaveBanner} className="bg-stone-900 p-6 rounded-lg border border-stone-700 mb-8">
-                                <h3 className="text-lg font-bold text-white mb-4">Novo Banner</h3>
+                                <h3 className="text-lg font-bold text-white mb-4">{t('admin.banner.new_banner')}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm text-stone-400 mb-1">Título (Opcional)</label>
+                                        <label className="block text-sm text-stone-400 mb-1">{t('admin.banner.field.title')}</label>
                                         <input
                                             type="text"
                                             value={bannerFormData.title}
                                             onChange={e => setBannerFormData({ ...bannerFormData, title: e.target.value })}
-                                            placeholder="Ex: Próximo Batizado"
+                                            placeholder={t('admin.banner.field.title_ph')}
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-stone-400 mb-1">Imagem do Banner</label>
+                                        <label className="block text-sm text-stone-400 mb-1">{t('admin.banner.field.image')}</label>
                                         <input
                                             type="file"
                                             ref={bannerFileInputRef}
@@ -4095,12 +4153,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             className="w-full text-sm text-stone-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
                                             required
                                         />
-                                        <p className="text-[10px] text-stone-500 mt-1">* Recomendado: Proporção 16:9 ou 21:9</p>
+                                        <p className="text-[10px] text-stone-500 mt-1">{t('admin.banner.field.image_hint')}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex justify-end">
                                     <Button type="submit" disabled={uploadingBanner || !bannerFormData.file}>
-                                        {uploadingBanner ? 'Enviando...' : 'Enviar Banner'}
+                                        {uploadingBanner ? t('admin.banner.btn.uploading') : t('admin.banner.btn.upload')}
                                     </Button>
                                 </div>
                             </form>
@@ -4116,14 +4174,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             />
                                             {!banner.active && (
                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">Inativo</span>
+                                                    <span className="bg-black/80 text-white px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">{t('admin.banner.status.inactive')}</span>
                                                 </div>
                                             )}
                                         </div>
                                         <div className="p-4 flex justify-between items-center bg-stone-900">
                                             <div>
-                                                <h4 className="text-white font-bold truncate max-w-[200px]">{banner.title || 'Sem título'}</h4>
-                                                <p className="text-[10px] text-stone-500">{banner.created_at ? new Date(banner.created_at).toLocaleDateString('pt-BR') : '-'}</p>
+                                                <h4 className="text-white font-bold truncate max-w-[200px]">{banner.title || t('admin.banner.no_title')}</h4>
+                                                <p className="text-[10px] text-stone-500">{banner.created_at ? (language === 'pt' ? formatDatePTBR(banner.created_at) : formatDateESAR(banner.created_at)) : '-'}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button
@@ -4165,15 +4223,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div>
                                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                         <Users className="text-blue-500" />
-                                        Detalhes dos Alunos
+                                        {t('admin.users.manage_title')}
                                     </h2>
-                                    <p className="text-stone-400 text-sm">Visualize informações detalhadas de cada aluno.</p>
+                                    <p className="text-stone-400 text-sm">{t('admin.users.manage_subtitle')}</p>
                                 </div>
                                 <div className="relative flex-1 md:w-64">
                                     <Search className="absolute left-3 top-2.5 text-stone-500" size={16} />
                                     <input
                                         type="text"
-                                        placeholder="Buscar aluno por nome ou apelido..."
+                                        placeholder={t('admin.users.search_placeholder')}
                                         value={studentDetailsSearch}
                                         onChange={(e) => setStudentDetailsSearch(e.target.value)}
                                         className="w-full bg-stone-900 border border-stone-600 rounded-full pl-9 pr-4 py-2 text-sm text-white focus:border-blue-500 outline-none"
@@ -4195,7 +4253,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-white text-lg">{student.nickname || student.name}</h3>
-                                                        <p className="text-xs text-stone-400">{student.belt || 'Sem Cordel'}</p>
+                                                        <p className="text-xs text-stone-400">{student.belt || t('landing.essence')}</p>
                                                     </div>
                                                 </div>
                                                 {expandedStudent === student.id ? <ChevronUp className="text-stone-400" /> : <ChevronDown className="text-stone-400" />}
@@ -4205,12 +4263,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <div className="border-t border-stone-700 bg-stone-900/50 p-4 animate-fade-in-down">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                                         <div>
-                                                            <p className="text-stone-400 text-xs uppercase font-bold mb-2">Informações Pessoais</p>
-                                                            <p className="text-white text-sm mb-1"><span className="text-stone-500">Nome:</span> {student.first_name} {student.last_name}</p>
-                                                            <p className="text-white text-sm mb-1"><span className="text-stone-500">Email:</span> {student.email}</p>
-                                                            {student.phone && <p className="text-white text-sm mb-1"><span className="text-stone-500">Telefone:</span> {student.phone}</p>}
-                                                            {student.birthDate && <p className="text-white text-sm mb-1"><span className="text-stone-500">Nascimento:</span> {new Date(student.birthDate).toLocaleDateString('pt-BR')}</p>}
-                                                            {student.professorName && <p className="text-white text-sm mb-1"><span className="text-stone-500">Professor:</span> {student.professorName}</p>}
+                                                            <p className="text-stone-400 text-xs uppercase font-bold mb-2">{t('common.details')}</p>
+                                                            <p className="text-white text-sm mb-1"><span className="text-stone-500">{t('common.name')}:</span> {student.first_name} {student.last_name}</p>
+                                                            <p className="text-white text-sm mb-1"><span className="text-stone-500">{t('common.email')}:</span> {student.email}</p>
+                                                            {student.phone && <p className="text-white text-sm mb-1"><span className="text-stone-500">{t('common.phone')}:</span> {student.phone}</p>}
+                                                            {student.birthDate && <p className="text-white text-sm mb-1"><span className="text-stone-500">{t('common.date')}:</span> {language === 'pt' ? formatDatePTBR(student.birthDate) : formatDateESAR(student.birthDate)}</p>}
+                                                            {student.professorName && <p className="text-white text-sm mb-1"><span className="text-stone-500">{t('common.role')}:</span> {student.professorName}</p>}
                                                         </div>
                                                         <div>
                                                             <p className="text-stone-400 text-xs uppercase font-bold mb-2">Status Acadêmico</p>
@@ -4237,12 +4295,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                             className="text-xs h-auto px-4 py-2 w-full sm:w-auto flex items-center justify-center gap-2"
                                                                             onClick={() => handleViewSchoolReport(report.file_url)}
                                                                         >
-                                                                            <Eye size={14} /> Ver Boletim
+                                                                            <Eye size={14} /> {t('common.view')}
                                                                         </Button>
                                                                     </div>
                                                                 ))
                                                             ) : (
-                                                                <p className="text-stone-500 text-sm italic">Nenhum boletim enviado.</p>
+                                                                <p className="text-stone-500 text-sm italic">{t('reports.no_reports')}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -4250,7 +4308,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     {/* Home Trainings */}
                                                     <div className="mb-6">
                                                         <h4 className="text-purple-400 font-bold text-sm mb-3 flex items-center gap-2">
-                                                            <Video size={16} /> Treinos em Casa
+                                                            <Video size={16} /> {t('admin.users.home_trainings')}
                                                         </h4>
                                                         <div className="space-y-2">
                                                             {homeTrainings.filter(training => training.user_id === student.id).length > 0 ? (
@@ -4258,19 +4316,19 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     <div key={training.id} className="bg-stone-800 p-3 rounded border border-stone-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                                                         <div className="flex flex-col min-w-0">
                                                                             <p className="text-white font-medium truncate">{training.video_name}</p>
-                                                                            <p className="text-xs text-stone-500">Enviado em: {training.date} • Expira em: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
+                                                                            <p className="text-xs text-stone-500">{t('common.sent_at')}: {training.date} • {t('common.expires_at')}: {new Date(training.expires_at).toLocaleDateString('pt-BR')}</p>
                                                                         </div>
                                                                         <Button
                                                                             variant="secondary"
                                                                             className="text-xs h-auto px-4 py-2 w-full sm:w-auto flex items-center justify-center gap-2"
                                                                             onClick={() => handleViewHomeTrainingVideo(training.video_url)}
                                                                         >
-                                                                            <Video size={14} /> Ver Treino
+                                                                            <Video size={14} /> {t('common.view')}
                                                                         </Button>
                                                                     </div>
                                                                 ))
                                                             ) : (
-                                                                <p className="text-stone-500 text-sm italic">Nenhum treino em casa enviado.</p>
+                                                                <p className="text-stone-500 text-sm italic">{t('training.no_videos')}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -4278,7 +4336,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     {/* Assignments - Filtered by professor */}
                                                     <div>
                                                         <h4 className="text-blue-400 font-bold text-sm mb-3 flex items-center gap-2">
-                                                            <BookOpen size={16} /> Trabalhos e Tarefas
+                                                            <BookOpen size={16} /> {t('admin.users.assignments')}
                                                         </h4>
                                                         <div className="space-y-2">
                                                             {(() => {
@@ -4288,10 +4346,6 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                                                                 const studentSpecificAssignments = assignments.filter(assign => {
                                                                     const belongsToStudent = assign.student_id === student.id;
-                                                                    const createdByProfessor = profIdentity ? assign.created_by === profIdentity.id : false;
-
-                                                                    // Show if it belongs to student AND was created by their professor
-                                                                    // Also show assignments without student_id (global) IF created by their professor
                                                                     return belongsToStudent || (assign.student_id === null);
                                                                 });
 
@@ -4301,14 +4355,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                             <div className="flex justify-between items-start">
                                                                                 <p className="text-white font-medium text-sm">{assign.title}</p>
                                                                                 <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${assign.status === 'completed' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
-                                                                                    {assign.status === 'completed' ? 'Ok' : '...'}
+                                                                                    {assign.status === 'completed' ? t('common.done') : '...'}
                                                                                 </span>
                                                                             </div>
-                                                                            <p className="text-[10px] text-stone-500 mt-0.5">Vence: {assign.due_date}</p>
+                                                                            <p className="text-[10px] text-stone-500 mt-0.5">{t('common.due')}: {assign.due_date}</p>
                                                                             <div className="flex flex-wrap gap-2 mt-2">
                                                                                 {assign.attachment_url && (
                                                                                     <a href={assign.attachment_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-[10px] flex items-center gap-1 hover:underline">
-                                                                                        <Paperclip size={10} /> Material
+                                                                                        <Paperclip size={10} /> {t('common.material')}
                                                                                     </a>
                                                                                 )}
                                                                                 {assign.submission_url && (
@@ -4316,14 +4370,14 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                                         onClick={() => handleViewAssignmentSubmission(assign.submission_url!, assign.submission_name || 'Trabalho')}
                                                                                         className="text-green-400 text-[10px] flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
                                                                                     >
-                                                                                        <CheckCircle size={10} /> Resposta
+                                                                                        <CheckCircle size={10} /> {t('common.answer')}
                                                                                     </button>
                                                                                 )}
                                                                             </div>
                                                                         </div>
                                                                     ))
                                                                 ) : (
-                                                                    <p className="text-stone-500 text-sm italic">Nenhum trabalho atribuído por seu professor.</p>
+                                                                    <p className="text-stone-500 text-sm italic">{t('prof.assign.none')}</p>
                                                                 );
                                                             })()}
                                                         </div>
@@ -4334,7 +4388,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     ))
                                 ) : (
                                     <p className="text-stone-500 italic text-center py-8 bg-stone-900/30 rounded-lg">
-                                        Nenhum aluno encontrado com os critérios de busca.
+                                        {t('admin.users.no_users_found')}
                                     </p>
                                 )}
                             </div>
@@ -4351,11 +4405,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                                     <GraduationCap className="text-blue-500" />
-                                    Acompanhamento Pedagógico
-                                    <span className="text-sm font-normal text-stone-400 ml-2">(Supervisão de Professores)</span>
+                                    {t('admin.pedagogy.title')}
+                                    <span className="text-sm font-normal text-stone-400 ml-2">{t('admin.pedagogy.subtitle')}</span>
                                 </h2>
                                 <Button onClick={handleDownloadPedagogicalReport} variant="secondary" className="border border-stone-600">
-                                    <FileUp size={18} className="mr-2" /> Baixar Relatório Pedagógico (CSV)
+                                    <FileUp size={18} className="mr-2" /> {t('admin.pedagogy.btn.report')}
                                 </Button>
                             </div>
 
@@ -4386,7 +4440,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 <MessageCircle size={18} />
                                                             </button>
                                                         </div>
-                                                        <p className="text-xs text-stone-400">{prof.students.length} Alunos Ativos</p>
+                                                        <p className="text-xs text-stone-400">{prof.students.length} {t('admin.pedagogy.active_students')}</p>
                                                     </div>
                                                 </div>
                                                 {expandedProfessor === prof.professorId ? <ChevronUp className="text-stone-400" /> : <ChevronDown className="text-stone-400" />}
@@ -4397,17 +4451,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <div className="border-t border-stone-700 bg-stone-900/50 p-4 animate-fade-in-down">
 
                                                     {/* Students Table */}
-                                                    <h4 className="text-stone-400 font-bold text-xs uppercase mb-3">Desempenho e Custos de Graduação</h4>
+                                                    <h4 className="text-stone-400 font-bold text-xs uppercase mb-3">{t('admin.pedagogy.section.performance')}</h4>
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-left">
                                                             <thead>
                                                                 <tr className="border-b border-stone-700 text-xs text-stone-500">
-                                                                    <th className="pb-2">Aluno</th>
-                                                                    <th className="pb-2">Presença</th>
-                                                                    <th className="pb-2">Teórica</th>
-                                                                    <th className="pb-2">Moviment.</th>
-                                                                    <th className="pb-2">Musical.</th>
-                                                                    <th className="pb-2">Custo Grad. (R$)</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.student')}</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.attendance')}</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.theory')}</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.movement')}</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.musicality')}</th>
+                                                                    <th className="pb-2">{t('admin.pedagogy.table.grad_cost')}</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="text-sm">
@@ -4451,7 +4505,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         </td>
                                                                         <td className="py-3">
                                                                             <span className={`${student.graduationCost !== undefined && student.graduationCost > 0 ? 'text-green-400' : 'text-stone-500'}`}>
-                                                                                {student.graduationCost !== undefined ? `R$ ${student.graduationCost.toFixed(2).replace('.', ',')}` : '-'}
+                                                                                {student.graduationCost !== undefined ? `${language === 'pt' ? 'R$' : '$'} ${student.graduationCost.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}` : '-'}
                                                                             </span>
                                                                         </td>
                                                                     </tr>
@@ -4742,12 +4796,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         <span className="text-white text-sm">{student.nickname || student.name}</span>
                                                                         {isSubmitted ? (
                                                                             <span className="text-green-400 text-xs flex items-center gap-1">
-                                                                                <Check size={12} /> Entregue
+                                                                                <Check size={12} /> {t('assignments.submitted')}
                                                                             </span>
                                                                         ) : (
                                                                             <label className="cursor-pointer">
                                                                                 <span className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors inline-block">
-                                                                                    {uploadingMusicFile ? 'Enviando...' : 'Subir Entrega'}
+                                                                                    {uploadingMusicFile ? t('common.loading') : t('common.send')}
                                                                                 </span>
                                                                                 <input
                                                                                     type="file"
@@ -4771,12 +4825,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             setShowAssignToStudentModal(true);
                                                         }}
                                                     >
-                                                        <UserPlus size={16} /> Atribuir a Aluno Específico
+                                                        <UserPlus size={16} /> {t('prof.dash.assign_title')}
                                                     </Button>
                                                 </div>
                                             ))}
                                             {profModeAssignments.filter(a => a.status === 'pending').length === 0 && (
-                                                <p className="text-stone-500 text-sm text-center py-4">Nenhum trabalho pendente.</p>
+                                                <p className="text-stone-500 text-sm text-center py-4">{t('prof.assign.none')}</p>
                                             )}
                                         </div>
                                     </div>
@@ -4784,16 +4838,16 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     {/* Completed */}
                                     <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
                                         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                            <Check className="text-green-500" size={18} /> Concluídos
+                                            <Check className="text-green-500" size={18} /> {t('prof.assign.completed')}
                                         </h3>
                                         <div className="space-y-3">
                                             {profModeAssignments.filter(a => a.status === 'completed').map(assign => (
                                                 <div key={assign.id} className="bg-stone-900/50 p-4 rounded-lg border border-stone-700 opacity-80">
                                                     <h4 className="font-bold text-stone-300 line-through decoration-stone-500">{assign.title}</h4>
-                                                    <p className="text-xs text-stone-500 mb-2">Entregue em: {assign.due_date}</p>
+                                                    <p className="text-xs text-stone-500 mb-2">{t('common.sent_on')}: {assign.due_date}</p>
                                                     {assign.attachment_url && (
                                                         <div className="flex items-center gap-2 text-xs text-green-500 bg-green-900/10 p-2 rounded mb-2">
-                                                            <Paperclip size={12} /> Arquivo Anexado
+                                                            <Paperclip size={12} /> {t('prof.assign.material')}
                                                         </div>
                                                     )}
                                                     {assign.submission_url && (
@@ -4802,13 +4856,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             className="w-full text-xs py-1.5 h-auto bg-green-900/20 text-green-400 border-green-500/20 hover:bg-green-900/40"
                                                             onClick={() => handleViewAssignmentSubmission(assign.submission_url!, assign.submission_name || 'Trabalho')}
                                                         >
-                                                            <CheckCircle size={14} className="mr-1" /> Ver Resposta do Aluno
+                                                            <CheckCircle size={14} className="mr-1" /> {t('prof.assign.view_answer')}
                                                         </Button>
                                                     )}
                                                 </div>
                                             ))}
                                             {profModeAssignments.filter(a => a.status === 'completed').length === 0 && (
-                                                <p className="text-stone-500 text-sm text-center py-4">Nenhum trabalho concluído ainda.</p>
+                                                <p className="text-stone-500 text-sm text-center py-4">{t('prof.assign.none')}</p>
                                             )}
                                         </div>
                                     </div>
@@ -4823,10 +4877,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div className="max-w-4xl mx-auto bg-stone-800 rounded-xl border border-stone-700 animate-fade-in p-6">
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                            <Award className="text-yellow-500" /> Avaliar {studentBeingEvaluated.nickname || studentBeingEvaluated.name}
+                                            <Award className="text-yellow-500" /> {t('prof.view.evaluate')} {studentBeingEvaluated.nickname || studentBeingEvaluated.name}
                                         </h2>
                                         <button onClick={() => setProfView('all_students')} className="text-stone-400 hover:text-white flex items-center gap-1 transition-colors">
-                                            <ArrowLeft size={18} /> Voltar
+                                            <ArrowLeft size={18} /> {t('common.back')}
                                         </button>
                                     </div>
 
@@ -4838,13 +4892,13 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <label className="block text-xs text-stone-500 uppercase font-bold mb-2">{t('grades.written')}</label>
                                                 <textarea
                                                     className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white h-32 text-sm focus:border-yellow-500 outline-none transition-all"
-                                                    placeholder="Pontos positivos e observações..."
+                                                    placeholder={t('prof.eval.obs')}
                                                     value={evalData.theory.written}
                                                     onChange={e => setEvalData({ ...evalData, theory: { ...evalData.theory, written: e.target.value } })}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">Nota (0-10)</label>
+                                                <label className="block text-xs text-stone-500 uppercase font-bold mb-2">{t('common.value')} (0-10)</label>
                                                 <input
                                                     type="number" min="0" max="10" step="0.1"
                                                     className="w-full bg-stone-800 border border-stone-700 rounded-lg p-3 text-white text-xl font-bold text-center focus:border-yellow-500 outline-none transition-all"

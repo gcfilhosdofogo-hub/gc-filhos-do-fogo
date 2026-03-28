@@ -5,7 +5,7 @@ interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, params?: Record<string, any>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
@@ -32,8 +32,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguage(language === 'pt' ? 'es' : 'pt');
   }, [language, setLanguage]);
 
-  const t = useCallback((key: TranslationKey) => {
-    return getTranslation(language, key);
+  const t = useCallback((key: TranslationKey, params?: Record<string, any>) => {
+    return getTranslation(language, key, params);
   }, [language]);
 
   return (
