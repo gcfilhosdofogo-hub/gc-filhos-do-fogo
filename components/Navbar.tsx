@@ -34,9 +34,19 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onNavigate }) =>
             <button
               onClick={toggleLanguage}
               title={t('nav.lang_tooltip')}
-              className="flex items-center gap-2 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-3 py-1.5 rounded-md text-xs font-bold transition-colors border border-stone-700 hover:border-orange-500 tracking-widest"
+              className="flex items-center gap-2 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-3 py-2 rounded-md text-[10px] font-bold transition-colors border border-stone-700 hover:border-orange-500 tracking-widest leading-none outline-none focus:ring-2 focus:ring-orange-500/50"
             >
-              {language === 'pt' ? '🇧🇷 PT-BR' : '🇦🇷 ES-AR'}
+              {language === 'pt' ? (
+                <>
+                  <img src="https://flagcdn.com/w40/br.png" alt="PT-BR" className="w-5 h-3.5 object-cover rounded shadow-sm opacity-90 group-hover:opacity-100" />
+                  <span>PT-BR</span>
+                </>
+              ) : (
+                <>
+                  <img src="https://flagcdn.com/w40/ar.png" alt="ES-AR" className="w-5 h-3.5 object-cover rounded shadow-sm opacity-90 group-hover:opacity-100" />
+                  <span>ES-AR</span>
+                </>
+              )}
             </button>
 
             {user ? (
@@ -68,9 +78,19 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onNavigate }) =>
             {/* Language toggle mobile */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-bold transition-colors border border-stone-700 tracking-widest"
+              className="flex items-center gap-1.5 bg-stone-800 hover:bg-orange-600 text-stone-300 hover:text-white px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-colors border border-stone-700 tracking-widest leading-none"
             >
-              {language === 'pt' ? '🇧🇷 PT-BR' : '🇦🇷 ES-AR'}
+              {language === 'pt' ? (
+                <>
+                  <img src="https://flagcdn.com/w40/br.png" alt="PT-BR" className="w-4 h-2.5 object-cover rounded-sm shadow-sm" />
+                  <span>PT-BR</span>
+                </>
+              ) : (
+                <>
+                  <img src="https://flagcdn.com/w40/ar.png" alt="ES-AR" className="w-4 h-2.5 object-cover rounded-sm shadow-sm" />
+                  <span>ES-AR</span>
+                </>
+              )}
             </button>
             <button
               onClick={toggleMenu}
