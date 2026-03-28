@@ -33,17 +33,17 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: '/logo.png',
+              src: '/pwa-192.png',
               sizes: '192x192',
               type: 'image/png',
             },
             {
-              src: '/logo.png',
+              src: '/pwa-512.png',
               sizes: '512x512',
               type: 'image/png',
             },
             {
-              src: '/logo.png',
+              src: '/pwa-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable',
@@ -62,12 +62,22 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', '@supabase/supabase-js', 'lucide-react'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('lucide-react')) return 'icons';
+              if (id.includes('@supabase')) return 'supabase';
+              if (id.includes('react')) return 'react-core';
+              return 'vendor';
+            }
+            if (id.includes('views/Dashboard')) {
+              const name = id.split('Dashboard')[1].split('.')[0].toLowerCase();
+              return `dash-${name}`;
+            }
+            if (id.includes('translations')) return 'i18n';
           },
         },
       },
-      chunkSizeWarningLimit: 800,
+      chunkSizeWarningLimit: 1000,
     },
     resolve: {
       alias: {
