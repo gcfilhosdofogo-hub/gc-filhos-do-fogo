@@ -1375,8 +1375,13 @@ export const DashboardAluno: React.FC<Props> = ({
                     myClasses.map((session) => (
                       <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/50 p-4 rounded-lg border-l-4 border-orange-500 relative overflow-hidden">
                         <div>
+                          {session.title && <p className="text-white font-bold text-base mb-0.5">{session.title}</p>}
                           <p className="text-orange-400 font-bold text-lg">{session.date} • {session.time}</p>
-                          <p className="text-white font-medium">{session.level}</p>
+                          {session.category && (
+                            <span className="inline-block text-[10px] font-black uppercase tracking-widest bg-orange-900/30 text-orange-400 border border-orange-900/50 px-2 py-0.5 rounded-full mr-2 mb-1">
+                              {session.category}
+                            </span>
+                          )}
                           <p className="text-sm text-stone-400">{session.location} - {session.instructor}</p>
                         </div>
                         <div className="mt-3 sm:mt-0">
@@ -1411,9 +1416,14 @@ export const DashboardAluno: React.FC<Props> = ({
                       return (
                         <div key={session.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-stone-900/30 p-4 rounded-lg border-l-2 border-stone-600 opacity-80 hover:opacity-100 transition-opacity">
                           <div>
+                            {session.title && <p className="text-stone-200 font-bold text-base mb-0.5">{session.title}</p>}
                             <p className="text-stone-300 font-semibold">{session.date} • {session.time}</p>
-                            <p className="text-stone-400 font-medium text-sm">{session.level}</p>
-                            <p className="text-xs text-stone-500">{session.location} - {professorDisplayName}</p> {/* Display professor name */}
+                            {session.category && (
+                              <span className="inline-block text-[10px] font-black uppercase tracking-widest bg-stone-800 text-stone-400 border border-stone-700 px-2 py-0.5 rounded-full mr-2 mb-1">
+                                {session.category}
+                              </span>
+                            )}
+                            <p className="text-xs text-stone-500">{session.location} - {professorDisplayName}</p>
                           </div>
                           <div className="mt-2 sm:mt-0">
                             <span className="text-stone-500 text-xs font-bold border border-stone-700 px-2 py-1 rounded">

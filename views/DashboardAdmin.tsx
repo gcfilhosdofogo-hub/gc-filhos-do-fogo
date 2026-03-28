@@ -69,7 +69,7 @@ const UNIFORM_PRICES = {
     pants_train: 80.00
 };
 
-type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner' | 'ffpoints';
+type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'class_monitoring' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner' | 'ffpoints';
 type ProfessorViewMode = 'dashboard' | 'attendance' | 'new_class' | 'all_students' | 'evaluate' | 'assignments' | 'uniform' | 'music_manager' | 'financial' | 'planning';
 
 const DiscordIcon = ({ size = 20 }: { size?: number }) => (
@@ -605,6 +605,13 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [attendanceData, setAttendanceData] = useState<Record<string, boolean>>({});
     const [justifications, setJustifications] = useState<Record<string, string>>({});
     const [showSuccess, setShowSuccess] = useState(false);
+    
+    // --- ADMIN ATTENDANCE OVERRIDE (For "Monitorar Aulas") ---
+    const [adminAttendanceClass, setAdminAttendanceClass] = useState<ClassSession | null>(null);
+    const [adminAttendanceData, setAdminAttendanceData] = useState<Record<string, boolean>>({});
+    const [adminJustifications, setAdminJustifications] = useState<Record<string, string>>({});
+    const [adminAttendanceStudents, setAdminAttendanceStudents] = useState<any[]>([]); // UserProfile type
+
     const [classPhoto, setClassPhoto] = useState<string | null>(null);
     const [pixCopied, setPixCopied] = useState(false);
     const [classRecords, setClassRecords] = useState<{ name: string; url: string; created_at?: string }[]>([]);
@@ -707,7 +714,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
 
     // New Class Form State (for Professor Mode)
-    const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
+    const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '', category: '' });
 
     // Planning view states
     const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -2005,6 +2012,66 @@ export const DashboardAdmin: React.FC<Props> = ({
             alert('Erro ao salvar chamada no banco de dados.');
         }
     };
+
+    const handleOpenAdminAttendance = (classSession: ClassSession) => {
+        const prof = allUsersProfiles.find(u => u.id === classSession.professor_id);
+        const professorIdentity = prof?.nickname || prof?.first_name || prof?.name || classSession.instructor;
+
+        // Ensure we handle general public if category targets aren't professor specific. But martial arts classes generally belong to a single professor.
+        // If we want all students allowed, we could just filter by 'aluno'.
+        // But the previous rule was `u.professorName === professorIdentity`.
+        const studentsInClass = allUsersProfiles.filter(u => u.role === 'aluno' && u.professorName === professorIdentity);
+        
+        const initialAttendance: Record<string, boolean> = {};
+        studentsInClass.forEach(s => initialAttendance[s.id] = true);
+        
+        setAdminAttendanceClass(classSession);
+        setAdminAttendanceStudents(studentsInClass);
+        setAdminAttendanceData(initialAttendance);
+        setAdminJustifications({});
+        setShowSuccess(false);
+    };
+
+    const toggleAdminPresence = (studentId: string) => {
+        setAdminAttendanceData(prev => ({ ...prev, [studentId]: !prev[studentId] }));
+    };
+
+    const handleSaveAdminAttendance = async () => {
+        if (!adminAttendanceClass) return;
+
+        const records = adminAttendanceStudents.map(student => {
+            const isPresent = !!adminAttendanceData[student.id];
+            return {
+                session_id: adminAttendanceClass.id,
+                student_id: student.id,
+                status: isPresent ? 'present' : 'absent',
+                justification: !isPresent ? adminJustifications[student.id] : null
+            };
+        });
+
+        if (records.length === 0) {
+           alert("Nenhum aluno encontrado para a chamada desta turma.");
+           return;
+        }
+
+        try {
+            await onAddAttendance(records);
+            await onUpdateClassSession({ ...adminAttendanceClass, status: 'completed' });
+
+            setShowSuccess(true);
+            setTimeout(() => {
+                setAdminAttendanceClass(null);
+                setShowSuccess(false);
+                setAdminJustifications({});
+                onNotifyAdmin(`Realizou chamada da aula: ${adminAttendanceClass.title}`, user);
+                fetchAttendanceHistory();
+            }, 1000);
+        } catch (err: any) {
+            console.error('Error saving admin attendance:', err);
+            alert('Erro ao salvar chamada no banco de dados.');
+        }
+    };
+
     const handleSaveNewClass = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newClassData.title || !newClassData.date || !newClassData.time || !newClassData.location) {
@@ -2020,11 +2087,12 @@ export const DashboardAdmin: React.FC<Props> = ({
             level: 'Todos os Níveis',
             professor_id: user.id,
             status: 'pending',
+            category: newClassData.category || undefined,
         };
         try {
             await onAddClassSession(newSessionPayload);
             const savedTitle = newClassData.title;
-            setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '' });
+            setNewClassData({ title: '', date: '', time: '', location: '', adminSuggestion: '', planning: '', category: '' });
             onNotifyAdmin(`Agendou nova aula: ${savedTitle}`, user);
             alert(`Aula "${savedTitle}" criada com sucesso!`);
         } catch (err: any) {
@@ -2802,6 +2870,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                     className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'my_classes' ? 'bg-purple-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
                 >
                     <BookOpen size={14} /> {t('admin.tab.my_classes')}
+                </button>
+                <button
+                    onClick={() => setActiveTab('class_monitoring')}
+                    className={`px-3 py-2 rounded-lg font-medium transition-colors flex items-center gap-1 text-sm ${activeTab === 'class_monitoring' ? 'bg-teal-500 text-white' : 'text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700'}`}
+                >
+                    <Activity size={14} /> Monitorar Aulas
                 </button>
                 <button
                     onClick={() => setActiveTab('music')}
@@ -4657,6 +4731,19 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </div>
                                     <div><label className="block text-sm text-stone-400 mb-1">Local</label><input type="text" required value={newClassData.location} onChange={e => setNewClassData({ ...newClassData, location: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white" /></div>
                                     <div>
+                                        <label className="block text-sm text-stone-400 mb-1">Direcionado para (Categoria)</label>
+                                        <select value={newClassData.category} onChange={e => setNewClassData({ ...newClassData, category: e.target.value })} className="w-full bg-stone-900 border border-stone-600 rounded px-3 py-2 text-white">
+                                            <option value="">Todos (geral)</option>
+                                            <option value="iniciantes">Iniciantes</option>
+                                            <option value="intermediarios">Intermediários</option>
+                                            <option value="avancados">Avançados</option>
+                                            <option value="infantil">Infantil</option>
+                                            <option value="adultos">Adultos</option>
+                                            <option value="graduados">Graduados</option>
+                                            <option value="instrutores">Instrutores e Professores</option>
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="block text-sm text-stone-400 mb-1">Planejamento de Aula</label>
                                         <textarea
                                             value={newClassData.planning}
@@ -6020,6 +6107,130 @@ export const DashboardAdmin: React.FC<Props> = ({
                 /* Let's put it in the "Minhas Aulas" tab content, assuming user uses that tab. */
             }
             {/* Redundant History Removed */}
+
+            {
+                activeTab === 'class_monitoring' && (
+                    <div className="space-y-6 animate-fade-in relative">
+                        <div className="bg-stone-800 rounded-xl p-6 border border-stone-700">
+                            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                <Activity className="text-teal-500" />
+                                Monitoramento Geral de Aulas
+                            </h3>
+                            <div className="space-y-4">
+                                {classSessions.length > 0 ? (
+                                    classSessions
+                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                        .map(session => {
+                                            const prof = allUsersProfiles.find(u => u.id === session.professor_id);
+                                            const profName = prof?.nickname || prof?.name || session.instructor || 'Prof. Desconhecido';
+                                            return (
+                                                <div key={session.id} className="bg-stone-900/50 p-4 rounded-xl border-l-4 border-teal-500 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:bg-stone-900">
+                                                    <div>
+                                                        {session.title && <h4 className="font-bold text-white text-lg">{session.title}</h4>}
+                                                        <div className="text-stone-400 text-sm flex flex-wrap gap-2 mt-1">
+                                                            <span className="flex items-center gap-1"><Calendar size={14} /> {session.date}</span>
+                                                            <span className="flex items-center gap-1"><Clock size={14} /> {session.time}</span>
+                                                            <span className="flex items-center gap-1"><MapPin size={14} /> {session.location}</span>
+                                                        </div>
+                                                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                            <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-xs border border-stone-700">
+                                                                Prof: {profName}
+                                                            </span>
+                                                            {session.category && (
+                                                                <span className="bg-teal-900/30 text-teal-400 px-2 py-0.5 rounded text-xs border border-teal-900/50 uppercase font-bold tracking-wider">
+                                                                    {session.category}
+                                                                </span>
+                                                            )}
+                                                            <span className={`px-2 py-0.5 rounded text-xs border ${session.status === 'completed' ? 'bg-green-900/30 text-green-400 border-green-900/50' : session.status === 'cancelled' ? 'bg-red-900/30 text-red-400 border-red-900/50' : 'bg-yellow-900/30 text-yellow-400 border-yellow-900/50'}`}>
+                                                                {session.status === 'completed' ? 'Concluída' : session.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4 md:mt-0 flex shrink-0 self-center">
+                                                        <Button
+                                                            variant="secondary"
+                                                            className="text-xs w-full md:w-auto px-3 py-1.5 h-auto whitespace-nowrap bg-stone-800 border-stone-600 hover:bg-stone-700 hover:text-white transition-all text-stone-300"
+                                                            onClick={() => handleOpenAdminAttendance(session)}
+                                                        >
+                                                            <CalendarCheck size={14} className="mr-1 inline" />
+                                                            Realizar Chamada
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                ) : (
+                                    <p className="text-stone-500 italic text-center py-8">Nenhuma aula encontrada no sistema.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* --- ADMIN ATTENDANCE OVERLAY --- */}
+                        {adminAttendanceClass && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                                <div className="bg-stone-800 rounded-2xl border border-stone-600 shadow-2xl max-w-2xl w-full relative max-h-[90vh] flex flex-col">
+                                    <div className="flex justify-between items-center p-6 border-b border-stone-700 shrink-0">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <CalendarCheck className="text-teal-500" /> Chamada - {adminAttendanceClass.title}
+                                        </h3>
+                                        <button onClick={() => setAdminAttendanceClass(null)} className="text-stone-400 hover:text-white transition-colors"><X size={24} /></button>
+                                    </div>
+                                    <div className="p-6 overflow-y-auto space-y-3">
+                                        {adminAttendanceStudents.length === 0 ? (
+                                            <div className="bg-orange-900/20 border border-orange-500/30 p-4 rounded-xl text-center">
+                                                <p className="text-orange-400 font-medium">Nenhum aluno da turma deste professor encontrado.</p>
+                                                <p className="text-orange-500/70 text-sm mt-1">A chamada é montada com base nos alunos direcionados ao professor desta aula.</p>
+                                            </div>
+                                        ) : (
+                                            adminAttendanceStudents.map((student) => {
+                                                const isPresent = adminAttendanceData[student.id];
+                                                return (
+                                                    <div key={student.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border transition-all duration-200 ${isPresent ? 'bg-green-900/10 border-green-500/30' : 'bg-red-900/10 border-red-500/30'}`}>
+                                                        <div className="flex items-center gap-4 cursor-pointer mb-3 sm:mb-0" onClick={() => toggleAdminPresence(student.id)}>
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white transition-colors shrink-0 ${isPresent ? 'bg-green-600' : 'bg-red-900'}`}>
+                                                                <Logo className="w-full h-full object-cover" />
+                                                            </div>
+                                                            <div>
+                                                                <p className={`font-medium ${isPresent ? 'text-white' : 'text-stone-300'}`}>{student.nickname || student.name}</p>
+                                                                <p className="text-xs text-stone-500">{student.belt}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto pl-[3.5rem] sm:pl-0">
+                                                            <div onClick={() => toggleAdminPresence(student.id)} className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase cursor-pointer text-center ${isPresent ? 'bg-green-500 text-stone-900' : 'bg-stone-700 text-stone-400'}`}>
+                                                                {isPresent ? 'Presente' : 'Ausente'}
+                                                            </div>
+                                                            {!isPresent && (
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Motivo da falta"
+                                                                    className="w-full sm:w-48 bg-stone-900 border border-stone-600 rounded px-3 py-1.5 text-sm text-white outline-none"
+                                                                    value={adminJustifications[student.id] || ''}
+                                                                    onChange={(e) => setAdminJustifications(prev => ({ ...prev, [student.id]: e.target.value }))}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+                                    <div className="p-6 border-t border-stone-700 bg-stone-900/50 flex justify-end shrink-0 rounded-b-2xl">
+                                        <Button
+                                            onClick={handleSaveAdminAttendance}
+                                            disabled={showSuccess || adminAttendanceStudents.length === 0}
+                                            className="bg-teal-600 hover:bg-teal-500"
+                                        >
+                                            {showSuccess ? <Check size={18} /> : <Save size={18} />}
+                                            {showSuccess ? 'Salvo!' : 'Salvar Chamada'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
 
             {
                 activeTab === 'grades' && (

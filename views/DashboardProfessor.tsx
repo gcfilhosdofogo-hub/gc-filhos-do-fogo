@@ -122,7 +122,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);
   // New Class Form State (for Professor Mode)
-  const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', planning: '' });
+  const [newClassData, setNewClassData] = useState({ title: '', date: '', time: '', location: '', planning: '', category: '' });
 
   // Planning view states (now for lesson_plans table)
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -651,10 +651,11 @@ id,
       level: 'Todos os Níveis',
       professor_id: user.id,
       status: 'pending' as const,
+      category: newClassData.category || undefined,
     };
     try {
       await onAddClassSession(newSession);
-      setNewClassData({ title: '', date: '', time: '', location: '', planning: '' });
+      setNewClassData({ title: '', date: '', time: '', location: '', planning: '', category: '' });
       onNotifyAdmin(`Agendou nova aula: ${newClassData.title}`, user);
       alert(`Aula "${newClassData.title}" agendada com sucesso!`);
     } catch (err: any) {
@@ -1487,6 +1488,24 @@ id,
                   placeholder="Ex: Sede"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-stone-400 mb-1">{t('classes.field.category')}</label>
+              <select
+                value={newClassData.category}
+                onChange={e => setNewClassData({ ...newClassData, category: e.target.value })}
+                className="w-full bg-stone-900 border border-stone-600 rounded p-2 text-white focus:border-purple-500 transition-colors"
+              >
+                <option value="">Todos (geral)</option>
+                <option value="iniciantes">Iniciantes</option>
+                <option value="intermediarios">Intermediários</option>
+                <option value="avancados">Avançados</option>
+                <option value="infantil">Infantil</option>
+                <option value="adultos">Adultos</option>
+                <option value="graduados">Graduados</option>
+                <option value="instrutores">Instrutores e Professores</option>
+              </select>
             </div>
 
             <div>

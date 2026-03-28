@@ -32,6 +32,7 @@ export interface ClassSession {
   professor_id?: string; // Link to professor's user ID
   status?: 'pending' | 'completed' | 'cancelled'; // Match database
   planning?: string; // Aula planning/content
+  category?: string; // Target audience category for the class
 }
 
 export interface LessonPlan {
