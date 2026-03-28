@@ -2622,11 +2622,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
                     <div className="text-center sm:text-left">
                         <h1 className="text-xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-4">
-                            <img 
-                                src={language === 'pt' ? "https://flagcdn.com/w80/br.png" : "https://flagcdn.com/w80/ar.png"} 
-                                alt="Flag" 
-                                className="w-10 sm:w-12 h-auto object-cover rounded shadow-2xl border-2 border-white/10"
-                            />
+                            <Shield className="text-red-500 shrink-0" size={24} />
                             <span>{t(language === 'pt' ? 'admin.dash.admin_br' : 'admin.dash.admin_ar')}</span>
                         </h1>
                         <p className="text-red-200 mt-1 text-sm">{t('admin.dash.welcome')} {user.nickname || user.first_name || user.name}!</p>
