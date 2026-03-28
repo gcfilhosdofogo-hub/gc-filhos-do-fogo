@@ -2514,7 +2514,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     )
                 `)
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .limit(2000); // Increased limit so expanded class attendance view loads correctly
 
             if (error) throw error;
             // Store attendance history in state for display
@@ -6123,39 +6123,113 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         .map(session => {
                                             const prof = allUsersProfiles.find(u => u.id === session.professor_id);
                                             const profName = prof?.nickname || prof?.name || session.instructor || 'Prof. Desconhecido';
+                                            const isExpanded = expandedSessionId === session.id;
+                                            const sessionAttendance = attendanceHistory.filter(h => h.session_id === session.id);
+                                            const presentCount = sessionAttendance.filter(h => h.status === 'present').length;
+                                            const absentCount = sessionAttendance.filter(h => h.status === 'absent').length;
+                                            const justifiedCount = sessionAttendance.filter(h => h.status === 'justified').length;
+                                            
                                             return (
-                                                <div key={session.id} className="bg-stone-900/50 p-4 rounded-xl border-l-4 border-teal-500 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:bg-stone-900">
-                                                    <div>
-                                                        {session.title && <h4 className="font-bold text-white text-lg">{session.title}</h4>}
-                                                        <div className="text-stone-400 text-sm flex flex-wrap gap-2 mt-1">
-                                                            <span className="flex items-center gap-1"><Calendar size={14} /> {session.date}</span>
-                                                            <span className="flex items-center gap-1"><Clock size={14} /> {session.time}</span>
-                                                            <span className="flex items-center gap-1"><MapPin size={14} /> {session.location}</span>
-                                                        </div>
-                                                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                                            <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-xs border border-stone-700">
-                                                                Prof: {profName}
-                                                            </span>
-                                                            {session.category && (
-                                                                <span className="bg-teal-900/30 text-teal-400 px-2 py-0.5 rounded text-xs border border-teal-900/50 uppercase font-bold tracking-wider">
-                                                                    {session.category}
+                                                <div key={session.id} className="bg-stone-900/50 rounded-xl border-l-4 border-teal-500 flex flex-col transition-all overflow-hidden hover:bg-stone-900">
+                                                    <div 
+                                                        className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer`}
+                                                        onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
+                                                    >
+                                                        <div className="w-full">
+                                                            <div className="flex items-center justify-between">
+                                                                {session.title && <h4 className="font-bold text-white text-lg">{session.title}</h4>}
+                                                                <div className="flex items-center gap-2 md:hidden">
+                                                                    {isExpanded ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-600" />}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="text-stone-400 text-sm flex flex-wrap gap-2 mt-1">
+                                                                <span className="flex items-center gap-1"><Calendar size={14} /> {session.date}</span>
+                                                                <span className="flex items-center gap-1"><Clock size={14} /> {session.time}</span>
+                                                                <span className="flex items-center gap-1"><MapPin size={14} /> {session.location}</span>
+                                                            </div>
+                                                            
+                                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                                <span className="bg-stone-800 text-stone-300 px-2 py-0.5 rounded text-xs border border-stone-700">
+                                                                    Prof: {profName}
                                                                 </span>
-                                                            )}
-                                                            <span className={`px-2 py-0.5 rounded text-xs border ${session.status === 'completed' ? 'bg-green-900/30 text-green-400 border-green-900/50' : session.status === 'cancelled' ? 'bg-red-900/30 text-red-400 border-red-900/50' : 'bg-yellow-900/30 text-yellow-400 border-yellow-900/50'}`}>
-                                                                {session.status === 'completed' ? 'Concluída' : session.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
-                                                            </span>
+                                                                {session.category && (
+                                                                    <span className="bg-teal-900/30 text-teal-400 px-2 py-0.5 rounded text-xs border border-teal-900/50 uppercase font-bold tracking-wider">
+                                                                        {session.category}
+                                                                    </span>
+                                                                )}
+                                                                <span className={`px-2 py-0.5 rounded text-xs border ${session.status === 'completed' ? 'bg-green-900/30 text-green-400 border-green-900/50' : session.status === 'cancelled' ? 'bg-red-900/30 text-red-400 border-red-900/50' : 'bg-yellow-900/30 text-yellow-400 border-yellow-900/50'}`}>
+                                                                    {session.status === 'completed' ? 'Concluída' : session.status === 'cancelled' ? 'Cancelada' : 'Pendente'}
+                                                                </span>
+                                                                {session.status === 'completed' && sessionAttendance.length > 0 && (
+                                                                    <div className="flex items-center gap-1.5 ml-1">
+                                                                        <span className="text-green-500 font-bold text-[10px]">{presentCount} P</span>
+                                                                        <span className="text-red-500 font-bold text-[10px]">{absentCount} F</span>
+                                                                        {justifiedCount > 0 && <span className="text-blue-400 font-bold text-[10px]">{justifiedCount} PJ</span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-4 md:mt-0 flex shrink-0 self-center items-center gap-4">
+                                                            <Button
+                                                                variant="secondary"
+                                                                className="text-xs w-full md:w-auto px-3 py-1.5 h-auto whitespace-nowrap bg-stone-800 border-stone-600 hover:bg-stone-700 hover:text-white transition-all text-stone-300"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleOpenAdminAttendance(session);
+                                                                }}
+                                                            >
+                                                                <CalendarCheck size={14} className="mr-1 inline" />
+                                                                Realizar Chamada
+                                                            </Button>
+                                                            <div className="hidden md:block">
+                                                                {isExpanded ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-600" />}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="mt-4 md:mt-0 flex shrink-0 self-center">
-                                                        <Button
-                                                            variant="secondary"
-                                                            className="text-xs w-full md:w-auto px-3 py-1.5 h-auto whitespace-nowrap bg-stone-800 border-stone-600 hover:bg-stone-700 hover:text-white transition-all text-stone-300"
-                                                            onClick={() => handleOpenAdminAttendance(session)}
-                                                        >
-                                                            <CalendarCheck size={14} className="mr-1 inline" />
-                                                            Realizar Chamada
-                                                        </Button>
-                                                    </div>
+                                                    
+                                                    {/* EXPANDED CONTENT: ATTENDANCE DETAILS */}
+                                                    {isExpanded && (
+                                                        <div className="px-4 pb-4 pt-1 bg-stone-900/30 animate-fade-in border-t border-teal-900/30">
+                                                            <div className="space-y-2 mt-2">
+                                                                <p className="text-[10px] text-teal-500/80 font-black uppercase tracking-widest pl-1 mb-2 border-b border-teal-900/50 pb-1 flex items-center justify-between">
+                                                                    Detalhes da Frequência
+                                                                    {session.status !== 'completed' && <span className="text-stone-500 normal-case font-medium tracking-normal flex items-center gap-1"><AlertCircle size={10} /> Chamada ainda não finalizada pelo responsável.</span>}
+                                                                </p>
+                                                                
+                                                                {sessionAttendance.length > 0 ? (
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                                        {sessionAttendance.sort((a, b) => a.student_name.localeCompare(b.student_name)).map(record => (
+                                                                            <div key={record.id} className="bg-stone-900/80 p-2.5 rounded-lg flex flex-col gap-1 border border-stone-800 hover:border-stone-700 transition-colors">
+                                                                                <div className="flex justify-between items-center gap-2">
+                                                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                                                        <div className={`shrink-0 w-2 h-2 rounded-full ${record.status === 'present' ? 'bg-green-500 shadow-sm shadow-green-500/50' : record.status === 'justified' ? 'bg-blue-500' : 'bg-red-500'}`} />
+                                                                                        <span className="text-stone-300 font-medium text-xs truncate">{record.student_name}</span>
+                                                                                    </div>
+                                                                                    <span className={`shrink-0 text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                                                                        record.status === 'present' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                                                                                        record.status === 'justified' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                                                                                        'bg-red-500/10 text-red-500 border border-red-500/20'
+                                                                                    }`}>
+                                                                                        {record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Falta Justificada' : 'Ausente'}
+                                                                                    </span>
+                                                                                </div>
+                                                                                {(record.status === 'absent' || record.status === 'justified') && record.justification && (
+                                                                                    <div className="text-[10px] text-stone-500 italic pl-4 mt-0.5">
+                                                                                        " {record.justification} "
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : session.status === 'completed' ? (
+                                                                    <p className="text-stone-500 text-xs italic pl-1 py-1">A chamada foi registrada como concluída, mas nenhum registro exato de aluno foi encontrado. (Dica de suporte: turma pode estar vazia ou ocorreu erro ao salvar o registro dos alunos na época)</p>
+                                                                ) : (
+                                                                    <p className="text-stone-500 text-xs italic pl-1 py-1">Expanda esta aula depois de fazer a chamada para ver o diário detalhado de alunos.</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })
