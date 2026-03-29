@@ -2499,6 +2499,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                     id,
                     created_at,
                     status,
+                    justification,
                     student_id,
                     session_id,
                     class_sessions (
