@@ -587,9 +587,9 @@ id,
     setTimeout(() => setCostPixCopied(false), 2000);
   };
 
-  const handleOpenAttendance = (classId: string) => { // Changed to string
+  const handleOpenAttendance = (classId: string) => {
     const initial: Record<string, 'present' | 'absent' | 'justified'> = {};
-    myStudents.forEach(s => initial[s.id] = 'present'); // Use real students
+    myStudents.forEach(s => initial[s.id] = 'present');
     setAttendanceData(initial);
     setSelectedClassId(classId);
     setProfView('attendance');
@@ -597,6 +597,7 @@ id,
   };
 
   const handleSaveAttendance = async () => {
+
     if (!selectedClassId) return;
 
     const records = Object.entries(attendanceData).map(([studentId, status]) => ({
@@ -2575,6 +2576,7 @@ id,
                             <CalendarCheck size={16} className="mr-2" /> {t('prof.dash.take_attendance')}
                           </Button>
                         ) : (
+
                           <div className="text-xs text-stone-500 text-center py-2 bg-stone-800 rounded">
                             <Clock size={14} className="inline mr-1" />
                             {classDate > now

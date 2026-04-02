@@ -2023,14 +2023,29 @@ export const DashboardAdmin: React.FC<Props> = ({
         const studentsInClass = allUsersProfiles.filter(u => u.role === 'aluno' && u.professorName === professorIdentity);
         
         const initialAttendance: Record<string, boolean> = {};
+        const initialJustifications: Record<string, string> = {};
+
+        // 1. Initial default state (everyone present)
         studentsInClass.forEach(s => initialAttendance[s.id] = true);
+        
+        // 2. Override with existing history if it exists
+        const sessionHistory = attendanceHistory.filter(h => h.session_id === classSession.id);
+        if (sessionHistory.length > 0) {
+            sessionHistory.forEach(record => {
+                initialAttendance[record.student_id] = record.status === 'present';
+                if (record.justification) {
+                    initialJustifications[record.student_id] = record.justification;
+                }
+            });
+        }
         
         setAdminAttendanceClass(classSession);
         setAdminAttendanceStudents(studentsInClass);
         setAdminAttendanceData(initialAttendance);
-        setAdminJustifications({});
+        setAdminJustifications(initialJustifications);
         setShowSuccess(false);
     };
+
 
     const toggleAdminPresence = (studentId: string) => {
         setAdminAttendanceData(prev => ({ ...prev, [studentId]: !prev[studentId] }));
@@ -6181,8 +6196,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 }}
                                                             >
                                                                 <CalendarCheck size={14} className="mr-1 inline" />
-                                                                Realizar Chamada
+                                                                {session.status === 'completed' ? 'Editar Chamada' : 'Realizar Chamada'}
                                                             </Button>
+
                                                             <div className="hidden md:block">
                                                                 {isExpanded ? <ChevronUp size={20} className="text-stone-400" /> : <ChevronDown size={20} className="text-stone-600" />}
                                                             </div>

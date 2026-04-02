@@ -935,6 +935,16 @@ function AppContent() {
 
   const handleAddAttendance = async (attendanceRecords: any[]) => {
     if (attendanceRecords.length === 0) return;
+    
+    // Deletar chamadas anteriores desta mesma aula (sessão) para evitar duplicatas ao editar
+    const sessionIds = Array.from(new Set(attendanceRecords.map(r => r.session_id)));
+    for (const sessionId of sessionIds) {
+      const { error: deleteError } = await supabase.from('attendance').delete().eq('session_id', sessionId);
+      if (deleteError) {
+        console.error('Error deleting previous attendance for session', sessionId, deleteError);
+      }
+    }
+
     const { error } = await supabase.from('attendance').insert(attendanceRecords);
     if (error) {
       console.error('Error adding attendance:', error);
@@ -943,6 +953,7 @@ function AppContent() {
       if (user) handleNotifyAdmin(`Realizou chamada para ${attendanceRecords.length} alunos`, user);
     }
   };
+
 
   const handleAddClassRecord = async (record: { photo_url: string; created_by: string; description?: string }) => {
     if (!session) return;
