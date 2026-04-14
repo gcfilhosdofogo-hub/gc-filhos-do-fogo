@@ -728,14 +728,14 @@ function AppContent() {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'ready' | 'delivered') => {
+  const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'paid' | 'producing' | 'delivered') => {
     const { data, error } = await supabase.from('uniform_orders').update({ status }).eq('id', orderId).select().single();
     if (error) console.error('Error updating order status:', error);
     else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
   };
 
   const handleUpdateOrderWithProof = async (orderId: string, proofUrl: string, proofName: string) => {
-    const { data, error } = await supabase.from('uniform_orders').update({ proof_url: proofUrl, proof_name: proofName }).eq('id', orderId).select().single();
+    const { data, error } = await supabase.from('uniform_orders').update({ proof_url: proofUrl, proof_name: proofName, status: 'paid' }).eq('id', orderId).select().single();
     if (error) console.error('Error updating order with proof:', error);
     else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
   };

@@ -25,7 +25,7 @@ interface Props {
     // Uniforms props
     uniformOrders: UniformOrder[];
     onAddOrder: (newOrder: Omit<UniformOrder, 'id' | 'created_at'>) => Promise<void>;
-    onUpdateOrderStatus: (orderId: string, status: 'pending' | 'ready' | 'delivered') => void;
+    onUpdateOrderStatus: (orderId: string, status: 'pending' | 'paid' | 'producing' | 'delivered') => void;
     // New props for student details
     schoolReports: SchoolReport[];
     assignments: Assignment[];
@@ -962,7 +962,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 belt: getBelt(o.user_id),
                 type: 'Uniforme',
                 value: o.total,
-                status: o.status === 'ready' || o.status === 'delivered' ? 'Pago' : 'Pendente'
+                status: o.status === 'paid' || o.status === 'producing' || o.status === 'delivered' ? 'Pago' : 'Pendente'
             });
         });
 
@@ -1096,7 +1096,7 @@ export const DashboardAdmin: React.FC<Props> = ({
         document.body.removeChild(link);
     };
 
-    const pendingUniformOrders = uniformOrders.filter(o => o.status === 'pending');
+    const pendingUniformOrders = uniformOrders.filter(o => o.status === 'paid'); // Admin sees 'paid' as pending for them
     const pendingEventRegistrations = eventRegistrations.filter(reg => reg.status === 'pending');
 
     const handleStartEdit = (e: React.MouseEvent, event: GroupEvent) => {
@@ -3331,8 +3331,8 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-stone-700 text-sm">
-                                    {uniformOrders.map(order => (
-                                        <tr key={order.id} className={`hover:bg-stone-700/30 ${order.status === 'pending' ? 'bg-orange-900/10' : ''}`}>
+                                    {uniformOrders.filter(o => o.status !== 'pending').map(order => (
+                                        <tr key={order.id} className={`hover:bg-stone-700/30 ${order.status === 'paid' ? 'bg-orange-900/10' : ''}`}>
                                             <td className="p-4">
                                                 <div className="font-bold text-white">{order.user_name}</div>
                                                 <div className="text-xs text-stone-500 capitalize">{order.user_role}</div>
@@ -3345,23 +3345,23 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             </td>
                                             <td className="p-4 text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</td>
                                             <td className="p-4">
-                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('admin.finance.status.pending_pay')}</span>}
-                                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('admin.finance.status.ready_prep')}</span>}
+                                                {order.status === 'paid' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('admin.finance.status.paid')}</span>}
+                                                {order.status === 'producing' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('admin.finance.status.producing')}</span>}
                                                 {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('admin.finance.status.delivered')}</span>}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    {order.status === 'pending' && (
+                                                    {order.status === 'paid' && (
                                                         <Button
                                                             className="text-xs px-2 py-1 h-auto"
                                                             variant="secondary"
-                                                            onClick={() => onUpdateOrderStatus(order.id, 'ready')}
-                                                            title={t('admin.finance.btn.confirm_pay')}
+                                                            onClick={() => onUpdateOrderStatus(order.id, 'producing')}
+                                                            title={t('admin.finance.btn.produce')}
                                                         >
-                                                            <DollarSign size={14} className="mr-1" /> {t('admin.finance.btn.confirm_pay')}
+                                                            <Shirt size={14} className="mr-1" /> {t('admin.finance.btn.produce')}
                                                         </Button>
                                                     )}
-                                                    {order.status === 'ready' && (
+                                                    {order.status === 'producing' && (
                                                         <Button
                                                             className="text-xs px-2 py-1 h-auto"
                                                             onClick={() => onUpdateOrderStatus(order.id, 'delivered')}
@@ -5158,9 +5158,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                     <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
-                                                                    {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
-                                                                    {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                                                                    {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
+                                                                    {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
+                                                                    {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-[10px] font-black uppercase border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
+                                                                    {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                                                                 </div>
                                                             </div>
 
@@ -5188,9 +5189,9 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         />
                                                                     </>
                                                                 )}
-                                                                {order.status === 'pending' && order.proof_url && (
+                                                                {order.status === 'paid' && (
                                                                     <span className="text-yellow-400 text-[10px] flex items-center gap-1 font-bold italic">
-                                                                        <Clock size={12} /> Comprovante em análise
+                                                                        <Clock size={12} /> {t('prof.uniform.analysis')}
                                                                     </span>
                                                                 )}
                                                                 {order.proof_url && (
@@ -5818,9 +5819,10 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                 <p className="text-stone-500 text-xs">R$ {order.total.toFixed(2).replace('.', ',')} - {order.date}</p>
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">Pendente</span>}
-                                                                {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">Pago/Pronto</span>}
-                                                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">Entregue</span>}
+                                                                {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
+                                                                {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
+                                                                {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-[10px] font-black uppercase border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
+                                                                {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                                                             </div>
                                                         </div>
                                                         {order.status === 'pending' && !order.proof_url && (

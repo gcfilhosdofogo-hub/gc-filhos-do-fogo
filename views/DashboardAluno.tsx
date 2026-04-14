@@ -1694,7 +1694,14 @@ export const DashboardAluno: React.FC<Props> = ({
                               <div key={order.id} className="bg-stone-900/80 p-4 rounded-xl border border-stone-800 flex justify-between items-center shadow-sm">
                                 <div>
                                   <p className="text-sm font-bold text-white">{order.item}</p>
-                                  <p className="text-[10px] text-stone-500 font-mono uppercase">{t('aluno.uniform.status')} {order.status === 'pending' ? t('aluno.finance.pending') : t('aluno.uniform.confirmed')}</p>
+                                  <p className="text-[10px] text-stone-500 font-mono uppercase">
+                                    {t('aluno.uniform.status')} {
+                                      order.status === 'pending' ? t('prof.uniform.status_pending') :
+                                      order.status === 'paid' ? t('prof.uniform.status_paid') :
+                                      order.status === 'producing' ? t('prof.uniform.status_producing') :
+                                      t('prof.uniform.status_delivered')
+                                    }
+                                  </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {order.status !== 'pending' ? (
@@ -2148,9 +2155,10 @@ export const DashboardAluno: React.FC<Props> = ({
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <span className="text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</span>
-                          {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">Pendente</span>}
-                          {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">Pago/Pronto</span>}
-                          {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">Entregue</span>}
+                          {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
+                          {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
+                          {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-xs border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
+                          {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                         </div>
                       </div>
 
@@ -2188,9 +2196,9 @@ export const DashboardAluno: React.FC<Props> = ({
                             >
                               <Eye size={14} /> Ver Comprovante
                             </button>
-                            {order.status === 'pending' && (
+                            {order.status === 'paid' && (
                               <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                <Clock size={12} /> Aguardando Confirmação
+                                <Clock size={12} /> {t('prof.uniform.analysis')}
                               </span>
                             )}
                           </>

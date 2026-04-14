@@ -178,7 +178,7 @@ export interface UniformOrder {
   shirt_size?: string;
   pants_size?: string;
   total: number;
-  status: 'pending' | 'ready' | 'delivered'; // ready = pago/aprovado
+  status: 'pending' | 'paid' | 'producing' | 'delivered'; // pending = carrinho, paid = pago, producing = em produção, delivered = entregue
   created_at?: string;
   proof_url?: string; // URL do comprovante de pagamento
   proof_name?: string; // Nome do arquivo do comprovante

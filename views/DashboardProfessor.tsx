@@ -2183,7 +2183,8 @@ id,
                         </div>
                         <div className="flex items-center gap-2">
                           {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
-                          {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_ready')}</span>}
+                          {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
+                          {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-[10px] font-black uppercase border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
                           {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                         </div>
                       </div>
@@ -2431,7 +2432,8 @@ id,
                       </div>
                       <div className="flex items-center gap-2">
                         {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-[10px] font-black uppercase border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
-                        {order.status === 'ready' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_ready')}</span>}
+                        {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-[10px] font-black uppercase border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
+                        {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-[10px] font-black uppercase border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
                         {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-[10px] font-black uppercase border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                       </div>
                     </div>
