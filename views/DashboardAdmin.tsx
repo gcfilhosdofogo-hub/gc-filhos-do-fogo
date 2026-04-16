@@ -62,11 +62,25 @@ interface Props {
 }
 
 
-const UNIFORM_PRICES = {
-    combo: 110.00,
-    shirt: 30.00,
-    pants_roda: 80.00,
-    pants_train: 80.00
+const UNIFORM_PRICES_MAP = {
+    pt: {
+        shirt: 30.00,
+        shirt_train: 30.00,
+        pants_roda: 80.00,
+        pants_train: 80.00,
+        combo: 110.00,
+        combo_official: 110.00,
+        combo_train: 110.00
+    },
+    es: {
+        shirt: 25000,
+        shirt_train: 30000,
+        pants_roda: 40000,
+        pants_train: 40000,
+        combo: 65000,
+        combo_official: 65000,
+        combo_train: 70000
+    }
 };
 
 type Tab = 'overview' | 'events' | 'finance' | 'pedagogy' | 'my_classes' | 'class_monitoring' | 'users' | 'student_details' | 'grades' | 'reports' | 'music' | 'banner' | 'ffpoints';
@@ -363,11 +377,15 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [selectedOrderToProof, setSelectedOrderToProof] = useState<UniformOrder | null>(null);
     const [costPixCopied, setCostPixCopied] = useState(false);
     const getCurrentPrice = () => {
+        const prices = UNIFORM_PRICES_MAP[language as keyof typeof UNIFORM_PRICES_MAP] || UNIFORM_PRICES_MAP.pt;
         switch (orderForm.item) {
-            case 'shirt': return UNIFORM_PRICES.shirt;
-            case 'pants_roda': return UNIFORM_PRICES.pants_roda;
-            case 'pants_train': return UNIFORM_PRICES.pants_train;
-            case 'combo': return UNIFORM_PRICES.combo;
+            case 'shirt': return prices.shirt;
+            case 'shirt_train': return prices.shirt_train;
+            case 'pants_roda': return prices.pants_roda;
+            case 'pants_train': return prices.pants_train;
+            case 'combo': return prices.combo;
+            case 'combo_official': return prices.combo_official;
+            case 'combo_train': return prices.combo_train;
             default: return 0;
         }
     };
@@ -1097,6 +1115,13 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const pendingUniformOrders = uniformOrders.filter(o => o.status === 'paid'); // Admin sees 'paid' as pending for them
+    const overdueUniformOrders = uniformOrders.filter(o => {
+        if (o.status !== 'producing' || !o.confirmed_at) return false;
+        const confDate = new Date(o.confirmed_at);
+        const diffTime = new Date().getTime() - confDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 15;
+    });
     const pendingEventRegistrations = eventRegistrations.filter(reg => reg.status === 'pending');
 
     const handleStartEdit = (e: React.MouseEvent, event: GroupEvent) => {
@@ -1248,7 +1273,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                         student_name: student.nickname || student.name,
                         month: targetMonth,
                         due_date: formattedDueDate,
-                        amount: 50.00,
+                        amount: (student.phone?.startsWith('54') || student.phone?.startsWith('+54')) ? 15000 : 50.00,
                         status: 'pending' as const,
                         type: 'Mensalidade'
                     };
@@ -1888,7 +1913,7 @@ export const DashboardAdmin: React.FC<Props> = ({
 
     // --- PROFESSOR MODE HANDLERS ---
     const handleCopyPix = () => {
-        const pixKey = 'soufilhodofogo@gmail.com';
+        const pixKey = language === 'pt' ? 'soufilhodofogo@gmail.com' : 'cedros.moto.caer.mp';
         navigator.clipboard.writeText(pixKey);
         setPixCopied(true);
         onNotifyAdmin('Visualizou/Copiou PIX Mensalidade', user);
@@ -1896,7 +1921,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     };
 
     const handleCopyCostPix = () => {
-        const pixKey = 'soufilhodofogo@gmail.com';
+        const pixKey = language === 'pt' ? 'soufilhodofogo@gmail.com' : 'cedros.moto.caer.mp';
         navigator.clipboard.writeText(pixKey);
         setCostPixCopied(true);
         setTimeout(() => setCostPixCopied(false), 2000);
@@ -2799,7 +2824,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 {remainingValue > 0 ? (
                                     <>
                                         <p className="text-sm text-stone-400">{t('admin.dash.remaining_value')}</p>
-                                        <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-2xl font-bold text-white">{language === 'pt' ? 'R$ ' : '$ '}{remainingValue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                                         <div className="flex gap-2 text-xs">
                                             <span className="text-green-400">{paidInstallments.length} {t('admin.dash.paid_installments')}</span>
                                             <span className="text-stone-600">|</span>
@@ -2815,7 +2840,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-2xl font-bold text-white">{language === 'pt' ? 'R$ ' : '$ '}{Number(user.graduationCost || 0).toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                                         {totalPaid > 0 && (
                                             <span className="text-xs text-green-400">✓ {t('admin.dash.paid_off')}</span>
                                         )}
@@ -2932,6 +2957,20 @@ export const DashboardAdmin: React.FC<Props> = ({
             {/* --- TAB: OVERVIEW --- */}
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-fade-in">
+                    {overdueUniformOrders.length > 0 && (
+                        <div className="bg-red-500/10 border-2 border-red-500/50 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-red-500 p-2 rounded-lg text-white shadow-lg shadow-red-500/50">
+                                    <AlertTriangle size={24} />
+                                </div>
+                                <div className="text-center sm:text-left">
+                                    <h4 className="text-red-500 font-black uppercase text-xs tracking-widest">{t('admin.finance.overdue_warning')}</h4>
+                                    <p className="text-white text-sm font-medium">Existem {overdueUniformOrders.length} pedidos de uniforme com prazo de produção (15 dias) expirado!</p>
+                                </div>
+                            </div>
+                            <Button variant="secondary" onClick={() => setActiveTab('finance')} className="bg-red-500 text-white hover:bg-red-400 text-xs font-black uppercase px-6">Ver Pedidos</Button>
+                        </div>
+                    )}
 
 
                     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -2956,7 +2995,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <DollarSign size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {totalRevenue.toFixed(2).replace('.', ',')}</h3>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">{language === 'pt' ? 'R$ ' : '$ '}{totalRevenue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</h3>
                             <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.revenue')}</p>
                         </button>
                         <button
@@ -2968,7 +3007,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <Wallet size={20} />
                                 </div>
                             </div>
-                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</h3>
+                            <h3 className="text-lg sm:text-2xl font-bold text-white truncate">{language === 'pt' ? 'R$ ' : '$ '}{pendingRevenue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</h3>
                             <p className="text-stone-400 text-xs sm:text-sm">{t('admin.stat.pending')}</p>
                         </button>
                         <button
@@ -3343,10 +3382,25 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 {order.shirt_size && <div>{t('admin.finance.shirt')}: {order.shirt_size}</div>}
                                                 {order.pants_size && <div>{t('admin.finance.pants')}: {order.pants_size}</div>}
                                             </td>
-                                            <td className="p-4 text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</td>
+                                            <td className="p-4 text-green-400 font-bold">{language === 'pt' ? 'R$ ' : '$ '}{order.total.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</td>
                                             <td className="p-4">
                                                 {order.status === 'paid' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('admin.finance.status.paid')}</span>}
-                                                {order.status === 'producing' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('admin.finance.status.producing')}</span>}
+                                                {order.status === 'producing' && (
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('admin.finance.status.producing')}</span>
+                                                        {(() => {
+                                                            const confirmedAt = (order as any).confirmed_at;
+                                                            if (!confirmedAt) return null;
+                                                            const confDate = new Date(confirmedAt);
+                                                            const today = new Date();
+                                                            const diffTime = today.getTime() - confDate.getTime();
+                                                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                                            const remaining = 15 - diffDays;
+                                                            if (remaining < 0) return <span className="text-[10px] font-black text-red-500 animate-pulse flex items-center gap-1"><AlertTriangle size={12} /> {t('admin.finance.overdue_warning')}</span>;
+                                                            return <span className="text-[10px] font-bold text-stone-500">{remaining} dias restantes</span>;
+                                                        })()}
+                                                    </div>
+                                                )}
                                                 {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('admin.finance.status.delivered')}</span>}
                                             </td>
                                             <td className="p-4 text-right">
@@ -3372,6 +3426,15 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                     )}
                                                     {order.status === 'delivered' && (
                                                         <span className="text-stone-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> {t('admin.finance.status.finished')}</span>
+                                                    )}
+                                                     {order.proof_url && (
+                                                        <button
+                                                            onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante')}
+                                                            className="p-1.5 rounded bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 transition-colors"
+                                                            title={t('admin.finance.view_proof')}
+                                                        >
+                                                            <Eye size={14} />
+                                                        </button>
                                                     )}
                                                     <button
                                                         onClick={() => handleDeleteUniformOrder(order.id)}
@@ -3429,7 +3492,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 {reg.status === 'paid' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('status.paid')}</span>}
                                                 {reg.status === 'cancelled' && <span className="px-2 py-1 rounded bg-red-900/30 text-red-400 text-xs border border-red-900/50">{t('status.cancelled')}</span>}
                                             </td>
-                                            <td className="p-4"> {/* NEW: Comprovante Column */}
+                                            <td className="p-4">
                                                 {reg.proof_url ? (
                                                     <button
                                                         onClick={() => handleViewEventRegistrationProof(reg.proof_url!, reg.event_title + ' ' + t('admin.finance.table.proof'))}
@@ -3502,7 +3565,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                                     <div className="bg-stone-900/50 px-4 py-2 rounded-xl border border-stone-700 flex flex-col justify-center min-w-[150px]">
                                         <span className="text-stone-500 text-[10px] uppercase font-black tracking-wider">{t('admin.finance.to_receive')}</span>
-                                        <p className="text-lg font-black text-red-500 leading-none">R$ {pendingMonthlyPayments.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</p>
+                                        <p className="text-lg font-black text-red-500 leading-none">{language === 'pt' ? 'R$ ' : '$ '}{pendingMonthlyPayments.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                                     </div>
 
                                     <div className="flex items-center gap-2 ml-auto lg:ml-0">
@@ -3569,7 +3632,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 <td className="p-4 font-medium text-white">{payment.student_name}</td>
                                                 <td className="p-4 text-stone-300">{payment.month}</td>
                                                 <td className="p-4 text-stone-300">{payment.due_date.split('-').reverse().join('/')}</td>
-                                                <td className="p-4 text-white font-mono">R$ {payment.amount.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</td>
+                                                <td className="p-4 text-white font-mono">{language === 'pt' ? 'R$ ' : '$ '}{payment.amount.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</td>
                                                 <td className="p-4">
                                                     {payment.status === 'paid' && (
                                                         <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
@@ -3719,7 +3782,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             </div>
                                                         </td>
                                                         <td className="p-4 text-stone-300">{nextPending.due_date.split('-').reverse().join('/')}</td>
-                                                        <td className="p-4 text-white font-mono font-bold text-purple-400">R$ {nextPending.amount.toFixed(2).replace('.', language === 'pt' ? ',' : '.')}</td>
+                                                        <td className="p-4 text-white font-mono font-bold text-purple-400">{language === 'pt' ? 'R$ ' : '$ '}{nextPending.amount.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</td>
                                                         <td className="p-4">
                                                             {nextPending.status === 'paid' && (
                                                                 <span className="inline-flex items-center gap-1 text-green-400 bg-green-900/20 px-2 py-1 rounded text-xs font-bold border border-green-900/50">
@@ -4146,7 +4209,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                                         studentId: u.id,
                                                                         month: '',
                                                                         dueDate: today,
-                                                                        amount: '50.00'
+                                                                        amount: (u.phone?.startsWith('54') || u.phone?.startsWith('+54')) ? '15000' : '50.00'
                                                                     });
                                                                     setShowAddPaymentModal(true);
                                                                 }}
@@ -4363,7 +4426,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         <div>
                                                             <p className="text-stone-400 text-xs uppercase font-bold mb-2">Status Acadêmico</p>
                                                             <p className="text-white text-sm mb-1"><span className="text-stone-500">Cordel:</span> {student.belt || 'Não Definido'}</p>
-                                                            {student.graduationCost !== undefined && <p className="text-white text-sm mb-1"><span className="text-stone-500">Custo Graduação:</span> R$ {student.graduationCost.toFixed(2).replace('.', ',')}</p>}
+                                                            {student.graduationCost !== undefined && <p className="text-white text-sm mb-1"><span className="text-stone-500">Custo Graduação:</span> {language === 'pt' ? 'R$ ' : '$ '}{student.graduationCost.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>}
                                                         </div>
                                                     </div>
 
@@ -5098,14 +5161,17 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         onChange={e => setOrderForm({ ...orderForm, item: e.target.value })}
                                                         className="w-full bg-stone-800 border border-stone-600 rounded-xl p-3 text-white outline-none focus:border-emerald-500"
                                                     >
-                                                        <option value="combo">Combo (Blusa + Calça)</option>
-                                                        <option value="shirt">Blusa Oficial</option>
-                                                        <option value="pants_roda">Calça de Roda</option>
-                                                        <option value="pants_train">Calça de Treino</option>
+                                                        <option value="combo">{t('prof.uniform.item_combo')}</option>
+                                                        {language === 'es' && <option value="combo_official">{t('prof.uniform.item_combo_official')}</option>}
+                                                        {language === 'es' && <option value="combo_train">{t('prof.uniform.item_combo_train')}</option>}
+                                                        <option value="shirt">{t('prof.uniform.item_shirt')}</option>
+                                                        {language === 'es' && <option value="shirt_train">{t('prof.uniform.item_shirt_train')}</option>}
+                                                        <option value="pants_roda">{t('prof.uniform.item_pants_roda')}</option>
+                                                        <option value="pants_train">{t('prof.uniform.item_pants_train')}</option>
                                                     </select>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                                                    {(orderForm.item === 'shirt' || orderForm.item === 'shirt_train' || orderForm.item.startsWith('combo')) && (
                                                         <div>
                                                             <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho Blusa</label>
                                                             <input
@@ -5119,7 +5185,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                             />
                                                         </div>
                                                     )}
-                                                    {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                                                    {(orderForm.item.startsWith('pants') || orderForm.item.startsWith('combo')) && (
                                                         <div>
                                                             <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho Calça</label>
                                                             <input
@@ -5136,7 +5202,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 </div>
                                                 <div className="flex justify-between items-center bg-stone-800 p-4 rounded-xl border border-stone-700 mt-2">
                                                     <span className="text-stone-400 text-sm font-bold">Total a pagar:</span>
-                                                    <span className="text-xl font-black text-white">R$ {getCurrentPrice().toFixed(2).replace('.', ',')}</span>
+                                                    <span className="text-xl font-black text-white">{language === 'pt' ? 'R$ ' : '$ '}{getCurrentPrice().toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</span>
                                                 </div>
                                                 <Button fullWidth type="submit" className="h-12 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20">
                                                     <ShoppingBag size={18} className="mr-2" /> Finalizar Pedido
@@ -6398,11 +6464,11 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                                 <div className="bg-stone-900 p-4 rounded-xl border border-stone-700">
                                     <p className="text-stone-500 text-xs uppercase font-bold mb-1">Total Recebido</p>
-                                    <p className="text-2xl font-bold text-green-500">R$ {totalRevenue.toFixed(2).replace('.', ',')}</p>
+                                    <p className="text-2xl font-bold text-green-500">{language === 'pt' ? 'R$ ' : '$ '}{totalRevenue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                                 </div>
                                 <div className="bg-stone-900 p-4 rounded-xl border border-stone-700">
                                     <p className="text-stone-500 text-xs uppercase font-bold mb-1">Pendente Total</p>
-                                    <p className="text-2xl font-bold text-red-500">R$ {pendingRevenue.toFixed(2).replace('.', ',')}</p>
+                                    <p className="text-2xl font-bold text-red-500">{language === 'pt' ? 'R$ ' : '$ '}{pendingRevenue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                                 </div>
                             </div>
 
@@ -6437,7 +6503,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         {move.type}
                                                     </span>
                                                 </td>
-                                                <td className="p-4 text-white font-mono">R$ {move.value.toFixed(2).replace('.', ',')}</td>
+                                                <td className="p-4 text-white font-mono">{language === 'pt' ? 'R$ ' : '$ '}{move.value.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</td>
                                                 <td className="p-4">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold ${move.status === 'Pago' ? 'text-green-400 bg-green-950/40' : 'text-yellow-400 bg-yellow-950/40'}`}>
                                                         {move.status}

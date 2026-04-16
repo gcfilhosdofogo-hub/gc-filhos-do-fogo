@@ -139,11 +139,25 @@ const convertToStandardImage = async (file: File): Promise<File> => {
 
 type MainTab = 'overview' | 'finance_resources' | 'grades' | 'assignments' | 'music' | 'home_training' | 'school_report' | 'uniform' | 'ffpoints'; // Main tabs for student dashboard
 
-const UNIFORM_PRICES = {
-  combo: 110.00,
-  shirt: 30.00,
-  pants_roda: 80.00,
-  pants_train: 80.00
+const UNIFORM_PRICES_MAP = {
+  pt: {
+    shirt: 30.00,
+    shirt_train: 30.00,
+    pants_roda: 80.00,
+    pants_train: 80.00,
+    combo: 110.00,
+    combo_official: 110.00,
+    combo_train: 110.00
+  },
+  es: {
+    shirt: 25000,
+    shirt_train: 30000,
+    pants_roda: 40000,
+    pants_train: 40000,
+    combo: 65000,
+    combo_official: 65000,
+    combo_train: 70000
+  }
 };
 
 const DiscordIcon = ({ size = 20 }: { size?: number }) => (
@@ -682,16 +696,21 @@ export const DashboardAluno: React.FC<Props> = ({
     let details = '';
     let itemLabel = '';
 
+    const prices = UNIFORM_PRICES_MAP[language as keyof typeof UNIFORM_PRICES_MAP] || UNIFORM_PRICES_MAP.pt;
+
     switch (orderForm.item) {
-      case 'shirt': itemLabel = t('aluno.uniform.shirt_official'); price = UNIFORM_PRICES.shirt; break;
-      case 'pants_roda': itemLabel = t('aluno.uniform.pants_roda'); price = UNIFORM_PRICES.pants_roda; break;
-      case 'pants_train': itemLabel = t('aluno.uniform.pants_train'); price = UNIFORM_PRICES.pants_train; break;
-      case 'combo': itemLabel = t('aluno.uniform.combo'); price = UNIFORM_PRICES.combo; break;
+      case 'shirt': itemLabel = t('aluno.uniform.shirt_official'); price = prices.shirt; break;
+      case 'shirt_train': itemLabel = t('aluno.uniform.shirt_train'); price = prices.shirt_train; break;
+      case 'pants_roda': itemLabel = t('aluno.uniform.pants_roda'); price = prices.pants_roda; break;
+      case 'pants_train': itemLabel = t('aluno.uniform.pants_train'); price = prices.pants_train; break;
+      case 'combo': itemLabel = t('aluno.uniform.combo'); price = prices.combo; break;
+      case 'combo_official': itemLabel = t('aluno.uniform.combo_official'); price = prices.combo_official; break;
+      case 'combo_train': itemLabel = t('aluno.uniform.combo_train'); price = prices.combo_train; break;
     }
 
-    if (orderForm.item === 'shirt' && !orderForm.shirtSize) { alert(t('aluno.uniform.error_size_shirt')); return; }
+    if ((orderForm.item === 'shirt' || orderForm.item === 'shirt_train') && !orderForm.shirtSize) { alert(t('aluno.uniform.error_size_shirt')); return; }
     if (orderForm.item.startsWith('pants') && !orderForm.pantsSize) { alert(t('aluno.uniform.error_size_pants')); return; }
-    if (orderForm.item === 'combo' && (!orderForm.shirtSize || !orderForm.pantsSize)) { alert(t('aluno.uniform.error_sizes')); return; }
+    if (orderForm.item.startsWith('combo') && (!orderForm.shirtSize || !orderForm.pantsSize)) { alert(t('aluno.uniform.error_sizes')); return; }
 
     const newOrder: Omit<UniformOrder, 'id' | 'created_at'> = {
       user_id: user.id,
@@ -713,11 +732,15 @@ export const DashboardAluno: React.FC<Props> = ({
 
   // Helper to get current price for display
   const getCurrentPrice = () => {
+    const prices = UNIFORM_PRICES_MAP[language as keyof typeof UNIFORM_PRICES_MAP] || UNIFORM_PRICES_MAP.pt;
     switch (orderForm.item) {
-      case 'shirt': return UNIFORM_PRICES.shirt;
-      case 'pants_roda': return UNIFORM_PRICES.pants_roda;
-      case 'pants_train': return UNIFORM_PRICES.pants_train;
-      case 'combo': return UNIFORM_PRICES.combo;
+      case 'shirt': return prices.shirt;
+      case 'shirt_train': return prices.shirt_train;
+      case 'pants_roda': return prices.pants_roda;
+      case 'pants_train': return prices.pants_train;
+      case 'combo': return prices.combo;
+      case 'combo_official': return prices.combo_official;
+      case 'combo_train': return prices.combo_train;
       default: return 0;
     }
   };
@@ -1133,7 +1156,7 @@ export const DashboardAluno: React.FC<Props> = ({
                           {remainingValue > 0 ? (
                             <>
                               <p className="text-sm text-stone-400">Valor Restante Parcelas:</p>
-                              <p className="text-2xl font-bold text-white">R$ {remainingValue.toFixed(2).replace('.', ',')}</p>
+                                                            <p className="text-2xl font-bold text-white">{language === 'pt' ? 'R$ ' : '$ '}{remainingValue.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                               <div className="flex gap-2 text-xs">
                                 <span className="text-green-400">{paidInstallments.length} pagas</span>
                                 <span className="text-stone-600">|</span>
@@ -1148,7 +1171,7 @@ export const DashboardAluno: React.FC<Props> = ({
                             </>
                           ) : (
                             <>
-                              <p className="text-2xl font-bold text-white">R$ {Number(user.graduationCost || 0).toFixed(2).replace('.', ',')}</p>
+                                                            <p className="text-2xl font-bold text-white">{language === 'pt' ? 'R$ ' : '$ '}{Number(user.graduationCost || 0).toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</p>
                               {totalPaid > 0 && (
                                 <span className="text-xs text-green-400">✓ Parcelas quitadas</span>
                               )}
@@ -1299,6 +1322,37 @@ export const DashboardAluno: React.FC<Props> = ({
           {/* --- TAB: OVERVIEW --- */}
           {activeMainTab === 'overview' && (
             <div className="space-y-6 animate-fade-in">
+              {/* 👕 Active Uniform Production Alert */}
+              {uniformOrders.filter(o => o.status === 'producing' && o.user_id === user.id).map(order => {
+                const confirmedAt = (order as any).confirmed_at;
+                if (!confirmedAt) return null;
+                const confDate = new Date(confirmedAt);
+                const today = new Date();
+                const diffTime = today.getTime() - confDate.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                const remaining = 15 - diffDays;
+                return (
+                  <div key={order.id} className="bg-gradient-to-r from-orange-600/20 to-orange-900/10 border-2 border-orange-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-lg shadow-orange-900/20">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-orange-500 p-3 rounded-xl text-white shadow-lg shadow-orange-500/40 animate-pulse">
+                        <Shirt size={28} />
+                      </div>
+                      <div>
+                        <h4 className="text-orange-400 font-black uppercase text-xs tracking-[0.2em] mb-1">Status do Uniforme</h4>
+                        <p className="text-white text-lg font-bold leading-tight">
+                          {remaining < 0 ? (
+                            <span className="text-red-400">{t('prof.uniform.delivery_overdue')}</span>
+                          ) : (
+                            <span>{t('prof.uniform.delivery_countdown', { days: remaining })}</span>
+                          )}
+                        </p>
+                        <p className="text-stone-400 text-[10px] font-medium mt-0.5">Item: {order.item}</p>
+                      </div>
+                    </div>
+                    <Button variant="secondary" onClick={() => setActiveMainTab('uniform')} className="bg-orange-500 hover:bg-orange-400 text-white border-orange-400/30 font-black h-10 px-6 text-xs uppercase tracking-widest shadow-lg shadow-orange-900/40">Detalhes</Button>
+                  </div>
+                );
+              })}
               {/* Resumo de Atividades (Summary) */}
               <div className="bg-stone-800 rounded-xl p-6 border border-stone-700 shadow-xl">
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -2093,14 +2147,17 @@ export const DashboardAluno: React.FC<Props> = ({
                       onChange={e => setOrderForm({ ...orderForm, item: e.target.value })}
                       className="w-full bg-stone-800 border border-stone-600 rounded p-2 text-white"
                     >
-                      <option value="combo">Combo (Blusa + Calça)</option>
-                      <option value="shirt">Blusa Oficial</option>
-                      <option value="pants_roda">Calça de Roda</option>
-                      <option value="pants_train">Calça de Treino</option>
+                      <option value="combo">{t('aluno.uniform.combo')}</option>
+                      {language === 'es' && <option value="combo_official">{t('aluno.uniform.combo_official')}</option>}
+                      {language === 'es' && <option value="combo_train">{t('aluno.uniform.combo_train')}</option>}
+                      <option value="shirt">{t('aluno.uniform.shirt_official')}</option>
+                      {language === 'es' && <option value="shirt_train">{t('aluno.uniform.shirt_train')}</option>}
+                      <option value="pants_roda">{t('aluno.uniform.pants_roda')}</option>
+                      <option value="pants_train">{t('aluno.uniform.pants_train')}</option>
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    {(orderForm.item === 'shirt' || orderForm.item === 'combo') && (
+                    {(orderForm.item === 'shirt' || orderForm.item === 'shirt_train' || orderForm.item.startsWith('combo')) && (
                       <div>
                         <label htmlFor="shirtSize" className="block text-sm text-stone-400 mb-1">Tamanho da Blusa</label>
                         <input
@@ -2114,7 +2171,7 @@ export const DashboardAluno: React.FC<Props> = ({
                         />
                       </div>
                     )}
-                    {(orderForm.item === 'pants_roda' || orderForm.item === 'pants_train' || orderForm.item === 'combo') && (
+                    {(orderForm.item.startsWith('pants') || orderForm.item.startsWith('combo')) && (
                       <div>
                         <label htmlFor="pantsSize" className="block text-sm text-stone-400 mb-1">Tamanho da Calça</label>
                         <input
@@ -2130,7 +2187,7 @@ export const DashboardAluno: React.FC<Props> = ({
                     )}
                   </div>
                   <div className="text-right text-white font-bold text-lg">
-                    Total: R$ {getCurrentPrice().toFixed(2).replace('.', ',')}
+                    Total: {language === 'pt' ? 'R$ ' : '$ '}{getCurrentPrice().toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}
                   </div>
                   <Button fullWidth type="submit">
                     <ShoppingBag size={18} className="mr-1" /> Fazer Pedido
@@ -2154,10 +2211,25 @@ export const DashboardAluno: React.FC<Props> = ({
                           <p className="text-stone-500 text-xs">Pedido em: {order.date}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <span className="text-green-400 font-bold">R$ {order.total.toFixed(2).replace('.', ',')}</span>
+                          <span className="text-green-400 font-bold">{language === 'pt' ? 'R$ ' : '$ '}{order.total.toLocaleString(language === 'pt' ? 'pt-BR' : 'es-AR')}</span>
                           {order.status === 'pending' && <span className="px-2 py-1 rounded bg-yellow-900/30 text-yellow-400 text-xs border border-yellow-900/50">{t('prof.uniform.status_pending')}</span>}
                           {order.status === 'paid' && <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-400 text-xs border border-blue-900/50">{t('prof.uniform.status_paid')}</span>}
-                          {order.status === 'producing' && <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-xs border border-orange-900/50">{t('prof.uniform.status_producing')}</span>}
+                          {order.status === 'producing' && (
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="px-2 py-1 rounded bg-orange-900/30 text-orange-400 text-xs border border-orange-900/50">{t('prof.uniform.status_producing')}</span>
+                              {(() => {
+                                const confirmedAt = (order as any).confirmed_at;
+                                if (!confirmedAt) return null;
+                                const confDate = new Date(confirmedAt);
+                                const today = new Date();
+                                const diffTime = today.getTime() - confDate.getTime();
+                                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                const remaining = 15 - diffDays;
+                                if (remaining < 0) return <span className="text-[10px] font-black text-red-500 animate-pulse flex items-center gap-1"><AlertTriangle size={12} /> {t('prof.uniform.delivery_overdue')}</span>;
+                                return <span className="text-[10px] font-bold text-orange-400 flex items-center gap-1"><Clock size={12} /> {t('prof.uniform.delivery_countdown', { days: remaining })}</span>;
+                              })()}
+                            </div>
+                          )}
                           {order.status === 'delivered' && <span className="px-2 py-1 rounded bg-green-900/30 text-green-400 text-xs border border-green-900/50">{t('prof.uniform.status_delivered')}</span>}
                         </div>
                       </div>
@@ -2189,19 +2261,17 @@ export const DashboardAluno: React.FC<Props> = ({
                           </>
                         )}
                         {order.proof_url && (
-                          <>
-                            <button
-                              onClick={() => window.open(order.proof_url, '_blank')}
-                              className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                            >
-                              <Eye size={14} /> Ver Comprovante
-                            </button>
-                            {order.status === 'paid' && (
-                              <span className="text-yellow-400 text-xs flex items-center gap-1">
-                                <Clock size={12} /> {t('prof.uniform.analysis')}
-                              </span>
-                            )}
-                          </>
+                          <button
+                            onClick={() => handleViewPaymentProof(order.proof_url!, order.item + ' Comprovante', 'payment_proofs')}
+                            className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Ver Comprovante
+                          </button>
+                        )}
+                        {order.status === 'paid' && (
+                          <span className="text-yellow-400 text-xs flex items-center gap-1">
+                            <Clock size={12} /> {t('prof.uniform.analysis')}
+                          </span>
                         )}
                       </div>
                     </div>

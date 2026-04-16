@@ -724,12 +724,15 @@ function AppContent() {
     if (error) console.error('Error adding order:', error);
     else {
       setUniformOrders(prev => [data, ...prev]);
-      if (user) handleNotifyAdmin(`Solicitou uniforme: ${order.item}`, user);
     }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: 'pending' | 'paid' | 'producing' | 'delivered') => {
-    const { data, error } = await supabase.from('uniform_orders').update({ status }).eq('id', orderId).select().single();
+    const updateData: any = { status };
+    if (status === 'producing') {
+      updateData.confirmed_at = new Date().toISOString();
+    }
+    const { data, error } = await supabase.from('uniform_orders').update(updateData).eq('id', orderId).select().single();
     if (error) console.error('Error updating order status:', error);
     else setUniformOrders(prev => prev.map(o => o.id === orderId ? data : o));
   };
