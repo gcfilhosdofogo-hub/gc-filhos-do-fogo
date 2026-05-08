@@ -4,7 +4,7 @@ import { User, GroupEvent, MusicItem, UniformOrder, ClassSession, Assignment as 
 import { FFPoints } from './FFPoints';
 import { useLanguage } from '../src/i18n/LanguageContext';
 
-import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2, Star } from 'lucide-react';
+import { Users, CalendarCheck, PlusCircle, Copy, Check, ArrowLeft, Save, X, UploadCloud, BookOpen, Paperclip, Calendar, Wallet, Info, Shirt, ShoppingBag, Music, Mic2, MessageCircle, AlertTriangle, Video, Clock, Camera, UserPlus, Shield, Award, GraduationCap, PlayCircle, FileUp, Eye, DollarSign, FileText, Ticket, Trash2, Activity, Instagram, ChevronDown, ChevronUp, CheckCircle, Edit2, Star, ExternalLink } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client'; // Import supabase client
 import { Logo } from '../components/Logo'; // Import Logo component
@@ -2008,13 +2008,15 @@ id,
       {/* --- PROF VIEW: MUSIC --- */}
       {profView === 'music_manager' && (
         <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
-          <button onClick={() => setProfView('dashboard')} className="mb-4 text-stone-400 flex items-center gap-2 hover:text-white transition-colors relative z-20"><ArrowLeft size={16} /> {t('prof.planning.back')}</button>
-
-          {/* Decorative Background Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/5 blur-[60px] rounded-full -ml-24 -mb-24"></div>
 
           <div className="relative z-10">
-            <div className="flex items-center gap-4 mb-8">
+            <button onClick={() => setProfView('dashboard')} className="mb-6 text-stone-400 flex items-center gap-2 hover:text-white transition-colors">
+              <ArrowLeft size={16} /> {t('prof.planning.back')}
+            </button>
+
+            <div className="flex items-center gap-4 mb-10">
               <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
                 <Music size={32} />
               </div>
@@ -2024,95 +2026,28 @@ id,
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-5 gap-8">
-              <div className="lg:col-span-2">
-                <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700/50 sticky top-6">
-                  <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                    <PlusCircle size={20} className="text-yellow-500" />
-                    {t('prof.music.new')}
-                  </h3>
-                  <form onSubmit={handleSubmitMusic} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.title_label')}</label>
-                      <input type="text" placeholder="Ex: Capoeira é Luta" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.category')}</label>
-                      <input type="text" placeholder={t('prof.music.cat_ph')} value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">{t('prof.music.lyrics')}</label>
-                      <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
-                    </div>
-
-                    <Button fullWidth type="submit" className="h-14 font-black uppercase tracking-tighter text-lg shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20">
-                      {t('prof.music.submit')}
-                    </Button>
-                  </form>
+            <div className="max-w-xl mx-auto">
+              <div className="bg-stone-900/70 border-2 border-yellow-500/20 rounded-3xl p-8 flex flex-col items-center text-center gap-6 shadow-xl">
+                <div className="p-5 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                  <Music size={48} className="text-yellow-400" />
                 </div>
-              </div>
-
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Activity size={20} className="text-yellow-500" />
-                    {t('prof.music.registered')}
-                  </h3>
-                  <span className="text-[10px] font-black bg-stone-900 border border-stone-700 px-3 py-1 rounded-full text-stone-400">
-                    {musicList.length} {t('prof.music.items')}
-                  </span>
+                <div>
+                  <h3 className="text-xl font-black text-white mb-3">Aprenda as Músicas da Capoeira</h3>
+                  <p className="text-stone-400 text-sm leading-relaxed">
+                    Acesse o <span className="text-yellow-400 font-bold">Capoeira Café</span>, um site dedicado às músicas de capoeira, onde você poderá aprender letras, melodias e estilos das tradições Regional e Angola.
+                  </p>
                 </div>
-
-                <div className="grid sm:grid-cols-2 gap-4 max-h-[750px] overflow-y-auto pr-2 custom-scrollbar content-start">
-                  {musicList.length > 0 ? (
-                    musicList.map(m => (
-                      <div key={m.id} className="bg-stone-900/80 backdrop-blur-sm p-5 rounded-2xl border-2 border-stone-800 hover:border-yellow-500/30 transition-all group flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="max-w-[80%]">
-                              <p className="text-white font-black leading-tight group-hover:text-yellow-400 transition-colors">{m.title}</p>
-                              <span className="text-[9px] font-black bg-stone-800 text-stone-500 px-2 py-0.5 rounded uppercase tracking-widest border border-stone-700 inline-block mt-1">
-                                {m.category}
-                              </span>
-                            </div>
-                            {/* Audio player removed */}
-                          </div>
-                          {m.lyrics && (
-                            <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
-                              <p className="text-stone-400 text-[11px] leading-relaxed whitespace-pre-line line-clamp-4 font-medium italic">
-                                {m.lyrics}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-stone-800">
-                          <span className="text-[9px] font-bold text-stone-600 flex items-center gap-1">
-                            <Clock size={10} /> {new Date(m.created_at || new Date().toISOString()).toLocaleDateString('pt-BR')}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              className="p-1.5 text-stone-600 hover:text-red-500 transition-colors"
-                              title="Remover"
-                              onClick={() => {
-                                if (window.confirm(t('prof.music.delete_confirm'))) {
-                                  onDeleteMusic(m.id);
-                                }
-                              }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
-                      <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">{t('prof.music.empty')}</p>
-                    </div>
-                  )}
-                </div>
+                <a
+                  href="https://capoeira.cafe/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-stone-900 font-black px-8 py-4 rounded-2xl text-base uppercase tracking-tight transition-all shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 hover:scale-105"
+                >
+                  <Music size={20} />
+                  Acessar Acervo Musical
+                  <ExternalLink size={16} />
+                </a>
+                <p className="text-stone-600 text-xs">capoeira.cafe</p>
               </div>
             </div>
           </div>

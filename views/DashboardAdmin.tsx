@@ -4,7 +4,7 @@ import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole
 import { FFPoints } from './FFPoints';
 import { useLanguage } from '../src/i18n/LanguageContext';
 
-import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy } from 'lucide-react'; // Import Archive
+import { Shield, Users, Bell, DollarSign, CalendarPlus, Plus, PlusCircle, CheckCircle, AlertCircle, Clock, GraduationCap, BookOpen, ChevronDown, ChevronUp, Trash2, Edit2, X, Save, Activity, MessageCircle, ArrowLeft, CalendarCheck, Camera, FileWarning, Info, Mic2, Music, Paperclip, Search, Shirt, ShoppingBag, ThumbsDown, ThumbsUp, UploadCloud, MapPin, Wallet, Check, Calendar, Settings, UserPlus, Mail, Phone, Lock, Package, FileText, Video, PlayCircle, Ticket, FileUp, Eye, Award, Instagram, Archive, Copy, ExternalLink } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { useSession } from '../src/components/SessionContextProvider'; // Import useSession
@@ -5291,97 +5291,38 @@ export const DashboardAdmin: React.FC<Props> = ({
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
 
                                     <div className="relative z-10">
-                                        <div className="flex items-center gap-4 mb-8">
+                                        <div className="flex items-center gap-4 mb-10">
                                             <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
                                                 <Music size={32} />
                                             </div>
                                             <div>
                                                 <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Acervo Musical</h2>
-                                                <p className="text-stone-400 text-sm">Gerencie o repertório da aula</p>
+                                                <p className="text-stone-400 text-sm">Repertório musical do grupo</p>
                                             </div>
                                         </div>
 
-                                        <div className="grid lg:grid-cols-5 gap-8">
-                                            <div className="lg:col-span-2">
-                                                <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700/50 sticky top-6">
-                                                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                                                        <PlusCircle size={20} className="text-yellow-500" />
-                                                        Nova Música
-                                                    </h3>
-                                                    <form onSubmit={handleSubmitMusic} className="space-y-4">
-                                                        <div className="space-y-1">
-                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Título da Obra</label>
-                                                            <input type="text" placeholder="Ex: Capoeira é Luta" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
-                                                            <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Letra da Música</label>
-                                                            <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
-                                                        </div>
-
-                                                        <Button fullWidth type="submit" className="h-14 font-black uppercase tracking-tighter text-lg shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20">
-                                                            Lançar no Acervo
-                                                        </Button>
-                                                    </form>
+                                        <div className="max-w-xl mx-auto">
+                                            <div className="bg-stone-900/70 border-2 border-yellow-500/20 rounded-3xl p-8 flex flex-col items-center text-center gap-6 shadow-xl">
+                                                <div className="p-5 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                                                    <Music size={48} className="text-yellow-400" />
                                                 </div>
-                                            </div>
-
-                                            <div className="lg:col-span-3 space-y-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                                        <Activity size={20} className="text-yellow-500" />
-                                                        Músicas Registradas
-                                                    </h3>
-                                                    <span className="text-[10px] font-black bg-stone-900 border border-stone-700 px-3 py-1 rounded-full text-stone-400">
-                                                        {musicList.length} ITENS
-                                                    </span>
+                                                <div>
+                                                    <h3 className="text-xl font-black text-white mb-3">Aprenda as Músicas da Capoeira</h3>
+                                                    <p className="text-stone-400 text-sm leading-relaxed">
+                                                        Acesse o <span className="text-yellow-400 font-bold">Capoeira Café</span>, um site dedicado às músicas de capoeira, onde os membros poderão aprender letras, melodias e estilos das tradições Regional e Angola.
+                                                    </p>
                                                 </div>
-
-                                                <div className="grid sm:grid-cols-2 gap-4 max-h-[750px] overflow-y-auto pr-2 custom-scrollbar content-start">
-                                                    {musicList.length > 0 ? (
-                                                        musicList.map(m => (
-                                                            <div key={m.id} className="bg-stone-900/80 backdrop-blur-sm p-5 rounded-2xl border-2 border-stone-800 hover:border-yellow-500/30 transition-all group flex flex-col justify-between">
-                                                                <div>
-                                                                    <div className="flex justify-between items-start mb-3">
-                                                                        <div className="max-w-[80%]">
-                                                                            <p className="text-white font-black leading-tight group-hover:text-yellow-400 transition-colors">{m.title}</p>
-                                                                            <span className="text-[9px] font-black bg-stone-800 text-stone-500 px-2 py-0.5 rounded uppercase tracking-widest border border-stone-700 inline-block mt-1">
-                                                                                {m.category}
-                                                                            </span>
-                                                                        </div>
-                                                                        {/* Audio player removed */}
-                                                                    </div>
-                                                                    {m.lyrics && (
-                                                                        <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
-                                                                            <p className="text-stone-400 text-[11px] leading-relaxed whitespace-pre-line line-clamp-4 font-medium italic">
-                                                                                {m.lyrics}
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex justify-between items-center mt-4 pt-4 border-t border-stone-800">
-                                                                    <span className="text-[9px] font-bold text-stone-600 flex items-center gap-1">
-                                                                        <Clock size={10} /> {new Date(m.created_at || '').toLocaleDateString('pt-BR')}
-                                                                    </span>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button className="p-1.5 text-stone-600 hover:text-red-500 transition-colors" title="Remover">
-                                                                            <Trash2 size={14} />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
-                                                            <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                                                            <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma música no acervo</p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <a
+                                                    href="https://capoeira.cafe/"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-stone-900 font-black px-8 py-4 rounded-2xl text-base uppercase tracking-tight transition-all shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 hover:scale-105"
+                                                >
+                                                    <Music size={20} />
+                                                    Acessar Acervo Musical
+                                                    <ExternalLink size={16} />
+                                                </a>
+                                                <p className="text-stone-600 text-xs">capoeira.cafe</p>
                                             </div>
                                         </div>
                                     </div>
@@ -6823,101 +6764,42 @@ export const DashboardAdmin: React.FC<Props> = ({
             {
                 activeTab === 'music' && (
                     <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
-                        {/* Decorative Background Elements */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+                        <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/5 blur-[60px] rounded-full -ml-24 -mb-24"></div>
 
                         <div className="relative z-10">
-                            <div className="flex items-center gap-4 mb-8">
+                            <div className="flex items-center gap-4 mb-10">
                                 <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
                                     <Music size={32} />
                                 </div>
                                 <div>
                                     <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Acervo Musical</h2>
-                                    <p className="text-stone-400 text-sm">Gerencie o repertório do grupo</p>
+                                    <p className="text-stone-400 text-sm">Repertório musical do grupo</p>
                                 </div>
                             </div>
 
-                            <div className="grid lg:grid-cols-5 gap-8">
-                                <div className="lg:col-span-2">
-                                    <div className="bg-stone-900/50 p-6 rounded-2xl border border-stone-700/50 sticky top-6">
-                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                                            <PlusCircle size={20} className="text-yellow-500" />
-                                            Nova Música
-                                        </h3>
-                                        <form onSubmit={handleSubmitMusic} className="space-y-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Título da Obra</label>
-                                                <input type="text" placeholder="Ex: Capoeira é Luta" value={musicForm.title} onChange={e => setMusicForm({ ...musicForm, title: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Categoria</label>
-                                                <input type="text" placeholder="Ex: Regional, Angola, Maculelê" value={musicForm.category} onChange={e => setMusicForm({ ...musicForm, category: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 font-medium" required />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] uppercase font-black text-stone-500 ml-1 tracking-widest">Letra da Música</label>
-                                                <textarea placeholder="Cole a letra completa aqui..." value={musicForm.lyrics} onChange={e => setMusicForm({ ...musicForm, lyrics: e.target.value })} className="w-full bg-stone-800 border-2 border-stone-700 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-stone-600 h-40 font-medium custom-scrollbar" />
-                                            </div>
-
-                                            <Button fullWidth type="submit" className="h-14 font-black uppercase tracking-tighter text-lg shadow-xl shadow-yellow-500/10 hover:shadow-yellow-500/20">
-                                                Lançar no Acervo
-                                            </Button>
-                                        </form>
+                            <div className="max-w-xl mx-auto">
+                                <div className="bg-stone-900/70 border-2 border-yellow-500/20 rounded-3xl p-8 flex flex-col items-center text-center gap-6 shadow-xl">
+                                    <div className="p-5 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                                        <Music size={48} className="text-yellow-400" />
                                     </div>
-                                </div>
-
-                                <div className="lg:col-span-3 space-y-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                            <Activity size={20} className="text-yellow-500" />
-                                            Músicas Registradas
-                                        </h3>
-                                        <span className="text-[10px] font-black bg-stone-900 border border-stone-700 px-3 py-1 rounded-full text-stone-400">
-                                            {musicList.length} ITENS
-                                        </span>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white mb-3">Aprenda as Músicas da Capoeira</h3>
+                                        <p className="text-stone-400 text-sm leading-relaxed">
+                                            Acesse o <span className="text-yellow-400 font-bold">Capoeira Café</span>, um site dedicado às músicas de capoeira, onde os membros poderão aprender letras, melodias e estilos das tradições Regional e Angola.
+                                        </p>
                                     </div>
-
-                                    <div className="grid sm:grid-cols-2 gap-4 max-h-[750px] overflow-y-auto pr-2 custom-scrollbar content-start">
-                                        {musicList.length > 0 ? (
-                                            musicList.map(m => (
-                                                <div key={m.id} className="bg-stone-900/80 backdrop-blur-sm p-5 rounded-2xl border-2 border-stone-800 hover:border-yellow-500/30 transition-all group flex flex-col justify-between">
-                                                    <div>
-                                                        <div className="flex justify-between items-start mb-3">
-                                                            <div className="max-w-[80%]">
-                                                                <p className="text-white font-black leading-tight group-hover:text-yellow-400 transition-colors">{m.title}</p>
-                                                                <span className="text-[9px] font-black bg-stone-800 text-stone-500 px-2 py-0.5 rounded uppercase tracking-widest border border-stone-700 inline-block mt-1">
-                                                                    {m.category}
-                                                                </span>
-                                                            </div>
-                                                            {/* Audio player removed */}
-                                                        </div>
-                                                        {m.lyrics && (
-                                                            <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
-                                                                <p className="text-stone-400 text-[11px] leading-relaxed whitespace-pre-line line-clamp-4 font-medium italic">
-                                                                    {m.lyrics}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-stone-800">
-                                                        <span className="text-[9px] font-bold text-stone-600 flex items-center gap-1">
-                                                            <Clock size={10} /> {new Date(m.created_at || '').toLocaleDateString('pt-BR')}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <button className="p-1.5 text-stone-600 hover:text-red-500 transition-colors" title="Remover">
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
-                                                <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                                                <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">Nenhuma música no acervo</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <a
+                                        href="https://capoeira.cafe/"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-stone-900 font-black px-8 py-4 rounded-2xl text-base uppercase tracking-tight transition-all shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 hover:scale-105"
+                                    >
+                                        <Music size={20} />
+                                        Acessar Acervo Musical
+                                        <ExternalLink size={16} />
+                                    </a>
+                                    <p className="text-stone-600 text-xs">capoeira.cafe</p>
                                 </div>
                             </div>
                         </div>

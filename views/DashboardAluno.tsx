@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade } from '../types';
 import { FFPoints } from './FFPoints';
 import { useLanguage } from '../src/i18n/LanguageContext';
-import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp, MessageCircle, PlusCircle, Activity, BookOpen, CheckCircle } from 'lucide-react';
+import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp, MessageCircle, PlusCircle, Activity, BookOpen, CheckCircle, ExternalLink } from 'lucide-react';
 import { Button } from '../components/Button';
 import { supabase } from '../src/integrations/supabase/client';
 import { Logo } from '../components/Logo';
@@ -1924,13 +1924,15 @@ export const DashboardAluno: React.FC<Props> = ({
           {activeMainTab === 'music' && (
             <div className="bg-stone-800 rounded-2xl p-8 border border-stone-700 animate-fade-in shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 blur-[80px] rounded-full -mr-32 -mt-32"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-500/5 blur-[60px] rounded-full -ml-24 -mb-24"></div>
 
               <div className="relative z-10">
-                <Button variant="ghost" className="mb-4 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
+                <Button variant="ghost" className="mb-6 text-stone-400 p-0 hover:text-white" onClick={() => setActiveMainTab('overview')}>
                   <ArrowLeft size={16} className="mr-2" />
-                  Voltar ao Painel
+                  {t('common.back_panel')}
                 </Button>
-                <div className="flex items-center gap-4 mb-8">
+
+                <div className="flex items-center gap-4 mb-10">
                   <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 text-yellow-500">
                     <Music size={32} />
                   </div>
@@ -1940,42 +1942,29 @@ export const DashboardAluno: React.FC<Props> = ({
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {musicList.length > 0 ? (
-                    musicList.map(m => (
-                      <div key={m.id} className="bg-stone-900/80 backdrop-blur-sm p-5 rounded-2xl border-2 border-stone-800 hover:border-yellow-500/30 transition-all group flex flex-col justify-between h-full">
-                        <div>
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="max-w-[80%]">
-                              <p className="text-white font-black leading-tight group-hover:text-yellow-400 transition-colors line-clamp-2">{m.title}</p>
-                              <span className="text-[9px] font-black bg-stone-800 text-stone-500 px-2 py-0.5 rounded uppercase tracking-widest border border-stone-700 inline-block mt-1">
-                                {m.category}
-                              </span>
-                            </div>
-                            {/* Audio player removed */}
-                          </div>
-                          {m.lyrics && (
-                            <div className="mt-2 p-3 bg-black/40 rounded-xl border border-stone-800 group-hover:border-stone-700 transition-all">
-                              <p className="text-stone-400 text-[11px] leading-relaxed whitespace-pre-line line-clamp-4 font-medium italic">
-                                {m.lyrics}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-stone-800">
-                          <span className="text-[9px] font-bold text-stone-600 flex items-center gap-1">
-                            <Clock size={10} /> {new Date(m.created_at || Date.now()).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-full py-20 bg-stone-900/30 rounded-3xl border-2 border-dashed border-stone-800 flex flex-col items-center justify-center">
-                      <Music size={48} className="text-stone-700 mb-4 animate-pulse" />
-                      <p className="text-stone-500 font-bold uppercase tracking-widest text-sm">{t('aluno.music.empty')}</p>
+                <div className="max-w-xl mx-auto">
+                  <div className="bg-stone-900/70 border-2 border-yellow-500/20 rounded-3xl p-8 flex flex-col items-center text-center gap-6 shadow-xl">
+                    <div className="p-5 bg-yellow-500/10 rounded-full border border-yellow-500/20">
+                      <Music size={48} className="text-yellow-400" />
                     </div>
-                  )}
+                    <div>
+                      <h3 className="text-xl font-black text-white mb-3">Aprenda as Músicas da Capoeira</h3>
+                      <p className="text-stone-400 text-sm leading-relaxed">
+                        Acesse o <span className="text-yellow-400 font-bold">Capoeira Café</span>, um site dedicado às músicas de capoeira, onde você poderá aprender letras, melodias e estilos das tradições Regional e Angola.
+                      </p>
+                    </div>
+                    <a
+                      href="https://capoeira.cafe/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-stone-900 font-black px-8 py-4 rounded-2xl text-base uppercase tracking-tight transition-all shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 hover:scale-105"
+                    >
+                      <Music size={20} />
+                      Acessar Acervo Musical
+                      <ExternalLink size={16} />
+                    </a>
+                    <p className="text-stone-600 text-xs">capoeira.cafe</p>
+                  </div>
                 </div>
               </div>
             </div>
