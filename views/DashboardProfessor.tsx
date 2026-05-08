@@ -2032,9 +2032,9 @@ id,
                   <Music size={48} className="text-yellow-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white mb-3">Aprenda as Músicas da Capoeira</h3>
+                  <h3 className="text-xl font-black text-white mb-3">{t('music.link.learn_title')}</h3>
                   <p className="text-stone-400 text-sm leading-relaxed">
-                    Acesse o <span className="text-yellow-400 font-bold">Capoeira Café</span>, um site dedicado às músicas de capoeira, onde você poderá aprender letras, melodias e estilos das tradições Regional e Angola.
+                    {t('music.link.description')}
                   </p>
                 </div>
                 <a
@@ -2044,7 +2044,7 @@ id,
                   className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-stone-900 font-black px-8 py-4 rounded-2xl text-base uppercase tracking-tight transition-all shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 hover:scale-105"
                 >
                   <Music size={20} />
-                  Acessar Acervo Musical
+                  {t('music.link.button')}
                   <ExternalLink size={16} />
                 </a>
                 <p className="text-stone-600 text-xs">capoeira.cafe</p>

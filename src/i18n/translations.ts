@@ -298,6 +298,9 @@ const translations = {
     'aluno.music.title': 'Músicas e Letras',
     'aluno.music.subtitle': 'Aprenda os toques e cantigas do grupo',
     'aluno.music.empty': 'Nenhuma música registrada.',
+    'music.link.learn_title': 'Aprenda as Músicas da Capoeira',
+    'music.link.description': 'Acesse o Capoeira Café, um site dedicado às músicas de capoeira, onde você poderá aprender letras, melodias e estilos das tradições Regional e Angola.',
+    'music.link.button': 'Acessar Acervo Musical',
 
     // ── Dashboard Aluno Profile ──────────────────────────────
     'aluno.profile.photo_updated': 'Foto de perfil atualizada!',
@@ -1357,6 +1360,9 @@ const translations = {
     'aluno.profile.grad_cost_free': 'Costo definido por la coordinación (Gratuito)',
     'aluno.profile.insta_follow': 'Seguí @filhosdofogo2005',
     'aluno.profile.discord': 'Discord',
+    'music.link.learn_title': 'Aprendé las Músicas de la Capoeira',
+    'music.link.description': 'Accedé a Capoeira Café, un sitio dedicado a las músicas de capoeira, donde podrás aprender letras, melodías y estilos de las tradiciones Regional y Angola.',
+    'music.link.button': 'Acceder al Archivo Musical',
 
     // ── Professor Dash ─────────────────────────────────────
     'prof.attendance.no_students': 'No hay alumnos en esta llamada.',
