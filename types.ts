@@ -209,6 +209,19 @@ export interface EventBanner {
   created_by: string;
 }
 
+// ─── Event Contribution Items ────────────────────────────────────────────────
+
+export interface EventContributionItem {
+  id: string;
+  event_id: string;
+  item_name: string;
+  category: 'comida' | 'bebida' | 'outro';
+  claimed_by?: string | null;
+  claimed_by_name?: string | null;
+  claimed_at?: string | null;
+  created_at?: string;
+}
+
 // ─── FFPoints System ────────────────────────────────────────────────────────
 
 export interface FFTask {

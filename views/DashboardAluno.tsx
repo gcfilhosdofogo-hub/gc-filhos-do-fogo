@@ -1,6 +1,6 @@
 // DashboardAluno.tsx - Student Dashboard View
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade } from '../types';
+import { User, ClassSession, GroupEvent, MusicItem, HomeTraining, UniformOrder, SchoolReport, EventRegistration, PaymentRecord, StudentGrade, EventContributionItem } from '../types';
 import { FFPoints } from './FFPoints';
 import { useLanguage } from '../src/i18n/LanguageContext';
 import { Calendar, Award, Music, Video, Instagram, MapPin, Copy, Check, Ticket, Wallet, Info, X, UploadCloud, Clock, AlertTriangle, ArrowLeft, AlertCircle, GraduationCap, FileText, Shirt, ShoppingBag, Camera, Eye, PlayCircle, DollarSign, FileUp, MessageCircle, PlusCircle, Activity, BookOpen, CheckCircle, ExternalLink } from 'lucide-react';
@@ -32,6 +32,9 @@ interface Props {
   onUpdatePaymentRecord: (updatedPayment: PaymentRecord) => Promise<void>;
   studentGrades: StudentGrade[];
   onUpdateOrderWithProof: (orderId: string, proofUrl: string, proofName: string) => Promise<void>;
+  contributionItems: EventContributionItem[];
+  onClaimContributionItem: (itemId: string, userId: string, userName: string) => Promise<void>;
+  onUnclaimContributionItem: (itemId: string, userId: string) => Promise<void>;
 }
 
 /**
@@ -189,6 +192,9 @@ export const DashboardAluno: React.FC<Props> = ({
   onUpdatePaymentRecord,
   studentGrades,
   onUpdateOrderWithProof,
+  contributionItems = [],
+  onClaimContributionItem,
+  onUnclaimContributionItem,
 }) => {
 
   const { t } = useLanguage();
@@ -1530,6 +1536,43 @@ export const DashboardAluno: React.FC<Props> = ({
                               </span>
                             </div>
                           </div>
+
+                          {/* Contribution List */}
+                          {contributionItems.filter(i => i.event_id === event.id).length > 0 && (
+                            <div className="mt-3 border-t border-stone-700 pt-3">
+                              <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                <ShoppingBag size={12} /> {t('contrib.title')}
+                              </p>
+                              <div className="space-y-1.5">
+                                {contributionItems.filter(i => i.event_id === event.id).map(item => {
+                                  const isMineClaimed = item.claimed_by === user.id;
+                                  const isClaimedByOther = item.claimed_by && item.claimed_by !== user.id;
+                                  return (
+                                    <div key={item.id} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${isMineClaimed ? 'bg-green-900/20 border border-green-700/40' : isClaimedByOther ? 'bg-stone-800 opacity-60' : 'bg-stone-800 border border-stone-700'}`}>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.category === 'comida' ? 'bg-orange-900/40 text-orange-400' : item.category === 'bebida' ? 'bg-blue-900/40 text-blue-400' : 'bg-stone-700 text-stone-400'}`}>
+                                          {t(`contrib.category.${item.category}`)}
+                                        </span>
+                                        <span className={isMineClaimed ? 'text-green-300 font-bold' : isClaimedByOther ? 'text-stone-500 line-through' : 'text-white'}>{item.item_name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {isMineClaimed ? (
+                                          <>
+                                            <span className="text-xs text-green-400">{t('contrib.my_item')}</span>
+                                            <button onClick={() => onUnclaimContributionItem && onUnclaimContributionItem(item.id, user.id)} className="text-xs bg-stone-700 hover:bg-stone-600 text-stone-300 px-2 py-0.5 rounded">{t('contrib.unclaim')}</button>
+                                          </>
+                                        ) : isClaimedByOther ? (
+                                          <span className="text-xs text-stone-500">{item.claimed_by_name}</span>
+                                        ) : (
+                                          <button onClick={() => onClaimContributionItem && onClaimContributionItem(item.id, user.id, user.nickname || user.name)} className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-0.5 rounded font-bold">{t('contrib.claim')}</button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })

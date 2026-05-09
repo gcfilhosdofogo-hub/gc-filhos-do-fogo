@@ -9,7 +9,7 @@ import { DashboardAdmin } from './views/DashboardAdmin';
 import { ProfileSetup } from './src/pages/ProfileSetup';
 import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 import { supabase } from './src/integrations/supabase/client';
-import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan, EventBanner } from './types';
+import { User, GroupEvent, AdminNotification, MusicItem, UniformOrder, UserRole, HomeTraining, SchoolReport, Assignment, PaymentRecord, ClassSession, EventRegistration, StudentGrade, GradeCategory, LessonPlan, EventBanner, EventContributionItem } from './types';
 import { GlobalChat } from './src/components/GlobalChat';
 import { BannerPopup } from './src/components/BannerPopup';
 
@@ -41,6 +41,7 @@ function AppContent() {
   const [activeBanner, setActiveBanner] = useState<EventBanner | null>(null);
   const [studentNotesAvailableColumns, setStudentNotesAvailableColumns] = useState<string[]>([]);
   const [isGeneratingPayments, setIsGeneratingPayments] = useState(false);
+  const [contributionItems, setContributionItems] = useState<EventContributionItem[]>([]);
 
   const VAPID_PUBLIC_KEY = 'BL5P1s73wlZ-bfXBccIbatEviexmryii1etDhzDuZWHGlcX0RVcZ5YxS25HW2puTXAXaVmjOfkEdaBkcPht_r5U';
 
@@ -254,6 +255,14 @@ function AppContent() {
     const { data: eventRegData, error: eventRegError } = await eventRegQuery;
     if (eventRegError) console.error('Error fetching event registrations:', eventRegError);
     else setEventRegistrations(eventRegData || []);
+
+    // Fetch Event Contribution Items (all users see all items)
+    const { data: contribData, error: contribError } = await supabase
+      .from('event_contribution_items')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (contribError) console.error('Error fetching contribution items:', contribError);
+    else setContributionItems(contribData || []);
 
     let gradesData: any[] | null = null;
     let gradesError: any = null;
@@ -626,6 +635,45 @@ function AppContent() {
       if (user) handleNotifyAdmin(`Criou evento: ${newEvent.title}`, user);
       return data;
     }
+  };
+
+  // --- Contribution Item Handlers ---
+  const handleAddContributionItem = async (item: Omit<EventContributionItem, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('event_contribution_items').insert(item).select().single();
+    if (error) { console.error('Error adding contribution item:', error); return null; }
+    setContributionItems(prev => [...prev, data]);
+    return data;
+  };
+
+  const handleClaimContributionItem = async (itemId: string, userId: string, userName: string) => {
+    const { data, error } = await supabase
+      .from('event_contribution_items')
+      .update({ claimed_by: userId, claimed_by_name: userName, claimed_at: new Date().toISOString() })
+      .eq('id', itemId)
+      .is('claimed_by', null)
+      .select()
+      .single();
+    if (error) { console.error('Error claiming item:', error); alert('Este item já foi escolhido por outra pessoa.'); return; }
+    if (data) setContributionItems(prev => prev.map(i => i.id === itemId ? data : i));
+  };
+
+  const handleUnclaimContributionItem = async (itemId: string, userId: string) => {
+    const item = contributionItems.find(i => i.id === itemId);
+    if (!item || item.claimed_by !== userId) return;
+    const { data, error } = await supabase
+      .from('event_contribution_items')
+      .update({ claimed_by: null, claimed_by_name: null, claimed_at: null })
+      .eq('id', itemId)
+      .select()
+      .single();
+    if (error) { console.error('Error unclaiming item:', error); return; }
+    if (data) setContributionItems(prev => prev.map(i => i.id === itemId ? data : i));
+  };
+
+  const handleDeleteContributionItem = async (itemId: string) => {
+    const { error } = await supabase.from('event_contribution_items').delete().eq('id', itemId);
+    if (error) { console.error('Error deleting contribution item:', error); return; }
+    setContributionItems(prev => prev.filter(i => i.id !== itemId));
   };
 
   const handleEditEvent = async (updatedEvent: GroupEvent) => {
@@ -1105,25 +1153,28 @@ function AppContent() {
               user={user}
               events={events.filter(e => e.status !== 'cancelled')}
               musicList={musicList}
-              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only student's orders
+              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)}
               onAddOrder={handleAddOrder}
               onNotifyAdmin={handleNotifyAdmin}
               onUpdateProfile={handleUpdateProfile}
-              homeTrainings={homeTrainings.filter(ht => ht.user_id === user.id)} // Pass only student's home trainings
+              homeTrainings={homeTrainings.filter(ht => ht.user_id === user.id)}
               onAddHomeTraining={handleAddHomeTraining}
-              schoolReports={schoolReports.filter(sr => sr.user_id === user.id)} // Pass only student's school reports
+              schoolReports={schoolReports.filter(sr => sr.user_id === user.id)}
               onAddSchoolReport={handleAddSchoolReport}
               classSessions={classSessions}
               assignments={assignments.filter(a => a.student_id === user.id)}
               onUpdateAssignment={handleUpdateAssignment}
-              eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)} // Pass only student's event registrations
+              eventRegistrations={eventRegistrations.filter(reg => reg.user_id === user.id)}
               onAddEventRegistration={handleAddEventRegistration}
-              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof} // NEW PROP
-              allUsersProfiles={allUsersProfiles} // NEW: Pass all user profiles
+              onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
+              allUsersProfiles={allUsersProfiles}
               monthlyPayments={monthlyPayments}
               onUpdatePaymentRecord={handleUpdatePaymentRecord}
               studentGrades={studentGrades.filter(g => g.student_id === user.id)}
               onUpdateOrderWithProof={handleUpdateOrderWithProof}
+              contributionItems={contributionItems}
+              onClaimContributionItem={handleClaimContributionItem}
+              onUnclaimContributionItem={handleUnclaimContributionItem}
             />
           )}
           {user.role === 'professor' && (
@@ -1131,23 +1182,23 @@ function AppContent() {
               user={user}
               events={events.filter(e => e.status !== 'cancelled')}
               musicList={musicList}
-              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)} // Pass only professor's orders
+              uniformOrders={uniformOrders.filter(order => order.user_id === user.id)}
               onAddOrder={handleAddOrder}
               onAddMusic={handleAddMusic}
               onNotifyAdmin={handleNotifyAdmin}
               onUpdateProfile={handleUpdateProfile}
-              classSessions={classSessions.filter(cs => cs.professor_id === user.id)} // Pass only professor's classes
+              classSessions={classSessions.filter(cs => cs.professor_id === user.id)}
               onAddClassSession={handleAddClassSession}
               onUpdateClassSession={handleUpdateClassSession}
-              assignments={assignments.filter(a => a.created_by === user.id)} // Pass only professor's assignments
+              assignments={assignments.filter(a => a.created_by === user.id)}
               onAddAssignment={handleAddAssignment}
               onUpdateAssignment={handleUpdateAssignment}
-              homeTrainings={homeTrainings} // Professor can see all home trainings
-              eventRegistrations={eventRegistrations} // Professor sees their own registrations (due to fetchData logic)
+              homeTrainings={homeTrainings}
+              eventRegistrations={eventRegistrations}
               onAddStudentGrade={handleAddStudentGrade}
               studentGrades={studentGrades}
               onAddAttendance={handleAddAttendance}
-              monthlyPayments={monthlyPayments.filter(p => p.student_id === user.id)} // Pass professor's payments
+              monthlyPayments={monthlyPayments.filter(p => p.student_id === user.id)}
               onUpdatePaymentRecord={handleUpdatePaymentRecord}
               onUpdateOrderWithProof={handleUpdateOrderWithProof}
               onUpdateEventRegistrationWithProof={handleUpdateEventRegistrationWithProof}
@@ -1158,6 +1209,9 @@ function AppContent() {
               onUpdateLessonPlan={handleUpdateLessonPlan}
               onDeleteLessonPlan={handleDeleteLessonPlan}
               onDeleteMusic={handleDeleteMusic}
+              contributionItems={contributionItems}
+              onClaimContributionItem={handleClaimContributionItem}
+              onUnclaimContributionItem={handleUnclaimContributionItem}
             />
           )}
 
@@ -1188,10 +1242,10 @@ function AppContent() {
               onUpdateAssignment={handleUpdateAssignment}
               homeTrainings={homeTrainings}
               schoolReports={schoolReports}
-              eventRegistrations={eventRegistrations} // Pass event registrations to admin
+              eventRegistrations={eventRegistrations}
               onAddEventRegistration={handleAddEventRegistration}
               onUpdateEventRegistrationStatus={handleUpdateEventRegistrationStatus}
-              onNavigate={navigate} // Pass navigate function
+              onNavigate={navigate}
               studentGrades={studentGrades}
               onAddStudentGrade={handleAddStudentGrade}
               onAddAttendance={handleAddAttendance}
@@ -1206,6 +1260,11 @@ function AppContent() {
               onAddLessonPlan={handleAddLessonPlan}
               onUpdateLessonPlan={handleUpdateLessonPlan}
               onDeleteLessonPlan={handleDeleteLessonPlan}
+              contributionItems={contributionItems}
+              onAddContributionItem={handleAddContributionItem}
+              onClaimContributionItem={handleClaimContributionItem}
+              onUnclaimContributionItem={handleUnclaimContributionItem}
+              onDeleteContributionItem={handleDeleteContributionItem}
             />
           )}
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import heic2any from "heic2any";
-import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan, EventBanner } from '../types';
+import { User, GroupEvent, PaymentRecord, AdminNotification, MusicItem, UserRole, UniformOrder, ALL_BELTS, HomeTraining, SchoolReport, Assignment, EventRegistration, ClassSession, StudentGrade, GradeCategory, LessonPlan, EventBanner, EventContributionItem } from '../types';
 import { FFPoints } from './FFPoints';
 import { useLanguage } from '../src/i18n/LanguageContext';
 
@@ -59,6 +59,11 @@ interface Props {
     onAddLessonPlan?: (plan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
     onUpdateLessonPlan?: (plan: LessonPlan) => Promise<void>;
     onDeleteLessonPlan?: (planId: string) => Promise<void>;
+    contributionItems?: EventContributionItem[];
+    onAddContributionItem?: (item: Omit<EventContributionItem, 'id' | 'created_at'>) => Promise<any>;
+    onClaimContributionItem?: (itemId: string, userId: string, userName: string) => Promise<void>;
+    onUnclaimContributionItem?: (itemId: string, userId: string) => Promise<void>;
+    onDeleteContributionItem?: (itemId: string) => Promise<void>;
 }
 
 
@@ -349,6 +354,11 @@ export const DashboardAdmin: React.FC<Props> = ({
     onAddLessonPlan,
     onUpdateLessonPlan,
     onDeleteLessonPlan,
+    contributionItems = [],
+    onAddContributionItem,
+    onClaimContributionItem,
+    onUnclaimContributionItem,
+    onDeleteContributionItem,
 }) => {
 
     const { session } = useSession();
@@ -361,7 +371,16 @@ export const DashboardAdmin: React.FC<Props> = ({
     const [showEventForm, setShowEventForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [eventFormData, setEventFormData] = useState({ title: '', date: '', event_time: '', description: '', price: '' });
-    const [expandedEventParticipants, setExpandedEventParticipants] = useState<string | null>(null); // New state for event participants
+    const [expandedEventParticipants, setExpandedEventParticipants] = useState<string | null>(null);
+
+    // Contribution Items State
+    const [newEventItems, setNewEventItems] = useState<{ item_name: string; category: 'comida' | 'bebida' | 'outro' }[]>([]);
+    const [newItemName, setNewItemName] = useState('');
+    const [newItemCategory, setNewItemCategory] = useState<'comida' | 'bebida' | 'outro'>('outro');
+    const [expandedContrib, setExpandedContrib] = useState<string | null>(null);
+    const [addingItemToEvent, setAddingItemToEvent] = useState<string | null>(null);
+    const [liveItemName, setLiveItemName] = useState('');
+    const [liveItemCategory, setLiveItemCategory] = useState<'comida' | 'bebida' | 'outro'>('outro');
 
     // Uniform State
     const [orderForm, setOrderForm] = useState({ item: 'combo', shirtSize: '', pantsSize: '' });
@@ -1186,15 +1205,10 @@ export const DashboardAdmin: React.FC<Props> = ({
             onEditEvent({ id: editingId, ...eventPayload });
             setEditingId(null);
         } else {
-            // Updated to await the response and create debts
             const newEvent = await onAddEvent(eventPayload);
 
-            // Create pending registrations for ACTIVE users only
             if (newEvent) {
                 const targets = managedUsers.filter(u => (u.status !== 'archived') && (u.role === 'aluno' || u.role === 'professor' || u.role === 'admin'));
-
-                // We'll iterate and add them. Note: In a real app, this should be a batch insert or DB trigger.
-                // For now, we do it client-side as requested.
                 for (const targetUser of targets) {
                     await onAddEventRegistration({
                         event_id: newEvent.id,
@@ -1202,13 +1216,21 @@ export const DashboardAdmin: React.FC<Props> = ({
                         user_name: targetUser.nickname || targetUser.name,
                         event_title: newEvent.title,
                         amount_paid: eventPrice,
-                        status: eventPrice > 0 ? 'pending' : 'paid', // Mark as paid if free
+                        status: eventPrice > 0 ? 'pending' : 'paid',
                     });
+                }
+                // Save contribution items if any
+                if (newEventItems.length > 0 && onAddContributionItem) {
+                    for (const item of newEventItems) {
+                        await onAddContributionItem({ event_id: newEvent.id, ...item });
+                    }
                 }
                 alert(`Evento criado com ${targets.length} participantes registrados.`);
             }
         }
         setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
+        setNewEventItems([]);
+        setNewItemName('');
         setShowEventForm(false);
     };
 
@@ -3130,7 +3152,56 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         />
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-2">
+                                {/* Contribution Items Section — only shown when creating (not editing) */}
+                                {!editingId && (
+                                    <div className="md:col-span-2 border-t border-stone-700 pt-4 mt-2">
+                                        <p className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-3">{t('contrib.section_title')}</p>
+                                        {newEventItems.length > 0 && (
+                                            <div className="space-y-1 mb-3">
+                                                {newEventItems.map((item, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-stone-800 px-3 py-1.5 rounded text-sm">
+                                                        <span className="text-white">{item.item_name}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-xs px-2 py-0.5 rounded ${item.category === 'comida' ? 'bg-orange-900/40 text-orange-400' : item.category === 'bebida' ? 'bg-blue-900/40 text-blue-400' : 'bg-stone-700 text-stone-400'}`}>{t(`contrib.category.${item.category}`)}</span>
+                                                            <button type="button" onClick={() => setNewEventItems(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-300"><X size={14} /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={newItemName}
+                                                onChange={e => setNewItemName(e.target.value)}
+                                                placeholder={t('contrib.item_name')}
+                                                className="flex-1 bg-stone-800 border border-stone-600 rounded px-3 py-1.5 text-white text-sm"
+                                            />
+                                            <select
+                                                value={newItemCategory}
+                                                onChange={e => setNewItemCategory(e.target.value as any)}
+                                                className="bg-stone-800 border border-stone-600 rounded px-2 py-1.5 text-white text-sm"
+                                            >
+                                                <option value="comida">{t('contrib.category.comida')}</option>
+                                                <option value="bebida">{t('contrib.category.bebida')}</option>
+                                                <option value="outro">{t('contrib.category.outro')}</option>
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!newItemName.trim()) return;
+                                                    setNewEventItems(prev => [...prev, { item_name: newItemName.trim(), category: newItemCategory }]);
+                                                    setNewItemName('');
+                                                }}
+                                                className="bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded text-sm font-bold"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end gap-2 md:col-span-2">
                                     <button type="button" onClick={handleCancelEdit} className="text-stone-400 px-4 py-2 hover:text-white">{t('common.cancel')}</button>
                                     <Button type="submit">{editingId ? t('admin.events.update') : t('admin.events.save')}</Button>
                                 </div>
@@ -3196,16 +3267,87 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                         eventRegistrations.filter(reg => reg.event_id === event.id).map(reg => (
                                                             <div key={reg.id} className="flex items-center justify-between bg-stone-800 p-2 rounded">
                                                                 <span className="text-white text-sm">{reg.user_name}</span>
-                                                                <span className={`text-xs font-bold px-2 py-1 rounded ${reg.status === 'paid' ? 'bg-green-900/30 text-green-400' :
-                                                                    reg.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' :
-                                                                        'bg-red-900/30 text-red-400'
-                                                                    }`}>
+                                                                <span className={`text-xs font-bold px-2 py-1 rounded ${reg.status === 'paid' ? 'bg-green-900/30 text-green-400' : reg.status === 'pending' ? 'bg-yellow-900/30 text-yellow-400' : 'bg-red-900/30 text-red-400'}`}>
                                                                     {reg.status === 'paid' ? t('admin.status.paid') : reg.status === 'pending' ? t('admin.status.pending') : t('admin.status.cancelled')}
                                                                 </span>
                                                             </div>
                                                         ))
                                                     ) : (
                                                         <p className="text-stone-500 text-xs italic">{t('admin.events.no_participants')}</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Contribution List */}
+                                        <div className="mt-3 border-t border-stone-700 pt-3">
+                                            <button
+                                                onClick={() => setExpandedContrib(expandedContrib === event.id ? null : event.id)}
+                                                className="flex items-center gap-2 text-stone-400 hover:text-white text-sm font-medium"
+                                            >
+                                                <ShoppingBag size={16} />
+                                                {t('contrib.title')} ({contributionItems.filter(i => i.event_id === event.id).length})
+                                                {expandedContrib === event.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                            </button>
+                                            {expandedContrib === event.id && (
+                                                <div className="mt-3 space-y-2">
+                                                    {contributionItems.filter(i => i.event_id === event.id).map(item => (
+                                                        <div key={item.id} className="flex items-center justify-between bg-stone-800 px-3 py-2 rounded">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.category === 'comida' ? 'bg-orange-900/40 text-orange-400' : item.category === 'bebida' ? 'bg-blue-900/40 text-blue-400' : 'bg-stone-700 text-stone-400'}`}>{t(`contrib.category.${item.category}`)}</span>
+                                                                <span className="text-white text-sm">{item.item_name}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {item.claimed_by_name ? (
+                                                                    <span className="text-xs text-green-400 font-bold">{item.claimed_by_name}</span>
+                                                                ) : (
+                                                                    <span className="text-xs text-stone-500 italic">{t('contrib.available')}</span>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => onDeleteContributionItem && onDeleteContributionItem(item.id)}
+                                                                    className="text-red-500 hover:text-red-400 ml-1"
+                                                                    title={t('contrib.remove')}
+                                                                ><Trash2 size={13} /></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {/* Add item inline */}
+                                                    {addingItemToEvent === event.id ? (
+                                                        <div className="flex gap-2 mt-2">
+                                                            <input
+                                                                type="text"
+                                                                value={liveItemName}
+                                                                onChange={e => setLiveItemName(e.target.value)}
+                                                                placeholder={t('contrib.item_name')}
+                                                                className="flex-1 bg-stone-700 border border-stone-600 rounded px-2 py-1 text-white text-xs"
+                                                            />
+                                                            <select
+                                                                value={liveItemCategory}
+                                                                onChange={e => setLiveItemCategory(e.target.value as any)}
+                                                                className="bg-stone-700 border border-stone-600 rounded px-1 py-1 text-white text-xs"
+                                                            >
+                                                                <option value="comida">{t('contrib.category.comida')}</option>
+                                                                <option value="bebida">{t('contrib.category.bebida')}</option>
+                                                                <option value="outro">{t('contrib.category.outro')}</option>
+                                                            </select>
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (!liveItemName.trim() || !onAddContributionItem) return;
+                                                                    await onAddContributionItem({ event_id: event.id, item_name: liveItemName.trim(), category: liveItemCategory });
+                                                                    setLiveItemName('');
+                                                                    setAddingItemToEvent(null);
+                                                                }}
+                                                                className="bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded text-xs font-bold"
+                                                            ><Check size={13} /></button>
+                                                            <button onClick={() => { setAddingItemToEvent(null); setLiveItemName(''); }} className="text-stone-400 hover:text-white"><X size={13} /></button>
+                                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setAddingItemToEvent(event.id)}
+                                                            className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 mt-1"
+                                                        >
+                                                            <Plus size={13} /> {t('contrib.add_item')}
+                                                        </button>
                                                     )}
                                                 </div>
                                             )}
@@ -3832,6 +3974,77 @@ export const DashboardAdmin: React.FC<Props> = ({
                         </div>
                     </div>
 
+                    {/* CONTRIBUTION ITEMS SECTION */}
+                    <div className="bg-stone-800 rounded-2xl border border-stone-700 mt-6 overflow-hidden shadow-xl">
+                        <div className="p-6 border-b border-stone-700/50 bg-orange-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-orange-500/10 rounded-xl border border-orange-500/20 text-orange-500">
+                                    <ShoppingBag size={28} />
+                                </div>
+                                <h2 className="text-2xl font-bold text-white tracking-tight">{t('contrib.finance_title')}</h2>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            {contributionItems.length === 0 ? (
+                                <p className="text-stone-500 italic text-center py-4">{t('contrib.finance_empty')}</p>
+                            ) : (
+                                (() => {
+                                    const claimedItems = contributionItems.filter(i => i.claimed_by);
+                                    const groupedByEvent = claimedItems.reduce((acc, item) => {
+                                        const ev = events.find(e => e.id === item.event_id);
+                                        const key = item.event_id;
+                                        if (!acc[key]) acc[key] = { eventTitle: ev?.title || item.event_id, items: [] };
+                                        acc[key].items.push(item);
+                                        return acc;
+                                    }, {} as Record<string, { eventTitle: string; items: typeof contributionItems }>);
+
+                                    const eventKeys = Object.keys(groupedByEvent);
+                                    if (eventKeys.length === 0) {
+                                        return <p className="text-stone-500 italic text-center py-4">{t('contrib.finance_empty')}</p>;
+                                    }
+
+                                    return (
+                                        <div className="space-y-6">
+                                            {eventKeys.map(eventId => {
+                                                const group = groupedByEvent[eventId];
+                                                return (
+                                                    <div key={eventId}>
+                                                        <p className="text-sm font-bold text-orange-400 mb-2 flex items-center gap-1">
+                                                            <Calendar size={14} /> {group.eventTitle}
+                                                        </p>
+                                                        <div className="overflow-x-auto rounded-lg border border-stone-700">
+                                                            <table className="w-full text-left text-sm">
+                                                                <thead>
+                                                                    <tr className="bg-stone-900 text-stone-500 text-xs uppercase">
+                                                                        <th className="p-3">{t('contrib.finance_item')}</th>
+                                                                        <th className="p-3">{t('contrib.category_label')}</th>
+                                                                        <th className="p-3">{t('contrib.finance_person')}</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-stone-700">
+                                                                    {group.items.map(item => (
+                                                                        <tr key={item.id} className="hover:bg-stone-900/50">
+                                                                            <td className="p-3 text-white font-medium">{item.item_name}</td>
+                                                                            <td className="p-3">
+                                                                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${item.category === 'comida' ? 'bg-orange-900/40 text-orange-400' : item.category === 'bebida' ? 'bg-blue-900/40 text-blue-400' : 'bg-stone-700 text-stone-400'}`}>
+                                                                                    {t(`contrib.category.${item.category}`)}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="p-3 text-green-400 font-bold">{item.claimed_by_name}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()
+                            )}
+                        </div>
+                    </div>
 
                 </div>
             )
