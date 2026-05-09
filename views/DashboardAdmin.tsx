@@ -370,7 +370,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     // Event Management State
     const [showEventForm, setShowEventForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [eventFormData, setEventFormData] = useState({ title: '', date: '', event_time: '', description: '', price: '' });
+    const [eventFormData, setEventFormData] = useState({ title: '', date: '', event_time: '', description: '', price: '', target_audience: 'all' as 'all' | 'brasil' | 'argentina' });
     const [expandedEventParticipants, setExpandedEventParticipants] = useState<string | null>(null);
 
     // Contribution Items State
@@ -1171,7 +1171,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     const handleCancelEdit = () => {
         setShowEventForm(false);
         setEditingId(null);
-        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
+        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '', target_audience: 'all' });
     };
 
     const handleDeleteEvent = (e: React.MouseEvent, id: string) => {
@@ -1198,7 +1198,8 @@ export const DashboardAdmin: React.FC<Props> = ({
             title: eventFormData.title,
             date: eventFormData.date,
             description: finalDescription,
-            price: eventPrice
+            price: eventPrice,
+            target_audience: eventFormData.target_audience,
         };
 
         if (editingId) {
@@ -1208,7 +1209,18 @@ export const DashboardAdmin: React.FC<Props> = ({
             const newEvent = await onAddEvent(eventPayload);
 
             if (newEvent) {
-                const targets = managedUsers.filter(u => (u.status !== 'archived') && (u.role === 'aluno' || u.role === 'professor' || u.role === 'admin'));
+                const getPhonePrefix = (phone?: string) => {
+                    const normalized = (phone || '').replace(/^\+/, '');
+                    if (normalized.startsWith('55')) return 'brasil';
+                    if (normalized.startsWith('54')) return 'argentina';
+                    return 'all';
+                };
+                const targets = managedUsers.filter(u => {
+                    if (u.status === 'archived') return false;
+                    if (!(u.role === 'aluno' || u.role === 'professor' || u.role === 'admin')) return false;
+                    if (eventFormData.target_audience === 'all') return true;
+                    return getPhonePrefix(u.phone) === eventFormData.target_audience;
+                });
                 for (const targetUser of targets) {
                     await onAddEventRegistration({
                         event_id: newEvent.id,
@@ -1228,7 +1240,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 alert(`Evento criado com ${targets.length} participantes registrados.`);
             }
         }
-        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
+        setEventFormData({ title: '', date: '', event_time: '', description: '', price: '', target_audience: 'all' });
         setNewEventItems([]);
         setNewItemName('');
         setShowEventForm(false);
@@ -3080,7 +3092,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                             <button
                                 onClick={() => {
                                     setEditingId(null);
-                                    setEventFormData({ title: '', date: '', event_time: '', description: '', price: '' });
+                                    setEventFormData({ title: '', date: '', event_time: '', description: '', price: '', target_audience: 'all' });
                                     setShowEventForm(!showEventForm);
                                 }}
                                 className="text-sm bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -3150,6 +3162,27 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             className="w-full bg-stone-800 border border-stone-600 rounded px-3 py-2 text-white"
                                             rows={2}
                                         />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-stone-400 block mb-2">{t('admin.events.target_label')}</label>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {(['all', 'brasil', 'argentina'] as const).map(opt => (
+                                                <button
+                                                    key={opt}
+                                                    type="button"
+                                                    onClick={() => setEventFormData({ ...eventFormData, target_audience: opt })}
+                                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border transition-all ${
+                                                        eventFormData.target_audience === opt
+                                                            ? opt === 'all' ? 'bg-stone-200 text-stone-900 border-stone-200'
+                                                                : opt === 'brasil' ? 'bg-green-600 text-white border-green-500'
+                                                                : 'bg-sky-600 text-white border-sky-500'
+                                                            : 'bg-stone-800 text-stone-400 border-stone-600 hover:border-stone-400'
+                                                    }`}
+                                                >
+                                                    {t(`admin.events.target_${opt}` as any)}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                                 {/* Contribution Items Section — only shown when creating (not editing) */}
@@ -3240,15 +3273,22 @@ export const DashboardAdmin: React.FC<Props> = ({
                                         <p className="text-orange-400 text-sm mb-1">
                                             {event.date.split('-').reverse().join('/')} {displayTime && <span className="text-stone-400 ml-2">{t('admin.events.at')} {displayTime}</span>}
                                         </p>
-                                        {event.price ? (
-                                            <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 mb-2 inline-block">
-                                                R$ {event.price.toFixed(2).replace('.', ',')}
-                                            </span>
-                                        ) : (
-                                            <span className="text-stone-500 text-xs font-bold bg-stone-800 px-2 py-0.5 rounded mb-2 inline-block">
-                                                {t('admin.events.free')}
-                                            </span>
-                                        )}
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                            {event.price ? (
+                                                <span className="text-green-400 text-xs font-bold bg-green-900/30 px-2 py-0.5 rounded border border-green-900/50 inline-block">
+                                                    R$ {event.price.toFixed(2).replace('.', ',')}
+                                                </span>
+                                            ) : (
+                                                <span className="text-stone-500 text-xs font-bold bg-stone-800 px-2 py-0.5 rounded inline-block">
+                                                    {t('admin.events.free')}
+                                                </span>
+                                            )}
+                                            {event.target_audience && event.target_audience !== 'all' && (
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded inline-block ${event.target_audience === 'brasil' ? 'bg-green-900/30 text-green-400 border border-green-900/50' : 'bg-sky-900/30 text-sky-400 border border-sky-900/50'}`}>
+                                                    {t(`admin.events.target_badge_${event.target_audience}` as any)}
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="text-stone-400 text-xs mt-2">{displayDesc}</p>
 
                                         {/* Participants List */}

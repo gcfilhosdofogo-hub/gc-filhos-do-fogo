@@ -1509,8 +1509,25 @@ export const DashboardAluno: React.FC<Props> = ({
                   <AlertCircle size={12} /> Todos os eventos são de participação obrigatória.
                 </p>
                 <div className="space-y-3">
-                  {events.filter(e => !e.status || e.status === 'active').length > 0 ? (
-                    events.filter(e => !e.status || e.status === 'active').map((event) => {
+                  {(() => {
+                    const userPhoneNorm = (user.phone || '').replace(/^\+/, '');
+                    const userBranch = userPhoneNorm.startsWith('55') ? 'brasil' : userPhoneNorm.startsWith('54') ? 'argentina' : null;
+                    const visibleEvents = events.filter(e => {
+                      if (e.status && e.status !== 'active') return false;
+                      if (!e.target_audience || e.target_audience === 'all') return true;
+                      return e.target_audience === userBranch;
+                    });
+                    return visibleEvents;
+                  })().length > 0 ? (
+                    (() => {
+                      const userPhoneNorm = (user.phone || '').replace(/^\+/, '');
+                      const userBranch = userPhoneNorm.startsWith('55') ? 'brasil' : userPhoneNorm.startsWith('54') ? 'argentina' : null;
+                      return events.filter(e => {
+                        if (e.status && e.status !== 'active') return false;
+                        if (!e.target_audience || e.target_audience === 'all') return true;
+                        return e.target_audience === userBranch;
+                      });
+                    })().map((event) => {
                       const timeMatch = (event.description || '').match(/^\[Horário:\s*(.*?)\]\n?/);
                       const displayTime = event.event_time || (timeMatch ? timeMatch[1] : null);
                       const displayDesc = timeMatch ? event.description.replace(/^\[Horário:\s*(.*?)\]\n?/, '') : event.description;

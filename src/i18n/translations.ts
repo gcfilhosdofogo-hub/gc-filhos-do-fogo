@@ -302,6 +302,15 @@ const translations = {
     'music.link.description': 'Acesse o Capoeira Café, um site dedicado às músicas de capoeira, onde você poderá aprender letras, melodias e estilos das tradições Regional e Angola.',
     'music.link.button': 'Acessar Acervo Musical',
 
+    // ── Event Target Audience ──────────────────────────────
+    'admin.events.target_label': 'Público Alvo',
+    'admin.events.target_all': 'Todos (Brasil + Argentina)',
+    'admin.events.target_brasil': 'Matriz Brasil (+55)',
+    'admin.events.target_argentina': 'Filial Argentina (+54)',
+    'admin.events.target_badge_all': 'Todos',
+    'admin.events.target_badge_brasil': '🇧🇷 Matriz Brasil',
+    'admin.events.target_badge_argentina': '🇦🇷 Filial Argentina',
+
     // ── Contribution List ──────────────────────────────────
     'contrib.title': 'Lista de Contribuições',
     'contrib.subtitle': 'Itens que os integrantes devem trazer',
@@ -1391,6 +1400,15 @@ const translations = {
     'music.link.button': 'Acceder al Archivo Musical',
 
     // ── Contribution List ──────────────────────────────────
+    // ── Event Target Audience ──────────────────────────────
+    'admin.events.target_label': 'Público Objetivo',
+    'admin.events.target_all': 'Todos (Brasil + Argentina)',
+    'admin.events.target_brasil': 'Matriz Brasil (+55)',
+    'admin.events.target_argentina': 'Filial Argentina (+54)',
+    'admin.events.target_badge_all': 'Todos',
+    'admin.events.target_badge_brasil': '🇧🇷 Matriz Brasil',
+    'admin.events.target_badge_argentina': '🇦🇷 Filial Argentina',
+
     'contrib.title': 'Lista de Contribuciones',
     'contrib.subtitle': 'Ítems que los integrantes deben traer',
     'contrib.claim': 'Elegir',

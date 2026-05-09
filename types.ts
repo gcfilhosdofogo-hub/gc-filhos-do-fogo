@@ -62,6 +62,7 @@ export interface GroupEvent {
   price?: number; // Valor do evento definido pelo Admin
   created_by?: string; // User ID of the creator (admin/professor)
   status?: 'active' | 'cancelled'; // Soft delete flag to preserve financial records
+  target_audience?: 'all' | 'brasil' | 'argentina'; // Público alvo: todos, Matriz Brasil (+55), Filial Argentina (+54)
 }
 
 export interface MusicItem {

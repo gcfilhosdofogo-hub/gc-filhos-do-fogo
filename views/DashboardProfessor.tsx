@@ -2606,8 +2606,24 @@ id,
                   <Calendar className="text-yellow-500" /> Eventos
                 </h3>
                 <div className="space-y-4">
-                  {events.length > 0 ? (
-                    events.map(event => {
+                  {(() => {
+                    const userPhoneNorm = (user.phone || '').replace(/^\+/, '');
+                    const userBranch = userPhoneNorm.startsWith('55') ? 'brasil' : userPhoneNorm.startsWith('54') ? 'argentina' : null;
+                    return events.filter(e => {
+                      if (e.status && e.status !== 'active') return false;
+                      if (!e.target_audience || e.target_audience === 'all') return true;
+                      return e.target_audience === userBranch;
+                    });
+                  })().length > 0 ? (
+                    (() => {
+                      const userPhoneNorm = (user.phone || '').replace(/^\+/, '');
+                      const userBranch = userPhoneNorm.startsWith('55') ? 'brasil' : userPhoneNorm.startsWith('54') ? 'argentina' : null;
+                      return events.filter(e => {
+                        if (e.status && e.status !== 'active') return false;
+                        if (!e.target_audience || e.target_audience === 'all') return true;
+                        return e.target_audience === userBranch;
+                      });
+                    })().map(event => {
                       const timeMatch = (event.description || '').match(/^\[Horário:\s*(.*?)\]\n?/);
                       const displayTime = event.event_time || (timeMatch ? timeMatch[1] : null);
                       const displayDesc = timeMatch ? event.description.replace(/^\[Horário:\s*(.*?)\]\n?/, '') : event.description;

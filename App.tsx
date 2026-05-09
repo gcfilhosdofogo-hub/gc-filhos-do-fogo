@@ -623,7 +623,7 @@ function AppContent() {
   // --- Event Handlers (Supabase Interactions) ---
   const handleAddEvent = async (newEvent: Omit<GroupEvent, 'id' | 'created_at'>) => {
     if (!session) return null;
-    // Safety strip: event_time column doesn't exist in DB
+    // Safety strip: event_time column doesn't exist in DB (target_audience IS a real column, keep it)
     const { event_time, ...payload } = newEvent as any;
     const { data, error } = await supabase.from('group_events').insert({ ...payload, created_by: session.user.id }).select().single();
     if (error) {
