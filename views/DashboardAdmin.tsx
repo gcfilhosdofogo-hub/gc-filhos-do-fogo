@@ -105,7 +105,7 @@ const ActivityFeed: React.FC<{
     allUsersProfiles: User[];
     onClearNotifications: () => void;
 }> = ({ notifications, allUsersProfiles, onClearNotifications }) => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [activityTab, setActivityTab] = useState<'feed' | 'last_seen'>('feed');
     const [nowTimer, setNowTimer] = useState(Date.now()); // Força o re-render 
 

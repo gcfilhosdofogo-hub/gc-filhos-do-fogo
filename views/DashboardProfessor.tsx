@@ -137,7 +137,7 @@ export const DashboardProfessor: React.FC<Props> = ({
   onUnclaimContributionItem,
 }) => {
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [profView, setProfView] = useState<ProfessorViewMode>('dashboard');
   const [selectedAssignmentTarget, setSelectedAssignmentTarget] = useState<'mine' | 'all'>('mine');
   const myClasses = useMemo(() => classSessions.filter(cs => cs.professor_id === user.id), [classSessions, user.id]);

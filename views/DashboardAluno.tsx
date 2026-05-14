@@ -197,7 +197,7 @@ export const DashboardAluno: React.FC<Props> = ({
   onUnclaimContributionItem,
 }) => {
 
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('overview'); // State for main tabs
   const [pixCopied, setPixCopied] = useState(false);
   const [costPixCopied, setCostPixCopied] = useState(false);
