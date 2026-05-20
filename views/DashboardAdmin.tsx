@@ -4281,8 +4281,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                             <tr key={u.id} className="hover:bg-stone-700/30 group">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-stone-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden border border-stone-500">
-                                                            <Logo className="w-full h-full object-cover" />
+                                                        <div className="w-8 h-8 rounded-full bg-stone-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden border border-stone-500 shrink-0">
+                                                            {u.photo_url ? (
+                                                                <img src={u.photo_url} alt={u.nickname || u.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <span>{(u.nickname || u.name || '?').charAt(0).toUpperCase()}</span>
+                                                            )}
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-2">

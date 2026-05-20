@@ -130,10 +130,11 @@ function AppContent() {
         first_name: p.first_name || undefined,
         last_name: p.last_name || undefined,
         professorName: p.professor_name || undefined,
-        photo_url: p.avatar_url || p.photo_url || undefined, // Unify to favor avatar_url
+        photo_url: p.avatar_url || p.photo_url || undefined,
         status: p.status as 'active' | 'blocked' | undefined,
         belt: p.belt || undefined,
-        graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0, // Safe cast
+        birthDate: p.birth_date || undefined, // ← was missing, caused birthDate to always be empty in admin modal
+        graduationCost: p.graduation_cost ? Number(p.graduation_cost) : 0,
         nextEvaluationDate: p.next_evaluation_date || undefined,
         planning: p.planning || undefined,
         phone: p.phone || undefined,
