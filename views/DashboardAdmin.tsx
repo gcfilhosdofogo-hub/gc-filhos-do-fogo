@@ -4661,8 +4661,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 onClick={() => setExpandedStudent(expandedStudent === student.id ? null : student.id)}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-                                                        <Logo className="w-full h-full object-cover" /> {/* Adicionado */}
+                                                    <div className="w-10 h-10 rounded-full bg-stone-700 flex items-center justify-center text-xs font-bold text-white overflow-hidden shrink-0">
+                                                        {student.photo_url ? (
+                                                            <img src={student.photo_url} alt={student.nickname || student.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span>{(student.nickname || student.name || '?').charAt(0).toUpperCase()}</span>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <h3 className="font-bold text-white text-lg">{student.nickname || student.name}</h3>
