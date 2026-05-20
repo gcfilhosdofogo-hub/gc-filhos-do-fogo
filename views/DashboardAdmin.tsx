@@ -2694,6 +2694,7 @@ export const DashboardAdmin: React.FC<Props> = ({
                 professorId: prof.id,
                 professorName: prof.nickname || prof.name,
                 phone: prof.phone,
+                photo_url: prof.photo_url,
                 currentContent: "Fundamentos e Sequências", // Static for now as not tracked
                 students: studentsData
             };
@@ -4840,8 +4841,12 @@ export const DashboardAdmin: React.FC<Props> = ({
                                                 onClick={() => setExpandedProfessor(expandedProfessor === prof.professorId ? null : prof.professorId)}
                                             >
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400">
-                                                        <Users size={20} />
+                                                    <div className="h-10 w-10 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-400 overflow-hidden shrink-0">
+                                                        {prof.photo_url ? (
+                                                            <img src={prof.photo_url} alt={prof.professorName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="text-sm font-bold">{(prof.professorName || '?').charAt(0).toUpperCase()}</span>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">
