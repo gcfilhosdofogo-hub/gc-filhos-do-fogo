@@ -1265,6 +1265,7 @@ function AppContent() {
               onClaimContributionItem={handleClaimContributionItem}
               onUnclaimContributionItem={handleUnclaimContributionItem}
               onDeleteContributionItem={handleDeleteContributionItem}
+              onRefreshData={fetchData}
             />
           )}
         </div>

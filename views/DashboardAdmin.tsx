@@ -64,6 +64,7 @@ interface Props {
     onClaimContributionItem?: (itemId: string, userId: string, userName: string) => Promise<void>;
     onUnclaimContributionItem?: (itemId: string, userId: string) => Promise<void>;
     onDeleteContributionItem?: (itemId: string) => Promise<void>;
+    onRefreshData?: () => void;
 }
 
 
@@ -359,6 +360,7 @@ export const DashboardAdmin: React.FC<Props> = ({
     onClaimContributionItem,
     onUnclaimContributionItem,
     onDeleteContributionItem,
+    onRefreshData,
 }) => {
 
     const { session } = useSession();
@@ -1755,6 +1757,7 @@ export const DashboardAdmin: React.FC<Props> = ({
             alert('Usuário atualizado com sucesso!');
             setShowUserModal(false);
             onNotifyAdmin(`Atualizou perfil do usuário: ${editingUser.nickname || editingUser.name}`, user);
+            onRefreshData?.(); // Re-fetch all profiles so UI reflects changes immediately
         }
     };
 
